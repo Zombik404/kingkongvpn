@@ -15,7 +15,7 @@ Last updated: 2026-11-12 · Current phase: **Phase 2 complete + crypto payments 
 | 7 — Desktop apps | ⏳ Pending | Needs Windows machine, Mac, code-signing |
 | 8 — Web app | ⏳ Pending | API contract ready (`shared/api-contracts/openapi.json`) |
 | 9 — Admin panel | ⏳ Pending | Staff API ready |
-| 10 — Payments | 🟡 Started | Crypto via @CryptoBot done (ADR-016, testnet). Telegram Stars / Stripe / stores later |
+| 10 — Payments | 🟡 Started | Crypto (Gram + USDC) via @CryptoBot done (ADR-016, testnet). Telegram Stars / Stripe / stores later |
 | 11 — Security & optimization | ⏳ Pending | |
 | 12 — Production launch | ⏳ Pending | |
 
@@ -35,17 +35,17 @@ Last updated: 2026-11-12 · Current phase: **Phase 2 complete + crypto payments 
 - **Tooling**: hash-pinned `requirements.lock` / `requirements-dev.lock`; Dockerfile installs from them; Compose `migrate` service runs before API/worker; CI workflow (`.github/workflows/ci.yml`); `app.cli grant-role` / `seed-dev`; new Makefile targets.
 
 ## Added after Phase 2: crypto payments (@CryptoBot)
-- Prices in USD, payment in Gram (asset code configurable), tariffs 1/3/6/12 months — ADR-016.
+- Prices in USD — **1 mo $5, 3 mo $13, 6 mo $24, 12 mo $42** (confirmed by the owner 2026-11-13); paid in **Gram or USDC**; GRAM is matched to the API's `TON` code automatically if @CryptoBot hasn't renamed it yet — ADR-016.
 - `POST /payments/checkout`, `GET /payments`, `GET /payments/{id}?refresh=true`, `POST /webhooks/cryptobot`.
 - Signed-webhook verification, amount/currency/payload matching, idempotent and race-safe crediting, 60 s polling fallback (works without a domain), discount codes at checkout, "payment received" email in 5 languages.
-- Migration `0002_cryptobot_payments`; CLI `set-price` and `cryptobot-check`.
-- 20 new tests against a fake Crypto Pay API (incl. forged/stale webhooks, tampered amounts, webhook+poll race).
+- Migration `0002_cryptobot_payments`; CLI `bootstrap-catalog` (plans + launch prices, idempotent), `set-price`, `cryptobot-check`.
+- 19 tests against a fake Crypto Pay API (incl. forged/stale webhooks, tampered amounts, webhook+poll race).
 - **Not yet run against the real testnet API** (no network access from the build environment; the token stays on the server) — first check on the server: `python -m app.cli cryptobot-check`.
 
 ## Tests
 | Suite | Result | Command |
 |---|---|---|
-| Backend: 185 tests on real PostgreSQL 16 + Redis 7 | ✅ pass (Python 3.12 and 3.13) | `make up && make test-backend` |
+| Backend: 187 tests on real PostgreSQL 16 + Redis 7 | ✅ pass (Python 3.12 and 3.13) | `make up && make test-backend` |
 | Backend coverage | ✅ 97 % total — auth 96 %, subscriptions 96 %, devices 95 %, payments 94 % (target ≥ 85 %) | same |
 | Migration up → down → up on a fresh DB; models ↔ migration drift; OpenAPI drift | ✅ pass | part of backend suite |
 | Concurrency: 8 parallel device registrations vs limit 3; parallel address allocation; parallel promo redemption vs `max_redemptions` | ✅ pass | part of backend suite |
@@ -89,7 +89,6 @@ None blocking Phase 3/4 code. Full list: `documentation/EXTERNAL_REQUIREMENTS.md
 **Start now (long lead time):** legal entity → D-U-N-S → Apple Developer Program as an organization.
 
 ## Open decisions for the owner
-0. **Prices for 1/3/6/12 months in USD** (dev seed uses placeholders 5/13/24/42).
 1. Brand name and domain.
 2. Where the repository lives (private GitHub repo enables the CI workflow).
 3. Tax approach for EU sales (VAT OSS yourself vs merchant-of-record) — affects Phase 10.

@@ -111,10 +111,10 @@ class Settings(BaseSettings):
     cryptobot_api_token: SecretStr = SecretStr("")
     cryptobot_network: Literal["mainnet", "testnet"] = "testnet"
     cryptobot_api_url: str | None = None  # override; default derived from network
-    # Asset codes accepted for USD-priced invoices. TON was rebranded to Gram — run
-    # `python -m app.cli cryptobot-check` to see which code the API currently uses.
+    # Asset codes accepted for USD-priced invoices. GRAM (ex-Toncoin) is matched to TON
+    # automatically if the API still uses the old code (see payments.cryptobot.ASSET_ALIASES).
     cryptobot_accepted_assets: Annotated[list[str], NoDecode] = Field(
-        default_factory=lambda: ["TON"]
+        default_factory=lambda: ["GRAM", "USDC"]
     )
     cryptobot_invoice_ttl_seconds: int = Field(default=3600, ge=300, le=86400)
     payment_pending_limit_per_user: int = Field(default=5, ge=1, le=50)

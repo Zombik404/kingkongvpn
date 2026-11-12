@@ -34,6 +34,7 @@ class FakeCryptoPay:
         self.invoices: dict[int, dict[str, Any]] = {}
         self.calls: list[tuple[str, dict[str, Any]]] = []
         self.fail = False
+        self.offered = ["TON", "USDC", "USDT", "BTC"]  # API still on the old TON code
         self._next = 1000
 
     def handler(self, request: httpx.Request) -> httpx.Response:
@@ -66,6 +67,12 @@ class FakeCryptoPay:
             ids = [int(i) for i in str(params.get("invoice_ids", "")).split(",") if i]
             items = [self.invoices[i] for i in ids if i in self.invoices]
             return httpx.Response(200, json={"ok": True, "result": {"items": items}})
+        if method == "getCurrencies":
+            items = [
+                {"code": c, "is_blockchain": c != "USDC", "is_stablecoin": c == "USDC"}
+                for c in self.offered
+            ] + [{"code": "USD", "is_fiat": True}]
+            return httpx.Response(200, json={"ok": True, "result": items})
         if method == "getMe":
             return httpx.Response(200, json={"ok": True, "result": {"app_id": 1, "name": "t"}})
         return httpx.Response(200, json={"ok": False, "error": "METHOD_NOT_FOUND"})
@@ -86,7 +93,7 @@ def settings() -> Settings:
     return make_settings(
         cryptobot_api_token=TOKEN,
         telegram_bot_username="myvpn_test_bot",
-        cryptobot_accepted_assets="GRAM",
+        cryptobot_accepted_assets="GRAM,USDC",
     )
 
 
@@ -199,7 +206,7 @@ async def test_checkout_creates_invoice(
     assert method == "createInvoice"
     assert params["currency_type"] == "fiat" and params["fiat"] == "USD"
     assert params["amount"] == "13.00"
-    assert params["accepted_assets"] == "GRAM"
+    assert params["accepted_assets"] == "TON,USDC"  # GRAM resolved to the API's TON code
     assert params["payload"] == out["id"]
     assert params["paid_btn_url"] == "https://t.me/myvpn_test_bot"
     assert "Standard — 3 months" in params["description"]
@@ -440,3 +447,44 @@ async def test_cli_set_price_replaces_active(db: Any, ctx: AppContext) -> None:
     active = [r for r in rows if r.active]
     assert len(rows) == 2 and len(active) == 1 and active[0].amount_minor == 1299
     assert Decimal(active[0].amount_minor) / 100 == Decimal("12.99")
+
+
+async def test_asset_resolution(ctx: AppContext) -> None:
+    async def resolved(offered: list[str] | None, configured: str) -> list[str] | str:
+        fake = FakeCryptoPay()
+        if offered is None:
+            fake.fail = True
+        else:
+            fake.offered = offered
+        s = make_settings(cryptobot_api_token=TOKEN, cryptobot_accepted_assets=configured)
+        c = CryptoBotClient(s, transport=httpx.MockTransport(fake.handler))
+        try:
+            first = await c.accepted_assets()
+            if offered is not None:
+                assert await c.accepted_assets() == first
+                assert [m for m, _ in fake.calls].count("getCurrencies") == 1  # cached
+            return first
+        except cryptobot.PaymentProviderError:
+            return "error"
+        finally:
+            await c.aclose()
+
+    assert await resolved(["GRAM", "TON", "USDC"], "GRAM,USDC") == ["GRAM", "USDC"]
+    assert await resolved(["TON", "USDC"], "GRAM,USDC") == ["TON", "USDC"]
+    assert await resolved(["GRAM", "USDT"], "GRAM,USDC") == ["GRAM"]  # USDC dropped, logged
+    assert await resolved(None, "GRAM,USDC") == ["GRAM", "USDC"]  # API down: use config
+    assert await resolved(["BTC"], "GRAM,USDC") == "error"
+
+
+async def test_cli_bootstrap_catalog_idempotent(db: Any, ctx: AppContext) -> None:
+    from app.cli import LAUNCH_PRICES_USD, bootstrap_catalog
+
+    assert await bootstrap_catalog() == 0
+    assert await bootstrap_catalog() == 0
+    plans = {p.code: p for p in (await db.scalars(select(Plan))).all()}
+    assert set(plans) == {"trial", "standard"} and plans["trial"].is_trial
+    prices = (await db.scalars(select(PlanPrice))).all()
+    assert len(prices) == 4  # the second run changed nothing
+    assert sorted((p.period_count, p.amount_minor) for p in prices) == [
+        (m, int(Decimal(a) * 100)) for m, a in LAUNCH_PRICES_USD
+    ]

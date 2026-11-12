@@ -26,6 +26,9 @@ from app.core.errors import AppError
 log = logging.getLogger(__name__)
 
 SIGNATURE_HEADER = "crypto-pay-api-signature"
+# Toncoin was rebranded to Gram; providers switch tickers at their own pace. Each configured
+# code lists the codes it may appear under, in order of preference.
+ASSET_ALIASES: dict[str, tuple[str, ...]] = {"GRAM": ("GRAM", "TON"), "TON": ("TON", "GRAM")}
 MAX_WEBHOOK_AGE = dt.timedelta(minutes=10)
 
 
@@ -104,6 +107,37 @@ class CryptoBotClient:
             timeout=httpx.Timeout(10.0, connect=5.0),
             transport=transport,
         )
+        self._resolved_assets: list[str] | None = None
+
+    async def accepted_assets(self) -> list[str]:
+        """Configured assets mapped to the codes the API actually offers (cached).
+
+        If the currency list can't be fetched, the configured codes are used as-is."""
+        if self._resolved_assets is not None:
+            return self._resolved_assets
+        configured = self._settings.cryptobot_accepted_assets
+        try:
+            offered = {
+                str(c["code"]).upper()
+                for c in await self.get_currencies()
+                if isinstance(c, dict) and c.get("code")
+            }
+        except PaymentProviderError:
+            return configured
+        resolved: list[str] = []
+        for asset in configured:
+            match = next((a for a in ASSET_ALIASES.get(asset, (asset,)) if a in offered), None)
+            if match is None:
+                log.warning("cryptobot: asset %s is not offered by the API; skipping", asset)
+            elif match not in resolved:
+                resolved.append(match)
+        if not resolved:
+            log.error("cryptobot: none of %s is offered by the API", configured)
+            raise PaymentProviderError()
+        if resolved != configured:
+            log.info("cryptobot: accepted assets resolved %s -> %s", configured, resolved)
+        self._resolved_assets = resolved
+        return resolved
 
     async def aclose(self) -> None:
         await self._client.aclose()
@@ -141,7 +175,7 @@ class CryptoBotClient:
             "currency_type": "fiat",
             "fiat": fiat,
             "amount": minor_to_amount(amount_minor),
-            "accepted_assets": ",".join(self._settings.cryptobot_accepted_assets),
+            "accepted_assets": ",".join(await self.accepted_assets()),
             "payload": payload,
             "description": description[:1024],
             "expires_in": self._settings.cryptobot_invoice_ttl_seconds,

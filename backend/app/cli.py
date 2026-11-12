@@ -4,6 +4,7 @@ grant-role EMAIL ROLE                    give a staff role (bootstraps the first
 seed-dev                                 dev-only sample plans/prices/settings
 set-price PLAN UNIT COUNT CURRENCY AMT   e.g. set-price standard month 3 USD 12.99
 cryptobot-check                          verify the @CryptoBot token, list asset codes
+bootstrap-catalog                        create plans + launch prices (idempotent, any env)
 """
 
 from __future__ import annotations
@@ -82,10 +83,9 @@ async def seed_dev() -> int:
             )
             await settings_service.set_value(db, "trial.enabled", True, actor_id=None)
             await db.commit()
-        # Placeholder dev prices — the owner sets real ones with `set-price`.
-        for months, amount in ((1, "5.00"), (3, "13.00"), (6, "24.00"), (12, "42.00")):
+        for months, amount in LAUNCH_PRICES_USD:
             await set_price("standard", "month", months, "USD", amount, quiet=True)
-        print("seeded dev plans: trial, standard (1/3/6/12 months, placeholder USD prices)")
+        print("seeded dev plans: trial, standard (1/3/6/12 months, launch USD prices)")
         return 0
     finally:
         await ctx.close()
@@ -167,15 +167,77 @@ async def cryptobot_check() -> int:
     finally:
         await client.aclose()
     print(f"network: {settings.cryptobot_network}  app: {me.get('name')} (id {me.get('app_id')})")
-    crypto = sorted({str(c.get("code")) for c in currencies if c.get("is_blockchain")})
+    crypto = sorted(
+        {str(c.get("code")) for c in currencies if c.get("is_blockchain") or c.get("is_stablecoin")}
+    )
     fiat = sorted({str(c.get("code")) for c in currencies if c.get("is_fiat")})
     print("crypto assets:", ", ".join(crypto) or "?")
     print("fiat:", ", ".join(fiat) or "?")
-    missing = [a for a in settings.cryptobot_accepted_assets if crypto and a not in crypto]
     print("configured CRYPTOBOT_ACCEPTED_ASSETS:", ", ".join(settings.cryptobot_accepted_assets))
-    if missing:
-        print(f"WARNING: not offered by the API: {', '.join(missing)}", file=sys.stderr)
+    client = CryptoBotClient(settings)
+    try:
+        resolved = await client.accepted_assets()
+    except Exception as exc:
+        print(f"ERROR: none of the configured assets is offered: {exc}", file=sys.stderr)
         return 2
+    finally:
+        await client.aclose()
+    print("invoices will accept:", ", ".join(resolved))
+    return 0
+
+
+# Launch catalogue agreed with the owner (2026-11-13): USD, 1/3/6/12 months.
+LAUNCH_PRICES_USD = ((1, "5.00"), (3, "13.00"), (6, "24.00"), (12, "42.00"))
+
+
+async def bootstrap_catalog() -> int:
+    """Idempotent, safe in any environment: create the `trial` and `standard` plans if missing
+    and set the launch prices where the active price differs."""
+    ctx = AppContext.create(get_settings(), null_pool=True)
+    try:
+        async with ctx.sessionmaker() as db:
+            existing = {p.code for p in (await db.scalars(select(Plan))).all()}
+            if "trial" not in existing:
+                db.add(
+                    Plan(
+                        code="trial",
+                        names={"en": "Trial", "ru": "Пробный"},
+                        device_limit=2,
+                        is_trial=True,
+                        sort_order=0,
+                    )
+                )
+            if "standard" not in existing:
+                db.add(
+                    Plan(
+                        code="standard",
+                        names={"en": "Standard", "ru": "Стандарт"},
+                        device_limit=5,
+                        sort_order=10,
+                    )
+                )
+            await db.commit()
+            plan = await db.scalar(select(Plan).where(Plan.code == "standard"))
+            assert plan is not None
+            active = {
+                (p.period_count, p.amount_minor)
+                for p in (
+                    await db.scalars(
+                        select(PlanPrice).where(
+                            PlanPrice.plan_id == plan.id,
+                            PlanPrice.period_unit == "month",
+                            PlanPrice.currency == "USD",
+                            PlanPrice.active.is_(True),
+                        )
+                    )
+                ).all()
+            }
+    finally:
+        await ctx.close()
+    for months, amount in LAUNCH_PRICES_USD:
+        if (months, int(Decimal(amount) * 100)) not in active:
+            await set_price("standard", "month", months, "USD", amount, quiet=True)
+    print("catalogue ready: standard = " + ", ".join(f"{m} mo ${a}" for m, a in LAUNCH_PRICES_USD))
     return 0
 
 
@@ -193,6 +255,7 @@ def main(argv: list[str] | None = None) -> int:
     p.add_argument("currency", choices=["USD", "EUR", "RUB"])
     p.add_argument("amount")
     sub.add_parser("cryptobot-check")
+    sub.add_parser("bootstrap-catalog")
     args = parser.parse_args(argv)
     if args.command == "grant-role":
         return asyncio.run(grant_role(args.email, args.role))
@@ -200,6 +263,8 @@ def main(argv: list[str] | None = None) -> int:
         return asyncio.run(set_price(args.plan, args.unit, args.count, args.currency, args.amount))
     if args.command == "cryptobot-check":
         return asyncio.run(cryptobot_check())
+    if args.command == "bootstrap-catalog":
+        return asyncio.run(bootstrap_catalog())
     return asyncio.run(seed_dev())
 
 

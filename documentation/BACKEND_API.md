@@ -47,7 +47,7 @@ Discount codes: `POST /promo/validate` previews the price (applied at checkout, 
 ## Payments (crypto via @CryptoBot)
 
 Prices are in fiat (USD by default); the customer pays in the accepted crypto assets
-(`CRYPTOBOT_ACCEPTED_ASSETS`, e.g. `GRAM`). Crypto doesn't auto-renew: each period is a new
+(`CRYPTOBOT_ACCEPTED_ASSETS`, default `GRAM,USDC`; GRAM falls back to the API's `TON` code). Crypto doesn't auto-renew: each period is a new
 checkout, and the existing "access ends in N days" reminders prompt renewal.
 
 1. `POST /payments/checkout {price_id, promo_code?}` → `{id, status: "pending", checkout_url,
@@ -63,7 +63,8 @@ checkout, and the existing "access ends in N days" reminders prompt renewal.
 Limits: 10 checkouts per hour and at most 5 unpaid invoices per account; discount codes are
 applied at checkout (100 % codes are refused — use free-days codes instead).
 
-CLI: `python -m app.cli set-price standard month 3 USD 12.99` (replaces the active price for
+CLI: `python -m app.cli bootstrap-catalog` (creates plans + launch prices $5/$13/$24/$42,
+idempotent); `python -m app.cli set-price standard month 3 USD 12.99` (replaces the active price for
 that period, keeps history); `python -m app.cli cryptobot-check` (verifies the token, lists
 asset codes).
 
