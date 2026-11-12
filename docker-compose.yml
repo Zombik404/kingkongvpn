@@ -62,9 +62,20 @@ services:
       - "127.0.0.1:1025:1025"   # SMTP
     restart: unless-stopped
 
+  migrate:
+    <<: *backend-common
+    profiles: ["app"]
+    command: ["alembic", "upgrade", "head"]
+    restart: "no"
+
   backend:
     <<: *backend-common
     profiles: ["app"]
+    depends_on:  # replaces the anchor's list (YAML merge is shallow), so restate redis
+      migrate:
+        condition: service_completed_successfully
+      redis:
+        condition: service_healthy
     command: ["uvicorn", "app.main:app", "--host", "0.0.0.0", "--port", "8000", "--reload"]
     ports:
       - "127.0.0.1:8000:8000"
@@ -77,6 +88,11 @@ services:
   worker:
     <<: *backend-common
     profiles: ["app"]
+    depends_on:  # replaces the anchor's list (YAML merge is shallow), so restate redis
+      migrate:
+        condition: service_completed_successfully
+      redis:
+        condition: service_healthy
     command: ["celery", "-A", "app.workers.celery_app", "worker", "--loglevel=INFO"]
 
   beat:

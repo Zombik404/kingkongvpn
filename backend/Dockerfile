@@ -1,5 +1,6 @@
 # syntax=docker/dockerfile:1.7
 # Multi-stage: `dev` (hot reload, test deps) and `prod` (minimal, non-root).
+# Dependencies install from hash-pinned lock files (make lock).
 
 FROM python:3.12-slim AS base
 ENV PYTHONDONTWRITEBYTECODE=1 \
@@ -10,11 +11,12 @@ RUN groupadd --system app && useradd --system --gid app --home-dir /app --shell 
 WORKDIR /app
 
 FROM base AS deps
-COPY pyproject.toml ./
-RUN pip install --upgrade pip && pip install .
+COPY requirements.lock ./
+RUN pip install --require-hashes -r requirements.lock
 
 FROM deps AS dev
-RUN pip install ".[dev]"
+COPY requirements-dev.lock ./
+RUN pip install --require-hashes -r requirements-dev.lock
 COPY . .
 USER app
 EXPOSE 8000

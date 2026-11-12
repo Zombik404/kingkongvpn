@@ -1,0 +1,74 @@
+name: CI
+
+on:
+  push:
+    branches: [main]
+  pull_request:
+
+permissions:
+  contents: read
+
+concurrency:
+  group: ci-${{ github.ref }}
+  cancel-in-progress: true
+
+jobs:
+  backend:
+    runs-on: ubuntu-24.04
+    timeout-minutes: 20
+    services:
+      postgres:
+        image: postgres:16-alpine
+        env:
+          POSTGRES_DB: globalvpn_test
+          POSTGRES_USER: globalvpn
+          POSTGRES_PASSWORD: change-me-dev-only
+        ports: ["5432:5432"]
+        options: >-
+          --health-cmd "pg_isready -U globalvpn -d globalvpn_test"
+          --health-interval 5s --health-timeout 3s --health-retries 20
+      redis:
+        image: redis:7-alpine
+        ports: ["6379:6379"]
+        options: >-
+          --health-cmd "redis-cli ping" --health-interval 5s --health-timeout 3s --health-retries 20
+    defaults:
+      run:
+        working-directory: backend
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-python@v5
+        with:
+          python-version: "3.12"
+      - name: Install (hash-pinned)
+        run: |
+          pip install --require-hashes -r requirements-dev.lock
+          pip install --no-deps -e .
+      - name: Lint
+        run: |
+          ruff check app tests migrations
+          ruff format --check app tests migrations
+      - name: Type check
+        run: mypy app
+      - name: Tests (incl. migrations up/down, schema drift, OpenAPI drift)
+        run: python -m pytest -q --cov --cov-report=term --cov-fail-under=85
+      - name: Dependency audit
+        run: pip-audit -r requirements.lock --require-hashes --disable-pip
+
+  node-agent-and-scripts:
+    runs-on: ubuntu-24.04
+    timeout-minutes: 10
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-python@v5
+        with:
+          python-version: "3.12"
+      - run: pip install "pytest>=8.3" "mypy>=1.11" "cryptography>=43"
+      - run: python -m pytest -q scripts/tests node-agent/tests
+      - run: cd node-agent && mypy --strict agent
+
+  secret-scan:
+    runs-on: ubuntu-24.04
+    steps:
+      - uses: actions/checkout@v4
+      - run: make secret-scan

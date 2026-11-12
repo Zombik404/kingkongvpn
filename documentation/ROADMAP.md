@@ -12,7 +12,7 @@ Legend for where work can happen: **[S]** sandbox/CI, **[V]** real VPS (staging)
 - Environment inspection, repo layout, Git, architecture + ADR summary, roadmap, external requirements, status tracker, `.env.example`, dev Compose, backend Dockerfile, Makefile.
 - **Exit:** compose file validates; no secrets in repo; docs reviewed.
 
-## Phase 2 — Database and backend core  [S]
+## Phase 2 — Database and backend core  [S]  ✅ (2026-11-12)
 1. `backend/pyproject.toml` with pinned deps; ruff, mypy (strict on `app/`), pytest + pytest-asyncio + httpx.
 2. Settings via `pydantic-settings` (fails fast on missing required secrets outside `development`).
 3. SQLAlchemy 2 async models for all tables in Architecture §4; Alembic initial migration; UUIDv7 keys.
@@ -26,7 +26,7 @@ Legend for where work can happen: **[S]** sandbox/CI, **[V]** real VPS (staging)
 11. OpenAPI export to `shared/api-contracts/`; `BACKEND_API.md`, `DATABASE_SCHEMA.md`.
 - **Tests:** unit (state machine, allocator, token rotation), API (auth flows, permissions matrix, device limits), migration up/down on real Postgres.
 - **Exit:** ≥ 85 % line coverage on `auth`, `subscriptions`, `devices`; CI green; migrations reversible.
-- **Needs:** package installs enabled for this environment (currently blocked — see status).
+- **Done:** all items above; results in `PROJECT_STATUS.md`. Deferred by decision: web cookie refresh mode → Phase 8, WebAuthn → Phase 9 (ADR-015).
 
 ## Phase 3 — VPN infrastructure  [S]+[V]
 1. Ansible roles: `base` (unattended-upgrades, SSH hardening, fail2ban, time sync), `wireguard`, `nftables` (ADR-005), `unbound` (no query logging, DNSSEC), `node_exporter`, `node_agent`.

@@ -1,0 +1,39 @@
+{
+  "email": {
+    "common": {
+      "greeting": "Szia!",
+      "button_fallback": "Ha a gomb nem működik, másold be ezt a linket a böngésződbe:",
+      "footer": "Azért kaptad ezt az e-mailt, mert ez a cím egy {app_name}-fiókhoz tartozik. Ha nem te voltál, nyugodtan hagyd figyelmen kívül."
+    },
+    "verify_email": {
+      "subject": "Erősítsd meg az e-mail-címed a(z) {app_name} szolgáltatáshoz",
+      "body": "Erősítsd meg az e-mail-címedet a(z) {app_name}-fiók létrehozásának befejezéséhez. A link {hours} óráig érvényes.",
+      "action": "E-mail megerősítése"
+    },
+    "account_exists": {
+      "subject": "Regisztrációs kísérlet az e-mail-címeddel ({app_name})",
+      "body": "Valaki új {app_name}-fiókot próbált létrehozni ezzel az e-mail-címmel, de már létezik fiók. Ha te voltál, jelentkezz be vagy állítsd vissza a jelszavad. Egyébként nincs teendőd.",
+      "action": "Jelszó visszaállítása"
+    },
+    "password_reset": {
+      "subject": "{app_name}-jelszó visszaállítása",
+      "body": "Kérést kaptunk a jelszavad visszaállítására. A link {minutes} percig érvényes. Ha nem te kérted, hagyd figyelmen kívül ezt az e-mailt – a jelszavad változatlan marad.",
+      "action": "Új jelszó megadása"
+    },
+    "password_changed": {
+      "subject": "Megváltozott a(z) {app_name}-jelszavad",
+      "body": "A jelszavad az imént megváltozott, és a többi munkamenetedből kiléptettünk. Ha nem te voltál, azonnal állítsd vissza a jelszavad, és vedd fel a kapcsolatot az ügyfélszolgálattal.",
+      "action": "Jelszó visszaállítása"
+    },
+    "subscription_ending": {
+      "subject": "A(z) {app_name}-hozzáférésed lejár: {date}",
+      "body": "A(z) {plan} hozzáférésed lejár: {date}. Hosszabbítsd meg előtte, hogy a VPN megszakítás nélkül működjön.",
+      "action": "Meghosszabbítás"
+    },
+    "subscription_expired": {
+      "subject": "Lejárt a(z) {app_name}-hozzáférésed",
+      "body": "A(z) {plan} hozzáférésed lejárt, az eszközeid már nem tudnak csatlakozni. Bármikor meghosszabbíthatod az újracsatlakozáshoz.",
+      "action": "Csomagok"
+    }
+  }
+}

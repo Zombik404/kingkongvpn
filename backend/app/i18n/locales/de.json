@@ -1,0 +1,39 @@
+{
+  "email": {
+    "common": {
+      "greeting": "Hallo,",
+      "button_fallback": "Falls die Schaltfläche nicht funktioniert, kopiere diesen Link in deinen Browser:",
+      "footer": "Du erhältst diese E-Mail, weil diese Adresse für ein {app_name}-Konto verwendet wird. Falls du das nicht warst, kannst du sie ignorieren."
+    },
+    "verify_email": {
+      "subject": "Bestätige deine E-Mail für {app_name}",
+      "body": "Bestätige deine E-Mail-Adresse, um dein {app_name}-Konto fertig einzurichten. Der Link ist {hours} Stunden gültig.",
+      "action": "E-Mail bestätigen"
+    },
+    "account_exists": {
+      "subject": "Registrierungsversuch mit deiner E-Mail bei {app_name}",
+      "body": "Jemand hat versucht, mit dieser E-Mail-Adresse ein neues {app_name}-Konto anzulegen, aber es existiert bereits ein Konto. Wenn du das warst, melde dich an oder setze dein Passwort zurück. Andernfalls musst du nichts tun.",
+      "action": "Passwort zurücksetzen"
+    },
+    "password_reset": {
+      "subject": "Setze dein {app_name}-Passwort zurück",
+      "body": "Wir haben eine Anfrage zum Zurücksetzen deines Passworts erhalten. Der Link ist {minutes} Minuten gültig. Falls du das nicht angefordert hast, ignoriere diese E-Mail – dein Passwort bleibt unverändert.",
+      "action": "Neues Passwort wählen"
+    },
+    "password_changed": {
+      "subject": "Dein {app_name}-Passwort wurde geändert",
+      "body": "Dein Passwort wurde gerade geändert und deine anderen Sitzungen wurden abgemeldet. Falls du das nicht warst, setze dein Passwort sofort zurück und kontaktiere den Support.",
+      "action": "Passwort zurücksetzen"
+    },
+    "subscription_ending": {
+      "subject": "Dein {app_name}-Zugang endet am {date}",
+      "body": "Dein Zugang ({plan}) endet am {date}. Verlängere ihn rechtzeitig, damit dein VPN ohne Unterbrechung verbunden bleibt.",
+      "action": "Verlängern"
+    },
+    "subscription_expired": {
+      "subject": "Dein {app_name}-Zugang ist abgelaufen",
+      "body": "Dein Zugang ({plan}) ist abgelaufen und deine Geräte können sich nicht mehr verbinden. Du kannst jederzeit verlängern, um dich wieder zu verbinden.",
+      "action": "Tarife ansehen"
+    }
+  }
+}
