@@ -149,6 +149,7 @@ class Payment(UUIDPk, Timestamps, Base):
         CheckConstraint(check_in("status", PaymentStatus), name="status"),
         CheckConstraint(check_in("kind", PaymentKind), name="kind"),
         CheckConstraint("currency ~ '^[A-Z]{3}$'", name="currency"),
+        Index("ix_payments_status_provider", "status", "provider"),
     )
 
     # SET NULL: accounting records outlive a deleted account.
@@ -164,6 +165,20 @@ class Payment(UUIDPk, Timestamps, Base):
     currency: Mapped[str] = mapped_column(String(3))
     status: Mapped[str] = mapped_column(String(16))
     kind: Mapped[str] = mapped_column(String(16))
+    # What was bought — the period to grant comes from the price, never from the provider.
+    plan_price_id: Mapped[uuid.UUID | None] = mapped_column(
+        UUID(as_uuid=True), ForeignKey("plan_prices.id", ondelete="SET NULL")
+    )
+    promo_code_id: Mapped[uuid.UUID | None] = mapped_column(
+        UUID(as_uuid=True), ForeignKey("promo_codes.id", ondelete="SET NULL")
+    )
+    checkout_url: Mapped[str | None] = mapped_column(String(512))
+    expires_at: Mapped[dt.datetime | None] = mapped_column(DateTime(timezone=True))
+    paid_at: Mapped[dt.datetime | None] = mapped_column(DateTime(timezone=True))
+    # Crypto actually received (e.g. "GRAM", "1.2345") — informational, stored as reported.
+    paid_asset: Mapped[str | None] = mapped_column(String(16))
+    paid_amount: Mapped[str | None] = mapped_column(String(64))
+    failure_reason: Mapped[str | None] = mapped_column(String(64))
 
 
 class PaymentEvent(UUIDPk, Base):

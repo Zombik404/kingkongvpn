@@ -34,6 +34,11 @@
       "subject": "Your {app_name} access has ended",
       "body": "Your {plan} access has ended and your devices can no longer connect. You can renew at any time to reconnect.",
       "action": "See plans"
+    },
+    "payment_received": {
+      "subject": "Payment received — {app_name}",
+      "body": "Thank you! Your payment was received. Your {plan} access is active until {date}.",
+      "action": "My subscription"
     }
   }
 }

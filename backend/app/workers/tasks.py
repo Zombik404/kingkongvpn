@@ -19,6 +19,7 @@ from app.models import AuthSession, User, UserActionToken
 from app.models.base import utcnow
 from app.models.enums import UserStatus
 from app.notifications.email import EmailJob, render, send_smtp
+from app.payments import service as payments
 from app.services.users import DELETED_ACCOUNT_RETENTION_DAYS
 from app.subscriptions import service as subs
 from app.workers.celery_app import celery_app
@@ -97,3 +98,8 @@ def purge_deleted_task() -> int:
 @celery_app.task(name="auth.cleanup_tokens")
 def cleanup_tokens_task() -> int:
     return asyncio.run(_with_db(cleanup_tokens))
+
+
+@celery_app.task(name="payments.poll_pending")
+def poll_payments_task() -> dict[str, int]:
+    return asyncio.run(_with_db(lambda c, s: payments.poll_pending(c, s)))

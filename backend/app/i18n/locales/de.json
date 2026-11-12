@@ -34,6 +34,11 @@
       "subject": "Dein {app_name}-Zugang ist abgelaufen",
       "body": "Dein Zugang ({plan}) ist abgelaufen und deine Geräte können sich nicht mehr verbinden. Du kannst jederzeit verlängern, um dich wieder zu verbinden.",
       "action": "Tarife ansehen"
+    },
+    "payment_received": {
+      "subject": "Zahlung erhalten – {app_name}",
+      "body": "Danke! Deine Zahlung ist eingegangen. Dein Zugang ({plan}) ist bis {date} aktiv.",
+      "action": "Mein Abo"
     }
   }
 }

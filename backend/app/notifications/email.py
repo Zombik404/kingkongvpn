@@ -27,6 +27,7 @@ TEMPLATES = frozenset(
         "password_changed",
         "subscription_ending",
         "subscription_expired",
+        "payment_received",
     }
 )
 

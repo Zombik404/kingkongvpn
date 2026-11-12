@@ -13,7 +13,7 @@ Android/iOS/Windows/macOS apps, website and admin panel. Working name — the br
 
 | Path | Contents | Status |
 |---|---|---|
-| `backend/` | FastAPI control-plane API + Celery workers | Phase 2 ✅ — auth, devices, subscriptions, admin API; 165 tests |
+| `backend/` | FastAPI control-plane API + Celery workers | Phase 2 ✅ — auth, devices, subscriptions, admin API, crypto payments; 185 tests |
 | `node-agent/` | Agent on each VPN server; reconciles WireGuard peers with the backend | Phase 3 — reconciler core implemented & tested |
 | `vpn-infrastructure/` | Ansible roles, Terraform, nftables, unbound, exporters | Phase 3 |
 | `telegram-bot/` | aiogram 3 bot (webhook) | Phase 5 |

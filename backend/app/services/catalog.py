@@ -6,10 +6,12 @@ import uuid
 from typing import Any
 
 from sqlalchemy import ColumnElement, or_, select, update
+from sqlalchemy.dialects.postgresql import insert as pg_insert
 from sqlalchemy.exc import IntegrityError
 from sqlalchemy.ext.asyncio import AsyncSession
 
 from app.core.errors import AppError, Conflict, NotFound
+from app.core.ids import uuid7
 from app.models import Plan, PlanPrice, PromoCode, PromoRedemption, Subscription
 from app.models.base import utcnow
 from app.models.enums import ActorType, PromoKind, Provider
@@ -107,12 +109,20 @@ async def _usable_promo(db: AsyncSession, code: str, *, lock: bool = False) -> P
 async def quote(
     db: AsyncSession, limiter: RateLimiter, user_id: uuid.UUID, code: str, price_id: uuid.UUID
 ) -> tuple[PromoCode, PlanPrice, int]:
-    """Validate a discount code against a price. Redemption happens at checkout (Phase 10)."""
+    """Validate a discount code against a price (preview). It is applied at checkout."""
     await limiter.hit(rl.PROMO_PER_ACCOUNT, str(user_id))
-    promo = await _usable_promo(db, code)
     price = await db.get(PlanPrice, price_id)
     if price is None or not price.active:
         raise NotFound("Price not found.")
+    promo, discounted = await apply_discount(db, user_id, code, price)
+    return promo, price, discounted
+
+
+async def apply_discount(
+    db: AsyncSession, user_id: uuid.UUID, code: str, price: PlanPrice
+) -> tuple[PromoCode, int]:
+    """Discounted amount (minor units) for a usable discount code; raises InvalidPromo."""
+    promo = await _usable_promo(db, code)
     if promo.kind == PromoKind.FREE_DAYS:
         raise InvalidPromo("This code grants free days — redeem it instead.")
     if promo.plan_id is not None and promo.plan_id != price.plan_id:
@@ -127,7 +137,28 @@ async def quote(
         if promo.currency != price.currency:
             raise InvalidPromo("This code doesn't apply to this currency.")
         discounted = max(0, price.amount_minor - promo.amount_off_minor)
-    return promo, price, discounted
+    return promo, discounted
+
+
+async def record_redemption(
+    db: AsyncSession, promo_id: uuid.UUID, user_id: uuid.UUID, subscription_id: uuid.UUID
+) -> bool:
+    """Record a paid redemption once; returns False if it already existed."""
+    result = await db.execute(
+        pg_insert(PromoRedemption)
+        .values(
+            id=uuid7(), promo_code_id=promo_id, user_id=user_id, subscription_id=subscription_id
+        )
+        .on_conflict_do_nothing(constraint="uq_promo_redemptions_code_user")
+    )
+    if not getattr(result, "rowcount", 0):
+        return False
+    await db.execute(
+        update(PromoCode)
+        .where(PromoCode.id == promo_id)
+        .values(redemption_count=PromoCode.redemption_count + 1)
+    )
+    return True
 
 
 async def _already_redeemed(db: AsyncSession, promo_id: uuid.UUID, user_id: uuid.UUID) -> bool:

@@ -37,6 +37,10 @@ celery_app.conf.update(
             "task": "subscriptions.send_reminders",
             "schedule": crontab(minute=17),
         },
+        "payments-poll-pending": {
+            "task": "payments.poll_pending",
+            "schedule": 60.0,
+        },
         "users-purge-deleted": {
             "task": "users.purge_deleted",
             "schedule": crontab(hour=3, minute=41),

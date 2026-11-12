@@ -1,7 +1,7 @@
 # Database schema
 
 PostgreSQL 16. Defined by SQLAlchemy models in `backend/app/models/` and the Alembic migration
-`backend/migrations/versions/0001_initial_schema.py` (a test fails if the two drift apart, and the
+`backend/migrations/versions/` (`0001_initial_schema`, `0002_cryptobot_payments`) (a test fails if the two drift apart, and the
 migration is tested up → down → up on a fresh database).
 
 **Conventions:** UUIDv7 primary keys (time-ordered), `created_at`/`updated_at` in UTC
@@ -42,8 +42,8 @@ guarantees no two devices ever share an address, even under concurrency (tested)
 | `plan_prices` | Price points | `period_unit ∈ day/month/year` × `period_count` 1–36, `amount_minor ≥ 0`, `provider_ids` JSON (Stripe/Apple/Google IDs), validity window |
 | `subscriptions` | Entitlement (provider-agnostic) | `status ∈ trialing/active/past_due/grace/canceled/expired/refunded`; **partial unique index: one live (trialing/active/past_due/grace) row per user**; unique (provider, provider_subscription_id); `reminder_sent_for` + `reminder_threshold_days` make reminders idempotent |
 | `family_members` | Shared plans (future) | unique (subscription, user) |
-| `payments` | Charges/refunds — no card data | unique (provider, provider_payment_id); `user_id ON DELETE SET NULL` (accounting records outlive accounts) |
-| `payment_events` | Raw webhook events | unique (provider, event_id) ⇒ idempotent processing (Phase 10) |
+| `payments` | Charges/refunds — no card data | unique (provider, provider_payment_id) = (cryptobot, invoice_id); `status ∈ pending/succeeded/failed/refunded`; `plan_price_id` (what was bought — the granted period comes from here), `promo_code_id`, `checkout_url`, `expires_at`, `paid_at`, `paid_asset`/`paid_amount` (crypto actually received), `failure_reason` (`expired`, `amount_mismatch`, `needs_manual_review`); `user_id ON DELETE SET NULL` (accounting records outlive accounts) |
+| `payment_events` | Provider events (webhook or poll), minimal fields only | unique (provider, event_id); for @CryptoBot `event_id = invoice:<id>:<status>` because its `update_id` is not unique |
 | `campaigns`, `promo_codes`, `promo_redemptions` | Promotions | code citext unique; `CHECK` that fields match the kind (percent 1–100 / amount + currency / free days + plan); one redemption per user per code; `redemption_count` updated under a row lock so `max_redemptions` holds under concurrency |
 
 Subscription transitions are implemented once, in `app/subscriptions/state_machine.py`

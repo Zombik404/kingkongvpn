@@ -77,6 +77,7 @@ class Provider(StrEnum):
     GOOGLE = "google"
     TELEGRAM = "telegram"
     PAYPAL = "paypal"
+    CRYPTOBOT = "cryptobot"
 
 
 class PaymentStatus(StrEnum):

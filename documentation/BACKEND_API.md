@@ -44,6 +44,29 @@ the plan (or the `devices.limit_without_subscription` setting); exceeding it giv
 (cancel = stop at period end). Free-days promo codes: `POST /promo/redeem`.
 Discount codes: `POST /promo/validate` previews the price (applied at checkout, Phase 10).
 
+## Payments (crypto via @CryptoBot)
+
+Prices are in fiat (USD by default); the customer pays in the accepted crypto assets
+(`CRYPTOBOT_ACCEPTED_ASSETS`, e.g. `GRAM`). Crypto doesn't auto-renew: each period is a new
+checkout, and the existing "access ends in N days" reminders prompt renewal.
+
+1. `POST /payments/checkout {price_id, promo_code?}` → `{id, status: "pending", checkout_url,
+   amount_minor, expires_at, ...}`. The bot shows `checkout_url` as a "Pay" button (opens the
+   @CryptoBot invoice inside Telegram).
+2. Access is granted **only** when the provider confirms: a signed webhook
+   (`POST /webhooks/cryptobot`, HMAC-SHA256 with SHA256(token), `request_date` ≤ 10 min old)
+   or our own `getInvoices` call (beat job every 60 s, or `GET /payments/{id}?refresh=true`
+   for an "I've paid" button). The invoice amount, currency and payload must match ours.
+3. The period comes from our price (calendar months), added to the current period end for
+   renewals. Processing is idempotent (row lock + events keyed by invoice and status).
+
+Limits: 10 checkouts per hour and at most 5 unpaid invoices per account; discount codes are
+applied at checkout (100 % codes are refused — use free-days codes instead).
+
+CLI: `python -m app.cli set-price standard month 3 USD 12.99` (replaces the active price for
+that period, keeps history); `python -m app.cli cryptobot-check` (verifies the token, lists
+asset codes).
+
 ## Staff API and permissions
 
 All `/admin/*` routes need a staff role **and** a session that passed TOTP (`403 mfa_required`
@@ -86,6 +109,7 @@ then sign in again and enable 2FA.
 | `subscriptions.send_reminders` | hourly | one email per configured threshold for non-renewing access |
 | `users.purge_deleted` | daily | hard-deletes accounts anonymised more than 30 days ago |
 | `auth.cleanup_tokens` | daily | removes sessions/tokens expired or revoked more than 7 days ago |
+| `payments.poll_pending` | every 60 s | re-checks unpaid @CryptoBot invoices (lost webhooks, no-webhook setups) |
 | `email.send` | on demand | SMTP delivery with exponential back-off (8 retries) |
 
 ## Health

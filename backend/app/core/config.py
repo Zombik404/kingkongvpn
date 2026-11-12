@@ -105,6 +105,20 @@ class Settings(BaseSettings):
     bot_service_client_id: str = "telegram-bot"
     bot_service_client_secret: SecretStr = SecretStr("")
 
+    telegram_bot_username: str = ""  # without '@'; used for "Return to bot" buttons
+
+    # --- Payments: Crypto Pay API (@CryptoBot) -------------------------------
+    cryptobot_api_token: SecretStr = SecretStr("")
+    cryptobot_network: Literal["mainnet", "testnet"] = "testnet"
+    cryptobot_api_url: str | None = None  # override; default derived from network
+    # Asset codes accepted for USD-priced invoices. TON was rebranded to Gram — run
+    # `python -m app.cli cryptobot-check` to see which code the API currently uses.
+    cryptobot_accepted_assets: Annotated[list[str], NoDecode] = Field(
+        default_factory=lambda: ["TON"]
+    )
+    cryptobot_invoice_ttl_seconds: int = Field(default=3600, ge=300, le=86400)
+    payment_pending_limit_per_user: int = Field(default=5, ge=1, le=50)
+
     # --- Observability -------------------------------------------------------
     prometheus_metrics_enabled: bool = True
 
@@ -113,6 +127,13 @@ class Settings(BaseSettings):
     def _split_origins(cls, value: object) -> object:
         if isinstance(value, str):
             return [o.strip() for o in value.split(",") if o.strip()]
+        return value
+
+    @field_validator("cryptobot_accepted_assets", mode="before")
+    @classmethod
+    def _split_assets(cls, value: object) -> object:
+        if isinstance(value, str):
+            return [a.strip().upper() for a in value.split(",") if a.strip()]
         return value
 
     @field_validator("public_web_url", "public_api_url", "admin_web_url")
@@ -141,6 +162,17 @@ class Settings(BaseSettings):
             f"@{self.postgres_host}:{self.postgres_port}/{self.postgres_db}"
         )
 
+    @property
+    def cryptobot_base_url(self) -> str:
+        if self.cryptobot_api_url:
+            return self.cryptobot_api_url.rstrip("/")
+        host = "pay.crypt.bot" if self.cryptobot_network == "mainnet" else "testnet-pay.crypt.bot"
+        return f"https://{host}/api"
+
+    @property
+    def cryptobot_enabled(self) -> bool:
+        return bool(self.cryptobot_api_token.get_secret_value())
+
     def assert_safe_for_environment(self) -> None:
         """Fail fast on missing/placeholder secrets outside development and testing."""
         if self.is_dev_like:
@@ -164,6 +196,12 @@ class Settings(BaseSettings):
             problems.append("PASSWORD_HASH_PROFILE must be 'default'")
         if self.email_delivery == "memory":
             problems.append("EMAIL_DELIVERY=memory is for tests only")
+        if (
+            self.app_env == "production"
+            and self.cryptobot_enabled
+            and (self.cryptobot_network != "mainnet")
+        ):
+            problems.append("CRYPTOBOT_NETWORK must be mainnet in production")
         if not self.admin_require_mfa:
             problems.append("ADMIN_REQUIRE_MFA cannot be disabled")
         if problems:

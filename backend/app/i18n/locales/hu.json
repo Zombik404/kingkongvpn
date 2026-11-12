@@ -34,6 +34,11 @@
       "subject": "Lejárt a(z) {app_name}-hozzáférésed",
       "body": "A(z) {plan} hozzáférésed lejárt, az eszközeid már nem tudnak csatlakozni. Bármikor meghosszabbíthatod az újracsatlakozáshoz.",
       "action": "Csomagok"
+    },
+    "payment_received": {
+      "subject": "Fizetés beérkezett – {app_name}",
+      "body": "Köszönjük! A fizetésed beérkezett. A(z) {plan} hozzáférésed eddig aktív: {date}.",
+      "action": "Előfizetésem"
     }
   }
 }
