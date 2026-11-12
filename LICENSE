@@ -1,0 +1,10 @@
+Copyright (c) 2026 The global-vpn project owner. All rights reserved.
+
+This software and its source code are proprietary and confidential. No license
+is granted to use, copy, modify, or distribute any part of it without prior
+written permission from the copyright holder.
+
+Third-party components included or referenced by this project remain under
+their own licenses (for example WireGuard tools and libraries: GPL-2.0 / MIT,
+depending on component). A third-party license inventory will be maintained in
+documentation/THIRD_PARTY_LICENSES.md before any distribution.
