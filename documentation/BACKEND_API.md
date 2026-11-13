@@ -67,6 +67,9 @@ Discount codes: `POST /promo/validate` previews the price (applied at checkout, 
   A friend who joins via your link gets `percent_off` (default 30 %) off their first payment;
   when it succeeds you get `bonus_days` (default 14) added to your subscription. `my_discount` is
   the % off your own next checkout because someone invited you (0 = none).
+- Ranks (same response): `ranks_enabled`, `rank` (`chick`/`fox`/`hacker`/`ambassador`/`legend`),
+  `levels: [{code, need, days, theme, reached}]`, `next_level`, `themes` (unlocked Mini App
+  themes). Reaching a level (by friends who **paid**) gives its free days once.
 - `POST /referrals/claim {code}` — attach the referrer (only before the first payment; idempotent).
   A checkout without a promo code by an invited user who never paid gets the discount
   automatically (`PaymentOut.discount = "referral"`).

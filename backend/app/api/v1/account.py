@@ -269,6 +269,14 @@ async def redeem_promo(
 
 
 # --- referrals ------------------------------------------------------------------------
+class ReferralLevelOut(BaseModel):
+    code: str  # fox / hacker / ambassador / legend
+    need: int  # invited users who paid
+    days: int  # one-time gift of free days
+    theme: str  # Mini App theme unlocked: lava / matrix / gold / cosmos
+    reached: bool
+
+
 class ReferralOut(BaseModel):
     enabled: bool
     code: str
@@ -278,6 +286,11 @@ class ReferralOut(BaseModel):
     invited: int  # friends who joined via your link
     paid: int  # ...of them, have paid
     my_discount: int  # % off your own next checkout because a friend invited you (0 = none)
+    ranks_enabled: bool
+    rank: str  # chick (below the first level) or the highest level reached
+    levels: list[ReferralLevelOut]
+    next_level: ReferralLevelOut | None
+    themes: list[str]  # unlocked Mini App themes
 
 
 class ReferralClaimIn(BaseModel):

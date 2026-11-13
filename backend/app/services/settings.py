@@ -64,6 +64,9 @@ REGISTRY: dict[str, SettingDef] = {
         30,
         "Discount an invited user gets on their first payment.",
     ),
+    "referrals.milestones": _def(
+        bool, True, "Referral ranks (3/5/10/25 paying friends) with free days and app themes."
+    ),
     "referrals.bonus_days": _def(
         Annotated[int, Field(ge=0, le=365)],
         14,

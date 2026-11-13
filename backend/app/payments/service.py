@@ -23,6 +23,7 @@ from sqlalchemy.ext.asyncio import AsyncSession
 from app.core.context import AppContext
 from app.core.errors import AppError, NotFound
 from app.core.ids import uuid7
+from app.i18n import t
 from app.models import Payment, PaymentEvent, Plan, PlanPrice, User
 from app.models.base import utcnow
 from app.models.enums import (
@@ -347,18 +348,32 @@ async def _credit(
     )
     if granted is not None:
         referrer = granted.referrer
-        await notify(
-            ctx,
-            referrer,
-            "referral_reward",
-            {
-                "days": str(granted.bonus_days),
-                "date": format_date(
-                    granted.subscription.current_period_end, format="long", locale=referrer.locale
-                ),
-            },
-            f"{ctx.settings.public_web_url}/app/",
+        until = format_date(
+            granted.subscription.current_period_end, format="long", locale=referrer.locale
         )
+        app_url = f"{ctx.settings.public_web_url}/app/"
+        if granted.bonus_days:
+            await notify(
+                ctx,
+                referrer,
+                "referral_reward",
+                {"days": str(granted.bonus_days), "date": until},
+                app_url,
+            )
+        for level in granted.milestones:
+            await notify(
+                ctx,
+                referrer,
+                "referral_milestone",
+                {
+                    "rank": t(referrer.locale, f"referral.ranks.{level.code}"),
+                    "theme": t(referrer.locale, f"referral.themes.{level.theme}"),
+                    "count": str(granted.paid_friends),
+                    "days": str(level.days),
+                    "date": until,
+                },
+                app_url,
+            )
     return "credited"
 
 

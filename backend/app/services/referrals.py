@@ -9,6 +9,10 @@ Each user gets a personal link (`t.me/<bot>?start=ref_<code>`).
   none. No discount for the referrer.
 
 One credit per invited user (unique `referral_rewards.referred_id`).
+
+**Ranks** (`referrals.milestones`): counting invited users who *paid* (so empty sign-ups don't
+count), the referrer reaches LEVELS below; each gives a one-time gift of free days and unlocks a
+Mini App colour theme (cosmetic, chosen on the device).
 """
 
 from __future__ import annotations
@@ -25,7 +29,7 @@ from sqlalchemy.ext.asyncio import AsyncSession
 
 from app.core.errors import AppError, Conflict
 from app.core.ids import uuid7
-from app.models import Payment, Plan, ReferralReward, Subscription, User
+from app.models import Payment, Plan, ReferralMilestone, ReferralReward, Subscription, User
 from app.models.enums import ActorType, PaymentStatus, Provider
 from app.services import audit
 from app.services import settings as settings_service
@@ -38,12 +42,36 @@ ALPHABET = "ABCDEFGHJKLMNPQRSTUVWXYZ23456789"
 
 
 @dataclass(frozen=True)
+class Level:
+    code: str  # rank id; names are translated by the clients / `referral.ranks.<code>`
+    need: int  # invited users who paid
+    days: int  # one-time gift
+    theme: str  # Mini App theme unlocked
+
+
+BASE_RANK = "chick"
+LEVELS: tuple[Level, ...] = (
+    Level("fox", 3, 7, "lava"),
+    Level("hacker", 5, 30, "matrix"),
+    Level("ambassador", 10, 90, "gold"),
+    Level("legend", 25, 365, "cosmos"),
+)
+
+
+def rank_for(paid: int) -> str:
+    reached = [lv.code for lv in LEVELS if paid >= lv.need]
+    return reached[-1] if reached else BASE_RANK
+
+
+@dataclass(frozen=True)
 class Granted:
-    """What the referrer earned (for the notification after commit)."""
+    """What the referrer earned (for the notifications after commit)."""
 
     referrer: User
-    bonus_days: int
-    subscription: Subscription
+    bonus_days: int  # per-friend days (0 = none this time)
+    subscription: Subscription  # the referrer's subscription after all grants
+    paid_friends: int
+    milestones: tuple[Level, ...] = ()
 
 
 class InvalidReferral(AppError):
@@ -134,13 +162,14 @@ async def invitee_discount(db: AsyncSession, user: User) -> int:
 async def on_payment_succeeded(
     db: AsyncSession, payment: Payment, user: User, paid_plan: Plan
 ) -> Granted | None:
-    """On the invited user's first successful payment, credit the referrer with free days.
-    Caller commits, then notifies `Granted.referrer`."""
+    """On the invited user's first successful payment, credit the referrer with free days (and a
+    rank gift when a new level is reached). Caller commits, then notifies `Granted.referrer`."""
     if user.referred_by_id is None or not await settings_service.get_value(db, "referrals.enabled"):
         return None
     if await _has_paid(db, user.id, except_id=payment.id):
         return None
-    referrer = await db.get(User, user.referred_by_id)
+    # Row lock: concurrent payments by two friends count towards a rank one after the other.
+    referrer = await db.get(User, user.referred_by_id, with_for_update=True)
     if referrer is None:
         return None
     days = int(await settings_service.get_value(db, "referrals.bonus_days"))
@@ -167,14 +196,56 @@ async def on_payment_succeeded(
         target_id=referrer.id,
         details={"referred": str(user.id), "bonus_days": days},
     )
-    if not days:
+    sub: Subscription | None = None
+    if days:
+        sub = await _grant_bonus_days(db, referrer.id, paid_plan, days, f"referral:{user.id}")
+    paid = await _paid_friends(db, referrer.id)
+    reached: list[Level] = []
+    if referrer.is_active and await settings_service.get_value(db, "referrals.milestones"):
+        for level in LEVELS:
+            if paid < level.need:
+                break
+            ins = await db.execute(
+                pg_insert(ReferralMilestone)
+                .values(id=uuid7(), user_id=referrer.id, level=level.code, bonus_days=level.days)
+                .on_conflict_do_nothing(index_elements=["user_id", "level"])
+            )
+            if not getattr(ins, "rowcount", 0):
+                continue  # this rank's gift was already given
+            sub = await _grant_bonus_days(
+                db, referrer.id, paid_plan, level.days, f"referral_rank:{level.code}"
+            )
+            reached.append(level)
+            audit.record(
+                db,
+                action="referral.rank_reached",
+                actor_type=ActorType.SYSTEM,
+                target_type="user",
+                target_id=referrer.id,
+                details={"rank": level.code, "paid_friends": paid, "bonus_days": level.days},
+            )
+    if sub is None:
         return None
-    sub = await _grant_bonus_days(db, referrer.id, paid_plan, days, invitee=user.id)
-    return Granted(referrer=referrer, bonus_days=days, subscription=sub)
+    return Granted(
+        referrer=referrer,
+        bonus_days=days,
+        subscription=sub,
+        paid_friends=paid,
+        milestones=tuple(reached),
+    )
+
+
+async def _paid_friends(db: AsyncSession, user_id: uuid.UUID) -> int:
+    n = await db.scalar(
+        select(func.count())
+        .select_from(ReferralReward)
+        .where(ReferralReward.referrer_id == user_id)
+    )
+    return int(n or 0)
 
 
 async def _grant_bonus_days(
-    db: AsyncSession, referrer_id: uuid.UUID, paid_plan: Plan, days: int, *, invitee: uuid.UUID
+    db: AsyncSession, referrer_id: uuid.UUID, paid_plan: Plan, days: int, reason: str
 ) -> Subscription:
     """Extend the referrer's live subscription on its current plan. A trial (or no subscription)
     is upgraded to the plan the invitee bought, so the bonus is real paid-plan access."""
@@ -193,7 +264,7 @@ async def _grant_bonus_days(
         actor_id=None,
         actor_type=ActorType.SYSTEM,
         ip=None,
-        reason=f"referral:{invitee}",
+        reason=reason,
     )
 
 
@@ -202,11 +273,26 @@ async def summary(db: AsyncSession, settings: Settings, user: User) -> dict[str,
     invited = await db.scalar(
         select(func.count()).select_from(User).where(User.referred_by_id == user.id)
     )
-    paid = await db.scalar(
-        select(func.count())
-        .select_from(ReferralReward)
-        .where(ReferralReward.referrer_id == user.id)
+    paid = await _paid_friends(db, user.id)
+    ranks_on = bool(await settings_service.get_value(db, "referrals.milestones"))
+    got = set(
+        (
+            await db.scalars(
+                select(ReferralMilestone.level).where(ReferralMilestone.user_id == user.id)
+            )
+        ).all()
     )
+    levels = [
+        {
+            "code": lv.code,
+            "need": lv.need,
+            "days": lv.days,
+            "theme": lv.theme,
+            "reached": lv.code in got or (ranks_on and paid >= lv.need),
+        }
+        for lv in LEVELS
+    ]
+    nxt = next((lv for lv in levels if not lv["reached"]), None)
     return {
         "enabled": bool(await settings_service.get_value(db, "referrals.enabled")),
         "code": code,
@@ -214,6 +300,11 @@ async def summary(db: AsyncSession, settings: Settings, user: User) -> dict[str,
         "percent_off": int(await settings_service.get_value(db, "referrals.percent_off")),
         "bonus_days": int(await settings_service.get_value(db, "referrals.bonus_days")),
         "invited": int(invited or 0),
-        "paid": int(paid or 0),
+        "paid": paid,
         "my_discount": await invitee_discount(db, user),
+        "ranks_enabled": ranks_on,
+        "rank": next((lv["code"] for lv in reversed(levels) if lv["reached"]), BASE_RANK),
+        "levels": levels,
+        "next_level": nxt if ranks_on else None,
+        "themes": [lv["theme"] for lv in levels if lv["reached"]],
     }

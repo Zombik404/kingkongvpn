@@ -10,6 +10,7 @@ from app.models.billing import (
     PlanPrice,
     PromoCode,
     PromoRedemption,
+    ReferralMilestone,
     ReferralReward,
     Subscription,
 )
@@ -42,6 +43,7 @@ __all__ = [
     "PlanPrice",
     "PromoCode",
     "PromoRedemption",
+    "ReferralMilestone",
     "ReferralReward",
     "RefreshToken",
     "Server",

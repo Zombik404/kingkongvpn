@@ -76,7 +76,8 @@ function el(tag, attrs = {}, ...kids) {
 
 function gradient(id, stops, vertical = true) {
   const g = el("linearGradient", { id, x1: 0, y1: 0, x2: vertical ? 0 : 1, y2: vertical ? 1 : 0 });
-  for (const [offset, color, opacity = 1] of stops) g.append(el("stop", { offset, "stop-color": color, "stop-opacity": opacity }));
+  // colours are theme tokens (c0…c3) resolved by CSS classes, so charts follow the theme
+  for (const [offset, token, opacity = 1] of stops) g.append(el("stop", { offset, class: `s-${token}`, "stop-opacity": opacity }));
   return g;
 }
 
@@ -87,22 +88,22 @@ export function areaChart(series, { width = 340, height = 170, labels = [] } = {
   const max = Math.max(1, ...down, ...up);
   const svg = el("svg", { viewBox: `0 0 ${width} ${height}`, class: "area", role: "img" });
   svg.append(el("defs", {},
-    gradient("gDown", [[0, "#ff7a00", 0.85], [1, "#ff3d00", 0.02]]),
-    gradient("gUp", [[0, "#ffc46b", 0.75], [1, "#ffb347", 0.02]]),
-    gradient("gLine", [[0, "#ffb347"], [1, "#ff3d00"]], false)));
+    gradient("gDown", [[0, "c2", 0.85], [1, "c3", 0.02]]),
+    gradient("gUp", [[0, "c0", 0.75], [1, "c1", 0.02]]),
+    gradient("gLine", [[0, "c1"], [1, "c3"]], false)));
   for (let i = 1; i <= 3; i++) {
     const y = 10 + (i * (chartH - 14)) / 3;
     svg.append(el("line", { x1: 0, x2: width, y1: y, y2: y, class: "grid" }));
   }
-  const draw = (values, fill, stroke) => {
+  const draw = (values, fill, stroke, cls) => {
     const pts = scalePoints(values, width, chartH, undefined, max);
     const line = smoothPath(pts);
     const area = `${line} L${pts[pts.length - 1][0]},${chartH} L${pts[0][0]},${chartH} Z`;
     svg.append(el("path", { d: area, fill: `url(#${fill})` }));
-    svg.append(el("path", { d: line, fill: "none", stroke, "stroke-width": 2.2, "stroke-linecap": "round" }));
+    svg.append(el("path", { d: line, fill: "none", ...(stroke ? { stroke } : {}), ...(cls ? { class: cls } : {}), "stroke-width": 2.2, "stroke-linecap": "round" }));
   };
   draw(down, "gDown", "url(#gLine)");
-  draw(up, "gUp", "#ffc46b");
+  draw(up, "gUp", null, "st-c0");
   const step = Math.max(1, Math.ceil(labels.length / 7));
   labels.forEach((text, i) => {
     if (i % step && i !== labels.length - 1) return;
@@ -114,7 +115,8 @@ export function areaChart(series, { width = 340, height = 170, labels = [] } = {
   return svg;
 }
 
-export const RING_COLORS = ["#ff5a00", "#ff8a1f", "#ffab40", "#ffc977", "#ffe2b0"];
+/** Ring colours are CSS variables (--r0…--r4) set by the theme. */
+export const RING_COLORS = ["var(--r0)", "var(--r1)", "var(--r2)", "var(--r3)", "var(--r4)"];
 
 /** Concentric rings: one per item, length = share of the total. */
 export function ringsChart(items, size = 200) {
@@ -126,7 +128,7 @@ export function ringsChart(items, size = 200) {
     if (r < 12) return;
     svg.append(el("circle", { cx: c, cy: c, r, fill: "none", stroke: "rgba(255,255,255,.06)", "stroke-width": stroke }));
     const frac = Math.max(0.02, item.value / total);
-    svg.append(el("path", { d: arcPath(c, c, r, frac), fill: "none", stroke: RING_COLORS[i % RING_COLORS.length], "stroke-width": stroke, "stroke-linecap": "round" }));
+    svg.append(el("path", { d: arcPath(c, c, r, frac), fill: "none", class: `ring-${i % RING_COLORS.length}`, "stroke-width": stroke, "stroke-linecap": "round" }));
   });
   return svg;
 }
@@ -135,7 +137,7 @@ export function ringsChart(items, size = 200) {
 export function progressRing(fraction, size = 188) {
   const c = size / 2, r = c - 10;
   const svg = el("svg", { viewBox: `0 0 ${size} ${size}`, class: "progress" });
-  svg.append(el("defs", {}, gradient("gRing", [[0, "#ffb347"], [1, "#ff3d00"]], false)));
+  svg.append(el("defs", {}, gradient("gRing", [[0, "c1"], [1, "c3"]], false)));
   svg.append(el("circle", { cx: c, cy: c, r, fill: "none", stroke: "rgba(255,255,255,.07)", "stroke-width": 9 }));
   if (fraction > 0) svg.append(el("path", { d: arcPath(c, c, r, fraction), fill: "none", stroke: "url(#gRing)", "stroke-width": 9, "stroke-linecap": "round" }));
   return svg;

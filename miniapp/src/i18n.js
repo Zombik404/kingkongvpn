@@ -53,6 +53,26 @@ const ru = {
   refTextNoDays: "Друг, который придёт по вашей ссылке, получит скидку {p}% на первую подписку.",
   refBonus: "+{d} дней",
   refCount: "Рефералов",
+  // ranks & themes
+  ranks: { chick: "Птенец", fox: "Хитрый лис", hacker: "Хакер", ambassador: "Амбассадор", legend: "Легенда" },
+  themes: { default: "Стандарт", lava: "Лава", matrix: "Матрица", gold: "Золото", cosmos: "Космос" },
+  friendsN: (n) => {
+    const m10 = n % 10, m100 = n % 100;
+    const w = m10 === 1 && m100 !== 11 ? "друг" : m10 >= 2 && m10 <= 4 && (m100 < 12 || m100 > 14) ? "друга" : "друзей";
+    return `${n} ${w}`;
+  },
+  rankTitle: "Ваш ранг",
+  rankPaid: "Друзей с подпиской: {n}",
+  rankNext: "Ещё {left} с подпиской — и вы «{rank}»: +{d} дней VPN и тема «{theme}».",
+  rankMax: "Максимальный ранг. Вы — легенда VpnHub!",
+  ladderTitle: "Ранги и подарки",
+  ladderRow: "{n} с подпиской · +{d} дней · тема «{theme}»",
+  themesTitle: "Тема оформления",
+  themesHint: "Новые темы открываются с рангами.",
+  newRank: "Новый ранг!",
+  newRankGift: "Подарок: +{d} дней VPN и тема «{theme}».",
+  useTheme: "Включить тему",
+  cool: "Круто!",
   copyLink: "Скопировать ссылку",
   share: "Поделиться",
   shareText: "Подключайся к VpnHub по моей ссылке — скидка {p}% на первую подписку",
@@ -149,6 +169,21 @@ const en = {
   refTextNoDays: "A friend who joins via your link gets {p}% off their first subscription.",
   refBonus: "+{d} days",
   refCount: "Referrals",
+  ranks: { chick: "Chick", fox: "Sly Fox", hacker: "Hacker", ambassador: "Ambassador", legend: "Legend" },
+  themes: { default: "Standard", lava: "Lava", matrix: "Matrix", gold: "Gold", cosmos: "Cosmos" },
+  friendsN: (n) => `${n} ${n === 1 ? "friend" : "friends"}`,
+  rankTitle: "Your rank",
+  rankPaid: "Friends with a subscription: {n}",
+  rankNext: "{left} more with a subscription and you're “{rank}”: +{d} VPN days and the “{theme}” theme.",
+  rankMax: "Top rank reached. You're a VpnHub legend!",
+  ladderTitle: "Ranks & gifts",
+  ladderRow: "{n} subscribed · +{d} days · “{theme}” theme",
+  themesTitle: "App theme",
+  themesHint: "New themes unlock with ranks.",
+  newRank: "New rank!",
+  newRankGift: "Gift: +{d} VPN days and the “{theme}” theme.",
+  useTheme: "Use this theme",
+  cool: "Awesome!",
   copyLink: "Copy link",
   share: "Share",
   shareText: "Join VpnHub with my link — {p}% off your first subscription",
@@ -203,7 +238,7 @@ export function makeT(lang) {
   const table = STRINGS[lang] || en;
   return (key, params = {}) => {
     const v = table[key] ?? en[key] ?? key;
-    if (typeof v === "function") return v;
+    if (typeof v !== "string") return v; // plural functions and name maps (ranks, themes)
     return v.replace(/\{(\w+)\}/g, (_, k) => (k in params ? String(params[k]) : `{${k}}`));
   };
 }

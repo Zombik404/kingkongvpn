@@ -44,6 +44,26 @@
       "subject": "Your friend joined {app_name} — {days} free days for you",
       "body": "A friend you invited has bought a subscription. We've added {days} free days to your {app_name} access — it's now active until {date}.",
       "action": "Open {app_name}"
+    },
+    "referral_milestone": {
+      "subject": "New {app_name} rank: “{rank}”!",
+      "body": "{count} of your friends now have a subscription — you're now “{rank}”. Your gift: +{days} free VPN days (access until {date}) and the secret “{theme}” theme — switch it on in the Friends section.",
+      "action": "Open {app_name}"
+    }
+  },
+  "referral": {
+    "ranks": {
+      "chick": "Chick",
+      "fox": "Sly Fox",
+      "hacker": "Hacker",
+      "ambassador": "Ambassador",
+      "legend": "Legend"
+    },
+    "themes": {
+      "lava": "Lava",
+      "matrix": "Matrix",
+      "gold": "Gold",
+      "cosmos": "Cosmos"
     }
   }
 }

@@ -44,6 +44,26 @@
       "subject": "Dein Freund ist bei {app_name} – {days} Tage gratis für dich",
       "body": "Ein Freund, den du eingeladen hast, hat ein Abo abgeschlossen. Wir haben dir {days} Tage {app_name} gratis gutgeschrieben – dein Zugang gilt jetzt bis {date}.",
       "action": "{app_name} öffnen"
+    },
+    "referral_milestone": {
+      "subject": "Neuer Rang bei {app_name}: „{rank}“!",
+      "body": "{count} deiner Freunde haben jetzt ein Abo – du bist jetzt „{rank}“. Dein Geschenk: +{days} Tage VPN gratis (Zugang bis {date}) und das geheime Design „{theme}“ – aktiviere es im Bereich „Freunde“.",
+      "action": "{app_name} öffnen"
+    }
+  },
+  "referral": {
+    "ranks": {
+      "chick": "Küken",
+      "fox": "Schlauer Fuchs",
+      "hacker": "Hacker",
+      "ambassador": "Botschafter",
+      "legend": "Legende"
+    },
+    "themes": {
+      "lava": "Lava",
+      "matrix": "Matrix",
+      "gold": "Gold",
+      "cosmos": "Kosmos"
     }
   }
 }

@@ -44,6 +44,26 @@
       "subject": "Barátod csatlakozott a(z) {app_name} szolgáltatáshoz – {days} ingyenes nap neked",
       "body": "Egy barátod, akit meghívtál, előfizetett. {days} ingyenes napot adtunk a(z) {app_name} hozzáférésedhez – most {date}-ig érvényes.",
       "action": "{app_name} megnyitása"
+    },
+    "referral_milestone": {
+      "subject": "Új rang a(z) {app_name} szolgáltatásban: „{rank}”!",
+      "body": "Már {count} barátodnak van előfizetése – mostantól „{rank}” vagy. Ajándékod: +{days} ingyenes VPN-nap (hozzáférés {date}-ig) és a titkos „{theme}” téma – kapcsold be a Barátok részben.",
+      "action": "{app_name} megnyitása"
+    }
+  },
+  "referral": {
+    "ranks": {
+      "chick": "Csibe",
+      "fox": "Ravasz róka",
+      "hacker": "Hacker",
+      "ambassador": "Nagykövet",
+      "legend": "Legenda"
+    },
+    "themes": {
+      "lava": "Láva",
+      "matrix": "Mátrix",
+      "gold": "Arany",
+      "cosmos": "Kozmosz"
     }
   }
 }

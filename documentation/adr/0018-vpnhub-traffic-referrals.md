@@ -23,6 +23,14 @@ Status: accepted (2026-11-13).
      can't add days twice. Toggle the whole program with `referrals.enabled`.
    - Known edge: an invitee with two unpaid discounted invoices open at once could pay both at
      the discount (bounded by `payment_pending_limit_per_user`).
+3a. **Referral ranks** (`referrals.milestones`, migration 0007), counted by invited users who
+   **paid** (empty sign-ups don't count): 🦊 Sly Fox at 3 (+7 days, theme "Lava"), 🕶 Hacker at 5
+   (+30, "Matrix"), 👑 Ambassador at 10 (+90, "Gold"), 🚀 Legend at 25 (+365, "Cosmos"); below 3 —
+   🐣 Chick. Each gift is given once (`referral_milestones`, unique (user, level)), on top of the
+   per-friend days, with a Telegram/email notice. Themes are cosmetic: the server lists unlocked
+   ones, the choice is kept in the device's local storage; the Mini App shows confetti once per
+   new rank. The referrer's row is locked while crediting so concurrent payments by two friends
+   count one after the other. Levels live in `app/services/referrals.py` (`LEVELS`).
 4. **Country switch keeps the device key:** the Mini App stores each private key it generated in
    the device's own `localStorage` (never sent anywhere) so a device can be moved to another
    country and its config re-issued; devices created elsewhere get a new connection instead.

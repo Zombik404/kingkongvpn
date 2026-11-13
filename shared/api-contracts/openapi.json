@@ -1810,6 +1810,39 @@
         "title": "ReferralClaimIn",
         "type": "object"
       },
+      "ReferralLevelOut": {
+        "properties": {
+          "code": {
+            "title": "Code",
+            "type": "string"
+          },
+          "days": {
+            "title": "Days",
+            "type": "integer"
+          },
+          "need": {
+            "title": "Need",
+            "type": "integer"
+          },
+          "reached": {
+            "title": "Reached",
+            "type": "boolean"
+          },
+          "theme": {
+            "title": "Theme",
+            "type": "string"
+          }
+        },
+        "required": [
+          "code",
+          "need",
+          "days",
+          "theme",
+          "reached"
+        ],
+        "title": "ReferralLevelOut",
+        "type": "object"
+      },
       "ReferralOut": {
         "properties": {
           "bonus_days": {
@@ -1828,6 +1861,13 @@
             "title": "Invited",
             "type": "integer"
           },
+          "levels": {
+            "items": {
+              "$ref": "#/components/schemas/ReferralLevelOut"
+            },
+            "title": "Levels",
+            "type": "array"
+          },
           "link": {
             "anyOf": [
               {
@@ -1843,6 +1883,16 @@
             "title": "My Discount",
             "type": "integer"
           },
+          "next_level": {
+            "anyOf": [
+              {
+                "$ref": "#/components/schemas/ReferralLevelOut"
+              },
+              {
+                "type": "null"
+              }
+            ]
+          },
           "paid": {
             "title": "Paid",
             "type": "integer"
@@ -1850,6 +1900,21 @@
           "percent_off": {
             "title": "Percent Off",
             "type": "integer"
+          },
+          "rank": {
+            "title": "Rank",
+            "type": "string"
+          },
+          "ranks_enabled": {
+            "title": "Ranks Enabled",
+            "type": "boolean"
+          },
+          "themes": {
+            "items": {
+              "type": "string"
+            },
+            "title": "Themes",
+            "type": "array"
           }
         },
         "required": [
@@ -1860,7 +1925,12 @@
           "bonus_days",
           "invited",
           "paid",
-          "my_discount"
+          "my_discount",
+          "ranks_enabled",
+          "rank",
+          "levels",
+          "next_level",
+          "themes"
         ],
         "title": "ReferralOut",
         "type": "object"

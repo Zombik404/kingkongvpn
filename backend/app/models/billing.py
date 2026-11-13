@@ -289,3 +289,20 @@ class ReferralReward(UUIDPk, Timestamps, Base):
         UUID(as_uuid=True), ForeignKey("payments.id", ondelete="SET NULL")
     )
     bonus_days: Mapped[int] = mapped_column(Integer, default=0, server_default="0")
+
+
+class ReferralMilestone(UUIDPk, Timestamps, Base):
+    """A referral rank reached (by number of invited users who paid) and its one-time gift.
+    Unique (user, level) makes the gift idempotent."""
+
+    __tablename__ = "referral_milestones"
+    __table_args__ = (
+        UniqueConstraint("user_id", "level", name="uq_referral_milestones_user_level"),
+        CheckConstraint("bonus_days BETWEEN 0 AND 3650", name="bonus_days"),
+    )
+
+    user_id: Mapped[uuid.UUID] = mapped_column(
+        UUID(as_uuid=True), ForeignKey("users.id", ondelete="CASCADE"), index=True
+    )
+    level: Mapped[str] = mapped_column(String(16))
+    bonus_days: Mapped[int] = mapped_column(Integer, default=0, server_default="0")

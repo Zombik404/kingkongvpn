@@ -71,7 +71,7 @@ function logo() {
   svg.setAttribute("viewBox", "0 0 32 32");
   svg.setAttribute("class", "logo-mark");
   svg.innerHTML = // static markup, no user data
-    '<defs><linearGradient id="lg" x1="0" y1="0" x2="1" y2="1"><stop offset="0" stop-color="#ffb347"/><stop offset="1" stop-color="#ff3d00"/></linearGradient></defs>' +
+    '<defs><linearGradient id="lg" x1="0" y1="0" x2="1" y2="1"><stop offset="0" class="s-c1"/><stop offset="1" class="s-c3"/></linearGradient></defs>' +
     '<path d="M16 2.5 28 9.3v13.4L16 29.5 4 22.7V9.3Z" fill="url(#lg)"/>' +
     '<path d="M10.5 11.5 16 21l5.5-9.5" fill="none" stroke="#120c08" stroke-width="2.6" stroke-linecap="round" stroke-linejoin="round"/>' +
     '<circle cx="16" cy="21" r="1.9" fill="#120c08"/>';
@@ -102,6 +102,61 @@ const keyStore = {
   set: (id, k) => store.set(`vpnhub.key.${id}`, k),
   del: (id) => store.del(`vpnhub.key.${id}`),
 };
+
+// ------------------------------------------------------------------ themes & ranks
+const THEME_BG = { default: "#0b0a09", lava: "#0d0504", matrix: "#020604", gold: "#0a0904", cosmos: "#07051a" };
+const RANK_EMOJI = { chick: "🐣", fox: "🦊", hacker: "🕶️", ambassador: "👑", legend: "🚀" };
+
+function applyTheme(name) {
+  const theme = THEME_BG[name] ? name : "default";
+  if (theme === "default") document.documentElement.removeAttribute("data-theme");
+  else document.documentElement.setAttribute("data-theme", theme);
+  try { tg?.setHeaderColor?.(THEME_BG[theme]); tg?.setBackgroundColor?.(THEME_BG[theme]); } catch { /* older clients */ }
+}
+// A theme is cosmetic and stored on this device; the server says which ones are unlocked.
+const unlockedThemes = () => ["default", ...(state.ref?.themes || [])];
+function syncTheme() {
+  const want = store.get("vpnhub.theme") || "default";
+  applyTheme(unlockedThemes().includes(want) ? want : "default");
+}
+function chooseTheme(name) {
+  store.set("vpnhub.theme", name);
+  applyTheme(name);
+}
+
+function celebrate(level) {
+  const colors = ["var(--r0)", "var(--r1)", "var(--r2)", "var(--r3)", "var(--r4)", "#ffffff"];
+  const bits = Array.from({ length: 70 }, (_, i) => {
+    const b = h("span", { class: "bit" });
+    b.style.setProperty("--x", `${Math.random() * 100}%`);
+    b.style.setProperty("--col", colors[i % colors.length]);
+    b.style.setProperty("--rot", `${Math.round(Math.random() * 360)}deg`);
+    b.style.setProperty("--dur", `${(2.2 + Math.random() * 2).toFixed(2)}s`);
+    b.style.setProperty("--delay", `${(Math.random() * 0.8).toFixed(2)}s`);
+    return b;
+  });
+  const close = () => overlay.remove();
+  const overlay = h("div", { class: "party", role: "dialog", "aria-label": t("newRank") },
+    ...bits,
+    h("section", { class: "card glow" },
+      h("span", { class: "rank-emoji" }, RANK_EMOJI[level.code] || "🎉"),
+      h("div", { class: "lbl" }, t("newRank")),
+      h("div", { class: "rank-name" }, t("ranks")[level.code] || level.code),
+      h("p", {}, t("newRankGift", { d: level.days, theme: t("themes")[level.theme] })),
+      h("button", { class: "primary wide", onclick: () => { chooseTheme(level.theme); close(); } }, t("useTheme")),
+      h("button", { class: "ghost wide", onclick: close }, t("cool"))));
+  document.body.append(overlay);
+}
+
+// Celebrate each newly reached rank once per device.
+function maybeCelebrate() {
+  const r = state.ref;
+  if (!r?.ranks_enabled || !r.rank || r.rank === "chick") return;
+  if (store.get("vpnhub.rank.seen") === r.rank) return;
+  store.set("vpnhub.rank.seen", r.rank);
+  const level = r.levels.find((lv) => lv.code === r.rank);
+  if (level) celebrate(level);
+}
 
 async function login() {
   const r = await fetch(`${API}/auth/telegram/webapp`, {
@@ -158,6 +213,7 @@ async function loadAll() {
     api("/referrals").catch(() => null), api(`/vpn/usage?days=${state.days}`),
   ]);
   Object.assign(state, { sub, devices, plans, ref, usage });
+  syncTheme();
 }
 
 // ------------------------------------------------------------------ home
@@ -171,6 +227,7 @@ async function goHome() {
     state.sub.entitled ? null : inviteCard(),
     dashboard(),
   ].filter(Boolean));
+  maybeCelebrate();
 }
 
 function periodInfo() {
@@ -206,7 +263,9 @@ function wheel() {
   const spokes = items.map(([ic, label, fn], i) => {
     const angle = -90 + i * (360 / items.length);
     // came via a friend's link and hasn't paid yet → show the first-payment discount on "Pay"
-    const badge = ic === "card" && state.ref?.my_discount ? h("span", { class: "badge" }, `−${state.ref.my_discount}%`) : null;
+    const rank = state.ref?.ranks_enabled && state.ref.rank !== "chick" ? state.ref.rank : null;
+    const badge = ic === "card" && state.ref?.my_discount ? h("span", { class: "badge" }, `−${state.ref.my_discount}%`)
+      : ic === "friends" && rank ? h("span", { class: "badge emoji", title: t("ranks")[rank] }, RANK_EMOJI[rank]) : null;
     return h("button", { class: "spoke", "data-angle": angle, onclick: fn, "aria-label": label },
       h("span", { class: "spoke-ic" }, icon(ic)), h("span", { class: "spoke-label" }, label), badge);
   });
@@ -369,7 +428,58 @@ function referralScreen() {
       h("div", { class: "big" }, String(r?.invited ?? 0))),
     link
       ? h("section", { class: "card" }, h("div", { class: "linkbox" }, link), copyBtn, shareBtn)
-      : h("p", { class: "muted pad-x" }, t("refNoBot")));
+      : h("p", { class: "muted pad-x" }, t("refNoBot")),
+    r?.ranks_enabled ? rankCard(r) : null,
+    r?.ranks_enabled ? ladderCard(r) : null,
+    themesCard());
+}
+
+function rankCard(r) {
+  const nxt = r.next_level;
+  const prevNeed = [...r.levels].reverse().find((lv) => lv.reached)?.need || 0;
+  const pct = nxt ? Math.round((100 * (r.paid - prevNeed)) / Math.max(1, nxt.need - prevNeed)) : 100;
+  const card = h("section", { class: "card glow rank-card" },
+    h("span", { class: "rank-emoji" }, RANK_EMOJI[r.rank] || "🐣"),
+    h("div", { class: "lbl" }, t("rankTitle")),
+    h("div", { class: "rank-name" }, t("ranks")[r.rank] || r.rank),
+    h("div", { class: "rank-next" },
+      h("p", { class: "small muted" }, t("rankPaid", { n: r.paid })),
+      h("div", { class: "bar-track" }, h("div", { class: "bar-fill", "data-w": Math.max(0, Math.min(100, pct)) })),
+      h("p", { class: "small" }, nxt
+        ? t("rankNext", { left: t("friendsN")(nxt.need - r.paid), rank: t("ranks")[nxt.code], d: nxt.days, theme: t("themes")[nxt.theme] })
+        : t("rankMax"))));
+  card.querySelectorAll(".bar-fill").forEach((b) => b.style.setProperty("--w", `${b.dataset.w}%`));
+  return card;
+}
+
+function ladderCard(r) {
+  return h("section", { class: "card" },
+    h("div", { class: "card-title" }, t("ladderTitle")),
+    h("ul", { class: "list ladder" }, ...r.levels.map((lv) =>
+      h("li", { class: lv.reached ? "done" : "locked" },
+        h("span", { class: "lv-emoji" }, RANK_EMOJI[lv.code]),
+        h("div", {},
+          h("strong", {}, t("ranks")[lv.code]),
+          h("div", { class: "small muted" }, t("ladderRow", { n: t("friendsN")(lv.need), d: lv.days, theme: t("themes")[lv.theme] }))),
+        h("span", { class: "lv-state" }, lv.reached ? "✓" : "🔒")))));
+}
+
+function themesCard() {
+  const box = h("div", { class: "chips" });
+  const render = () => {
+    const unlocked = unlockedThemes();
+    const current = document.documentElement.getAttribute("data-theme") || "default";
+    box.replaceChildren(...Object.keys(THEME_BG).map((name) => {
+      const open = unlocked.includes(name);
+      return h("button", { class: `chip ${name === current ? "on" : ""}`, disabled: !open, onclick: () => { chooseTheme(name); render(); } },
+        h("span", { class: `sw sw-${name}` }), t("themes")[name], open ? null : " 🔒");
+    }));
+  };
+  render();
+  return h("section", { class: "card" },
+    h("div", { class: "card-title" }, t("themesTitle")),
+    box,
+    h("p", { class: "small muted" }, t("themesHint")));
 }
 
 // ------------------------------------------------------------------ country
@@ -525,7 +635,7 @@ function helpScreen() {
   }
   tg.ready();
   tg.expand();
-  try { tg.setHeaderColor?.("#0b0a09"); tg.setBackgroundColor?.("#0b0a09"); } catch { /* older clients */ }
+  applyTheme(store.get("vpnhub.theme") || "default"); // validated against unlocked themes after load
   tg.BackButton?.onClick(() => backHandler && backHandler());
   try {
     await login();

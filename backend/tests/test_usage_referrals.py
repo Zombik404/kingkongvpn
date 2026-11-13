@@ -12,7 +12,7 @@ from sqlalchemy import select, update
 
 from app.core.config import Settings
 from app.core.context import AppContext
-from app.models import DeviceUsageDaily, Plan, ReferralReward, User
+from app.models import DeviceUsageDaily, Plan, ReferralMilestone, ReferralReward, User
 from app.models.base import utcnow
 from app.models.enums import ActorType, Provider
 from app.payments import service as payments
@@ -34,6 +34,7 @@ def settings() -> Settings:
         telegram_bot_username="vpnhub_bot",
         cryptobot_accepted_assets="GRAM,USDC",
         node_longpoll_seconds=1,
+        rate_limit_enabled=False,  # rank tests sign up many friends from one test client
     )
 
 
@@ -352,3 +353,79 @@ async def test_referral_bonus_days_off_and_suspended_referrer(
             select(ReferralReward).where(ReferralReward.referrer_id == sus.user_id)
         )
         assert reward is not None and reward.bonus_days == 0
+
+
+async def test_referral_ranks_gifts_and_themes(
+    client: AsyncClient, outbox: list[Any], db: Any, fake: FakeCryptoPay, ctx: AppContext
+) -> None:
+    prices = await seed(db)
+    boss = await new_user(client, outbox, "rank-boss@example.com")
+    info = (await client.get("/api/v1/referrals", headers=boss.headers)).json()
+    assert info["rank"] == "chick" and info["themes"] == []
+    assert info["next_level"] == {
+        "code": "fox",
+        "need": 3,
+        "days": 7,
+        "theme": "lava",
+        "reached": False,
+    }
+    assert [lv["need"] for lv in info["levels"]] == [3, 5, 10, 25]
+
+    friends = [await new_user(client, outbox, f"rank-f{i}@example.com") for i in range(5)]
+    for f in friends:
+        await _refer(client, boss, f)
+    await _pay(client, fake, ctx, friends[0], prices[1])
+    await _pay(client, fake, ctx, friends[1], prices[1])
+    async with ctx.sessionmaker() as s:
+        before = (await subs.get_live(s, boss.user_id)).current_period_end
+
+    # 3rd paying friend → rank "fox": +14 (per friend) +7 (rank gift), theme "lava", a notice
+    outbox.clear()
+    await _pay(client, fake, ctx, friends[2], prices[1])
+    assert sorted(m.template for m in outbox) == [
+        "payment_received",
+        "referral_milestone",
+        "referral_reward",
+    ]
+    notice = next(m for m in outbox if m.template == "referral_milestone")
+    assert notice.to == "rank-boss@example.com"
+    assert (
+        "Sly Fox" in notice.subject and "+7 free VPN days" in notice.text and "Lava" in notice.text
+    )
+    async with ctx.sessionmaker() as s:
+        after = (await subs.get_live(s, boss.user_id)).current_period_end
+    assert after - before == dt.timedelta(days=21)
+    info = (await client.get("/api/v1/referrals", headers=boss.headers)).json()
+    assert info["rank"] == "fox" and info["themes"] == ["lava"] and info["paid"] == 3
+    assert info["next_level"]["code"] == "hacker"
+
+    # 4th: no new rank; 5th: "hacker" (+30 days, theme "matrix")
+    await _pay(client, fake, ctx, friends[3], prices[1])
+    outbox.clear()
+    await _pay(client, fake, ctx, friends[4], prices[1])
+    assert "referral_milestone" in {m.template for m in outbox}
+    async with ctx.sessionmaker() as s:
+        end = (await subs.get_live(s, boss.user_id)).current_period_end
+    assert end - after == dt.timedelta(days=14 + 14 + 30)
+    info = (await client.get("/api/v1/referrals", headers=boss.headers)).json()
+    assert info["rank"] == "hacker" and info["themes"] == ["lava", "matrix"]
+    rows = (await db.scalars(select(ReferralMilestone.level))).all()
+    assert sorted(rows) == ["fox", "hacker"]  # each gift exactly once
+
+
+async def test_referral_ranks_can_be_disabled(
+    client: AsyncClient, outbox: list[Any], db: Any, fake: FakeCryptoPay, ctx: AppContext
+) -> None:
+    from app.services import settings as settings_service
+
+    prices = await seed(db)
+    await settings_service.set_value(db, "referrals.milestones", False, actor_id=None)
+    await db.commit()
+    boss = await new_user(client, outbox, "nr-boss@example.com")
+    for i in range(3):
+        f = await new_user(client, outbox, f"nr-f{i}@example.com")
+        await _refer(client, boss, f)
+        await _pay(client, fake, ctx, f, prices[1])
+    assert await db.scalar(select(ReferralMilestone)) is None
+    info = (await client.get("/api/v1/referrals", headers=boss.headers)).json()
+    assert info["rank"] == "chick" and info["next_level"] is None and info["paid"] == 3
