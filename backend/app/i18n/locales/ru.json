@@ -69,6 +69,11 @@
       "subject": "Бонусный баланс изменён: {change} дн.",
       "body": "Администрация {app_name} изменила ваш игровой бонусный баланс на {change} дн. Сейчас на балансе {balance} дн.",
       "action": "Открыть {app_name}"
+    },
+    "game_season_reward": {
+      "subject": "Сезон {season}: {place}-е место!",
+      "body": "Сезон {season} закончился, вы заняли {place}-е место. Награда уже в игровом профиле: +{xp} XP{extra}.",
+      "action": "Открыть {app_name}"
     }
   },
   "referral": {

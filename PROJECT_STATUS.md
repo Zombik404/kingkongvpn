@@ -159,6 +159,19 @@ None blocking Phase 3/4 code. Full list: `documentation/EXTERNAL_REQUIREMENTS.md
 - CI now also checks the bot (ruff, mypy, pytest) and the Mini App (tests, build, committed `dist/` up to date); actions moved off the deprecated Node 20.
 - 4 new tests (permissions, register → heartbeat → connect → health, drain/rotate/disable, idle release); checked by breaking the code on purpose.
 
+## Blackjack progression (2026-11-13, in progress) — ADR-021, owner's brief "Progression, achievements & leaderboards"
+Stage plan from the brief; ✅ = done and tested, ⏳ = next.
+- ✅ 1-3 Analysis and integration plan: extends the existing game profile, rounds, bonus wallet + ledger, settings, admin API — no second profile or wallet.
+- ✅ 4 XP and levels: XP ledger (`game_xp_events`, unique per key, never negative or lost), level curve from settings (`games.levels.*`, any number of levels), level titles, daily XP cap from rounds (`games.xp.daily_round_cap`, logged once a day).
+- ✅ 5 Achievements: 23 seeded in 4 categories (game, activity, progress, season), progress from the player's counters, XP and optional title, each once.
+- ✅ 6 Daily challenges (one easy, medium, hard per game day; stable pick) and daily streak (a finished round counts; rewards at 3/7/14/30 days, once per streak).
+- ✅ 7 Boards: wins, win rate (wins/(wins+losses), min 20 decided rounds, setting), XP — all time, weekly, monthly, any season; ties by who got there first; my place off the first page; search; pages; participants count; excluded and suspended players hidden.
+- ✅ 8-9 Seasons: weekly (Monday 00:00) and monthly in the game time zone, event seasons by staff; finalised once by the `games.seasons` task: final tables frozen (top 100 per board), prizes by place (XP, title, frame; bonus days only with `games.rewards.bonus_days_enabled`, OFF), season achievements, participation XP, Telegram notice to the top 10.
+- ✅ Anti-cheat: everything from server-settled rounds; rounds the server finished (timeout, leaving, table closed by staff) give no progress; idempotent keys everywhere; read limits; staff exclusion with a reason in the audit log.
+- ✅ Staff API `/admin/games/progress/*`, `/achievements`, `/challenges`, `/seasons` (create event, edit active, finish early, results).
+- ⏳ 10 Mini App screens, 11 admin panel section, 12 browser tests and docs.
+- Verified so far: backend 306 tests (10 new for progression, plus mutation checks of the bonus-off and forced-round guards); migration 0010 up/down/up, no model drift.
+
 ## Admin panel and data protection (2026-11-13) — ADR-020
 - **Admin panel** (`admin-panel/`, served at `/admin/` with a strict CSP; guide `documentation/ADMIN_PANEL_RU.md`): password + TOTP (set up on first sign-in), tokens in memory only, auto sign-out after 30 idle minutes, optional network allowlist (`ADMIN_ALLOWED_IPS`). Sections: overview (users, access, servers, revenue, 30-day charts), users (search by email / Telegram ID / referral code / ID; case file; extend or revoke access, block, roles, bonus days; payments, game and audit per user), payments, plans and prices, promo codes, servers and locations (register with a one-time token, drain, disable, rotate token, health), blackjack (switches, suspicious players, tables, events), settings, audit log. Every change asks for a reason and is audited.
 - Backend for it: `/admin/me`, `/admin/overview`, `/admin/payments`, better user search, `payments:read`, `python -m app.cli create-staff`; `install.sh` creates the owner's superadmin and prints a one-time password.

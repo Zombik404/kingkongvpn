@@ -25,7 +25,7 @@ from sqlalchemy.orm.attributes import flag_modified
 from app.core.context import AppContext
 from app.core.errors import AppError, NotFound, PermissionDenied
 from app.games import blackjack as bj
-from app.games import fair, wallet
+from app.games import boards, fair, progress, wallet
 from app.models import (
     BonusLedger,
     GameProfile,
@@ -395,6 +395,7 @@ async def leave_room(db: AsyncSession, user_id: uuid.UUID, room_id: uuid.UUID) -
     state = copy.deepcopy(room.state)
     if _in_live_round(state, room.phase, user_id):  # finish their hands: the stake stays in play
         bj.force_stand(state["round"], me.seat)
+        _forced(state, me.seat)
     bet = state["bets"].pop(str(me.seat), None)
     if bet and bet["hours"]:
         await bank_move(
@@ -548,6 +549,8 @@ async def _deal(
     db.add(rnd)
     await db.flush()
     state["round"] = bj.start_round(rules, shoe, seats)
+    state.pop("progress", None)  # last round's XP/achievement events are shown once
+    state["forced"] = []
     state["round_cur"] = round_cur
     state["bets"] = {}
     state["round_started"] = utcnow().isoformat()
@@ -576,6 +579,14 @@ async def _sync(
     _touch(room, state)
 
 
+def _forced(state: dict[str, Any], seat: int) -> None:
+    """The server finished this seat's hands (timeout, leaving, the table closed by staff): the
+    round still settles and pays, but gives no XP, challenge, streak or season progress."""
+    forced = state.setdefault("forced", [])
+    if seat not in forced:
+        forced.append(seat)
+
+
 async def _settle(
     db: AsyncSession, room: GameRoom, state: dict[str, Any], eng: dict[str, Any]
 ) -> None:
@@ -585,6 +596,9 @@ async def _settle(
     assert rnd is not None
     cur = state.get("round_cur", HOURS if rnd.stakes else None)
     cfg = await config(db)
+    now = utcnow()
+    seasons = await boards.ensure_current(db, cfg, now)
+    state["progress"] = {}
     for r in eng["results"]["seats"]:
         uid = uuid.UUID(r["user"])
         if r["returned"]:
@@ -629,6 +643,12 @@ async def _settle(
                 profile.streak = 0
             else:
                 profile.pushes += 1
+            # XP, level, challenges, streak, achievements, season stats (ADR-021) — only for
+            # rounds the player finished themselves
+            if r["seat"] not in state.get("forced", []):
+                state["progress"][str(uid)] = await progress.record_round(
+                    db, cfg, profile, rnd.id, r, now=now, seasons=seasons
+                )
     away_before = utcnow() - dt.timedelta(seconds=AWAY_SECONDS)
     for r in eng["results"]["seats"]:
         uid = uuid.UUID(r["user"])
@@ -723,6 +743,7 @@ async def tick(db: AsyncSession, room_id: uuid.UUID) -> GameRoom | None:
         idle = bj.insurance_pending(eng) if eng["phase"] == "insurance" else [eng["turn"]["seat"]]
         for seat in idle:
             bj.force_stand(eng, seat)
+            _forced(state, seat)
             p = next((x for x in players if x.seat == seat), None)
             if p is not None:
                 p.missed += 1
@@ -781,6 +802,7 @@ async def close_room(db: AsyncSession, room_id: uuid.UUID, *, reason: str) -> Ga
         for s in list(eng["seats"]):
             if eng["phase"] != "settled":
                 bj.force_stand(eng, s["seat"])
+                _forced(state, s["seat"])
         await _sync(db, room, state, cfg, players)
     for seat, bet in list(state["bets"].items()):
         if bet["hours"]:
@@ -914,6 +936,10 @@ async def room_view(db: AsyncSession, room: GameRoom, user_id: uuid.UUID) -> dic
             "balance_hours": bal,
             "chips": await chips_of(db, user_id, cfg) if cur == CHIPS else None,
             "in_round": bool(eng and me and any(s["seat"] == me.seat for s in eng["seats"])),
+            # what the last settled round gave this player: XP, level-ups, achievements…
+            "progress": (state.get("progress") or {}).get(str(user_id), [])
+            if room.phase == "settled"
+            else [],
         },
         "last_fair": state.get("last_fair"),
     }

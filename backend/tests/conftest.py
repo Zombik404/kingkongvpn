@@ -43,6 +43,7 @@ from sqlalchemy import text  # noqa: E402
 
 from app.core.config import Settings  # noqa: E402
 from app.core.context import AppContext  # noqa: E402
+from app.games import catalogue  # noqa: E402
 from app.main import create_app  # noqa: E402
 from app.models import Base  # noqa: E402
 from app.notifications.email import MemoryDispatcher  # noqa: E402
@@ -82,6 +83,7 @@ async def ctx(settings: Settings) -> AsyncIterator[AppContext]:
     async with context.engine.begin() as conn:
         await conn.execute(text(f"TRUNCATE {tables} RESTART IDENTITY CASCADE"))
         await conn.execute(text("ALTER SEQUENCE tunnel_address_seq RESTART WITH 1"))
+        await catalogue.seed(conn)  # default achievements and challenges (migration 0010 data)
     await context.redis.flushdb()
     yield context
     await context.close()

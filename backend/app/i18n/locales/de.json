@@ -69,6 +69,11 @@
       "subject": "Bonusguthaben geändert: {change} Tage",
       "body": "Das {app_name}-Team hat dein Spiel-Bonusguthaben um {change} Tage geändert. Dein Guthaben: {balance} Tage.",
       "action": "{app_name} öffnen"
+    },
+    "game_season_reward": {
+      "subject": "Saison {season}: Platz {place}!",
+      "body": "Die Saison {season} ist vorbei, du bist auf Platz {place}. Dein Preis ist schon im Spielprofil: +{xp} XP{extra}.",
+      "action": "{app_name} öffnen"
     }
   },
   "referral": {

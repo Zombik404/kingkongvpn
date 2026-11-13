@@ -69,6 +69,11 @@
       "subject": "Bónuszegyenleg módosítva: {change} nap",
       "body": "A(z) {app_name} csapata {change} nappal módosította a játékbeli bónuszegyenlegedet. Jelenlegi egyenleg: {balance} nap.",
       "action": "{app_name} megnyitása"
+    },
+    "game_season_reward": {
+      "subject": "{season} szezon: {place}. hely!",
+      "body": "A(z) {season} szezon véget ért, a(z) {place}. helyen végeztél. A jutalom már a játékprofilodban van: +{xp} XP{extra}.",
+      "action": "{app_name} megnyitása"
     }
   },
   "referral": {

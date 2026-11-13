@@ -69,6 +69,11 @@
       "subject": "Bonus balance changed: {change} days",
       "body": "The {app_name} team changed your game bonus balance by {change} days. Your balance is now {balance} days.",
       "action": "Open {app_name}"
+    },
+    "game_season_reward": {
+      "subject": "Season {season}: place {place}!",
+      "body": "The {season} season is over and you finished in place {place}. Your prize is already in your game profile: +{xp} XP{extra}.",
+      "action": "Open {app_name}"
     }
   },
   "referral": {

@@ -20,9 +20,9 @@ from sqlalchemy import select
 from app.api.deps import Ctx, CurrentPrincipal, Db, principal_from_token
 from app.core.context import AppContext
 from app.core.errors import AppError, NotFound, PermissionDenied
+from app.games import boards, progress, views, wallet
 from app.games import service as games
-from app.games import wallet
-from app.models import BonusLedger, GameRoom
+from app.models import BonusLedger, GameRoom, Season
 from app.notifications.notify import miniapp_url, notify
 from app.security.rate_limit import Limit
 
@@ -32,6 +32,7 @@ ACTIONS_PER_USER = Limit("game-act", 180, 60)
 ROOMS_PER_USER = Limit("game-room", 30, 600)
 JOINS_PER_USER = Limit("game-join", 30, 60)  # also slows guessing private table codes
 REDEEM_PER_USER = Limit("game-redeem", 10, 3600)
+READS_PER_USER = Limit("game-read", 120, 60)  # boards, seasons, achievements, challenges
 
 ActionId = Annotated[
     str | None, Field(default=None, min_length=8, max_length=64, pattern=r"^[A-Za-z0-9_-]+$")
@@ -39,7 +40,9 @@ ActionId = Annotated[
 
 
 class ProfileIn(BaseModel):
-    nickname: str = Field(min_length=1, max_length=64)
+    nickname: str | None = Field(default=None, min_length=1, max_length=64)
+    avatar: str | None = Field(default=None, max_length=8)
+    title: str | None = Field(default=None, max_length=32)  # "" = back to the level title
 
 
 class RoomCreateIn(BaseModel):
@@ -101,6 +104,7 @@ async def hub(principal: CurrentPrincipal, db: Db) -> dict[str, Any]:
         "chips_daily": cfg["games.chips.daily"],
         "chip_options": cfg["games.chips.stake_options"],
         "profile": games.profile_out(profile) if profile else None,
+        "progress": views.card(profile, cfg) if profile else None,
         "room_id": str(seat.room_id) if seat else None,
         "rules": games.rules_from(cfg).to_json(),
     }
@@ -108,10 +112,153 @@ async def hub(principal: CurrentPrincipal, db: Db) -> dict[str, Any]:
 
 @router.put("/profile")
 async def set_profile(body: ProfileIn, principal: CurrentPrincipal, db: Db) -> dict[str, Any]:
+    """Nickname, avatar (one of the offered ones) and the title to wear (only titles earned)."""
     cfg = await games.config(db)
     profile = await games.ensure_profile(db, principal.user.id, cfg, body.nickname)
+    await views.set_looks(db, profile, cfg, avatar=body.avatar, title=body.title)
     await db.commit()
-    return games.profile_out(profile)
+    return {**games.profile_out(profile), "progress": views.card(profile, cfg)}
+
+
+async def _profile(ctx: Ctx, db: Db, uid: uuid.UUID) -> tuple[dict[str, Any], Any]:
+    await ctx.limiter.hit(READS_PER_USER, str(uid))
+    cfg = await games.config(db)
+    if not cfg["games.enabled"]:
+        raise AppError("Mini games are switched off.", code="games_disabled")
+    return cfg, await games.ensure_profile(db, uid, cfg)
+
+
+@router.get("/me")
+async def my_profile(principal: CurrentPrincipal, ctx: Ctx, db: Db) -> dict[str, Any]:
+    """The game profile: level and XP, statistics, ranks, titles, achievements so far, avatars
+    to choose from, the latest rounds."""
+    uid = principal.user.id
+    cfg, p = await _profile(ctx, db, uid)
+    ach = await views.achievements(db, p)
+    out = {
+        **views.card(p, cfg),
+        "ranks": await views.ranks(db, cfg, uid),
+        "titles": await views.titles_of(db, p, cfg),
+        "chosen_title": p.title,
+        "avatars": list(progress.AVATARS),
+        "achievements": {
+            "unlocked": sum(1 for a in ach if a["unlocked_at"]),
+            "total": len(ach),
+            "latest": sorted(
+                (a for a in ach if a["unlocked_at"]), key=lambda a: a["unlocked_at"], reverse=True
+            )[:6],
+        },
+        "recent": await games.history(db, uid, 5, 0),
+    }
+    await db.commit()
+    return out
+
+
+@router.get("/achievements")
+async def my_achievements(principal: CurrentPrincipal, ctx: Ctx, db: Db) -> list[dict[str, Any]]:
+    _cfg, p = await _profile(ctx, db, principal.user.id)
+    out = await views.achievements(db, p)
+    await db.commit()
+    return out
+
+
+@router.get("/challenges")
+async def my_challenges(principal: CurrentPrincipal, ctx: Ctx, db: Db) -> dict[str, Any]:
+    """Today's challenges (handed out on first look), the daily streak and its calendar."""
+    cfg, p = await _profile(ctx, db, principal.user.id)
+    out = await views.challenges(db, cfg, p)
+    await db.commit()
+    return out
+
+
+@router.get("/xp")
+async def my_xp(
+    principal: CurrentPrincipal,
+    ctx: Ctx,
+    db: Db,
+    limit: Annotated[int, Query(ge=1, le=100)] = 30,
+    offset: Annotated[int, Query(ge=0, le=100_000)] = 0,
+) -> list[dict[str, Any]]:
+    await ctx.limiter.hit(READS_PER_USER, str(principal.user.id))
+    return await views.xp_history(db, principal.user.id, offset, limit)
+
+
+@router.get("/rewards")
+async def my_rewards(
+    principal: CurrentPrincipal,
+    ctx: Ctx,
+    db: Db,
+    limit: Annotated[int, Query(ge=1, le=100)] = 30,
+    offset: Annotated[int, Query(ge=0, le=100_000)] = 0,
+) -> list[dict[str, Any]]:
+    await ctx.limiter.hit(READS_PER_USER, str(principal.user.id))
+    return await views.rewards(db, principal.user.id, offset, limit)
+
+
+@router.get("/boards")
+async def leaderboards(
+    principal: CurrentPrincipal,
+    ctx: Ctx,
+    db: Db,
+    board: Annotated[Literal["wins", "winrate", "xp"], Query()] = "xp",
+    period: Annotated[Literal["all", "weekly", "monthly"], Query()] = "all",
+    season_id: uuid.UUID | None = None,
+    q: Annotated[str | None, Query(max_length=24)] = None,
+    limit: Annotated[int, Query(ge=1, le=50)] = 20,
+    offset: Annotated[int, Query(ge=0, le=100_000)] = 0,
+) -> dict[str, Any]:
+    """Wins / win rate / XP for all time, this week's or this month's season, or any season."""
+    cfg, _p = await _profile(ctx, db, principal.user.id)
+    season = None
+    if season_id is not None:
+        season = await db.get(Season, season_id)
+        if season is None:
+            raise NotFound("No such season.")
+    elif period != "all":
+        season = await boards.current(db, period)
+        if season is None:  # the first round of the week opens it; show the empty board
+            await boards.ensure_current(db, cfg)
+            season = await boards.current(db, period)
+    out = await boards.board(
+        db, cfg, board, season=season, user_id=principal.user.id, offset=offset, limit=limit,
+        q=(q or "").strip() or None,
+    )  # fmt: skip
+    await db.commit()
+    return out
+
+
+@router.get("/seasons")
+async def seasons(
+    principal: CurrentPrincipal,
+    ctx: Ctx,
+    db: Db,
+    limit: Annotated[int, Query(ge=1, le=50)] = 10,
+    offset: Annotated[int, Query(ge=0, le=10_000)] = 0,
+) -> dict[str, Any]:
+    """This week's and month's seasons (timer, prizes, top 3, my place) and the archive."""
+    cfg, _p = await _profile(ctx, db, principal.user.id)
+    await boards.ensure_current(db, cfg)
+    out = await views.seasons(db, cfg, principal.user.id, offset, limit)
+    await db.commit()
+    return out
+
+
+@router.get("/seasons/{season_id}/results")
+async def season_results(
+    season_id: uuid.UUID,
+    principal: CurrentPrincipal,
+    ctx: Ctx,
+    db: Db,
+    board: Annotated[Literal["wins", "winrate", "xp"], Query()] = "xp",
+) -> dict[str, Any]:
+    await ctx.limiter.hit(READS_PER_USER, str(principal.user.id))
+    season = await db.get(Season, season_id)
+    if season is None or season.status != "closed":
+        raise NotFound("No final results for this season.")
+    rows = await boards.results(db, season.id, board)
+    for r in rows:
+        r["me"] = r.pop("user_id") == str(principal.user.id)
+    return {"season": boards.season_out(season), "board": board, "rows": rows}
 
 
 @router.get("/wallet")

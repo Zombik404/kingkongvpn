@@ -5,14 +5,58 @@ from __future__ import annotations
 
 import uuid
 from dataclasses import dataclass
-from typing import Annotated, Any
+from typing import Annotated, Any, Literal, TypedDict
+from zoneinfo import available_timezones
 
-from pydantic import Field, TypeAdapter, ValidationError
+from pydantic import AfterValidator, Field, TypeAdapter, ValidationError
 from sqlalchemy import select
 from sqlalchemy.ext.asyncio import AsyncSession
 
 from app.core.errors import AppError, NotFound
 from app.models import Setting
+
+
+class RewardTier(TypedDict, total=False):
+    """A season prize for places `from`..`to` (inclusive)."""
+
+    places: Annotated[
+        list[Annotated[int, Field(ge=1, le=100_000)]], Field(min_length=2, max_length=2)
+    ]
+    xp: Annotated[int, Field(ge=0, le=100_000)]
+    title: Annotated[str, Field(min_length=1, max_length=32)]
+    frame: Literal["gold", "silver", "bronze", "jade"]
+    bonus_days: Annotated[int, Field(ge=0, le=30)]
+
+
+class StreakReward(TypedDict, total=False):
+    xp: Annotated[int, Field(ge=0, le=100_000)]
+    title: Annotated[str, Field(min_length=1, max_length=32)]
+    bonus_days: Annotated[int, Field(ge=0, le=30)]
+
+
+def _tz(v: str) -> str:
+    if v not in available_timezones():
+        raise ValueError("unknown time zone (use an IANA name like Europe/Moscow or UTC)")
+    return v
+
+
+Xp = Annotated[int, Field(ge=0, le=10_000)]
+TimeZone = Annotated[str, AfterValidator(_tz)]
+
+SEASON_REWARDS_WEEKLY: list[dict[str, Any]] = [
+    {"places": [1, 1], "xp": 500, "title": "King of Jungle", "frame": "gold", "bonus_days": 3},
+    {"places": [2, 2], "xp": 300, "title": "Jungle Champion", "frame": "silver", "bonus_days": 2},
+    {"places": [3, 3], "xp": 200, "title": "Jungle Warrior", "frame": "bronze", "bonus_days": 1},
+    {"places": [4, 10], "xp": 100},
+    {"places": [11, 100], "xp": 30},
+]
+SEASON_REWARDS_MONTHLY: list[dict[str, Any]] = [
+    {"places": [1, 1], "xp": 1500, "title": "King of Jungle", "frame": "gold", "bonus_days": 7},
+    {"places": [2, 2], "xp": 900, "title": "Jungle Champion", "frame": "silver", "bonus_days": 5},
+    {"places": [3, 3], "xp": 600, "title": "Jungle Warrior", "frame": "bronze", "bonus_days": 3},
+    {"places": [4, 10], "xp": 300, "frame": "jade"},
+    {"places": [11, 100], "xp": 100},
+]
 
 
 @dataclass(frozen=True)
@@ -134,6 +178,82 @@ REGISTRY: dict[str, SettingDef] = {
         Annotated[int, Field(ge=0, le=365)],
         14,
         "Free days for the referrer per invited user's first payment (0 = off).",
+    ),
+    # --- blackjack progression (ADR-021) ---
+    "games.timezone": _def(
+        TimeZone, "UTC", "Time zone for game days, daily challenges and season boundaries."
+    ),
+    "games.xp.round": _def(Xp, 5, "XP for every finished round."),
+    "games.xp.win": _def(Xp, 10, "Extra XP for a win."),
+    "games.xp.blackjack": _def(Xp, 10, "Extra XP for a blackjack."),
+    "games.xp.daily_round_cap": _def(
+        Annotated[int, Field(ge=0, le=100_000)],
+        600,
+        "Most XP a player can get from rounds in one game day (0 = no limit); challenges, "
+        "achievements and rewards are not capped. Slows down bots.",
+    ),
+    "games.levels.base_xp": _def(
+        Annotated[int, Field(ge=10, le=100_000)], 100, "XP from level 1 to level 2."
+    ),
+    "games.levels.step_xp": _def(
+        Annotated[int, Field(ge=0, le=100_000)],
+        50,
+        "How much more each next level costs (level 2→3 = base + step, 3→4 = base + 2·step…).",
+    ),
+    "games.levels.titles": _def(
+        dict[
+            Annotated[str, Field(pattern=r"^[1-9][0-9]{0,3}$")],
+            Annotated[str, Field(max_length=32)],
+        ],
+        {
+            "1": "Jungle Rookie",
+            "2": "Jungle Explorer",
+            "3": "Wild Player",
+            "4": "Jungle Hunter",
+            "5": "Gorilla Fighter",
+            "10": "Jungle Master",
+            "20": "King of Jungle",
+        },
+        "Title for each level (a level without one keeps the title of the level below).",
+    ),
+    "games.leaderboard.min_rounds_winrate": _def(
+        Annotated[int, Field(ge=1, le=10_000)],
+        20,
+        "Rounds (wins + losses) needed in the period to appear on the win-rate board.",
+    ),
+    "games.achievements.enabled": _def(bool, True, "Achievements and their XP rewards."),
+    "games.challenges.enabled": _def(bool, True, "Daily challenges (easy, medium, hard)."),
+    "games.streak.rewards": _def(
+        dict[Annotated[str, Field(pattern=r"^[1-9][0-9]{0,3}$")], StreakReward],
+        {
+            "3": {"xp": 30},
+            "7": {"xp": 100},
+            "14": {"xp": 250, "title": "Jungle Regular"},
+            "30": {"xp": 600, "title": "Jungle Devotee", "bonus_days": 1},
+        },
+        "Rewards for playing N days in a row (a finished round counts, opening the app doesn't).",
+    ),
+    "games.seasons.enabled": _def(bool, True, "Weekly and monthly seasons with prizes."),
+    "games.seasons.board": _def(
+        Literal["xp", "wins"], "xp", "Which season board decides the prizes: xp or wins."
+    ),
+    "games.seasons.rewards_weekly": _def(
+        list[RewardTier], SEASON_REWARDS_WEEKLY, "Prizes of the weekly season by place."
+    ),
+    "games.seasons.rewards_monthly": _def(
+        list[RewardTier], SEASON_REWARDS_MONTHLY, "Prizes of the monthly season by place."
+    ),
+    "games.seasons.min_rounds": _def(
+        Annotated[int, Field(ge=1, le=10_000)], 10, "Rounds in a season needed for a prize."
+    ),
+    "games.seasons.participation_xp": _def(
+        Xp, 20, "XP for everyone who played the minimum rounds in a season (0 = off)."
+    ),
+    "games.rewards.bonus_days_enabled": _def(
+        bool,
+        False,
+        "Pay the bonus days of season and streak prizes into the game bonus wallet. OFF until "
+        "the legal check: until then prizes are XP, titles and frames only.",
     ),
     "peers.idle_ttl_hours": _def(
         Annotated[int, Field(ge=0, le=24 * 90)],

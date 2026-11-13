@@ -15,6 +15,7 @@ from sqlalchemy.ext.asyncio import AsyncSession
 
 from app.core.config import get_settings
 from app.core.context import AppContext
+from app.games import boards
 from app.games import service as games_service
 from app.models import AuthSession, User, UserActionToken
 from app.models.base import utcnow
@@ -123,6 +124,42 @@ def cleanup_tokens_task() -> int:
 def game_timers_task() -> int:
     """Expired turn/bet timers at game tables, and closing tables nobody uses."""
     return asyncio.run(_with_db(lambda c, s: games_service.run_timers(c, s)))
+
+
+async def run_seasons(ctx: AppContext, db: AsyncSession) -> int:
+    """Open this week's/month's season, close finished ones (prizes once), tell the winners."""
+    cfg = await games_service.config(db)
+    await boards.ensure_current(db, cfg)
+    await db.commit()
+    closed = 0
+    for season_id in await boards.due(db):
+        prizes = await boards.finalize(db, cfg, season_id)
+        await db.commit()
+        closed += 1
+        await games_service.send_notices(
+            ctx,
+            [
+                (
+                    "game_season_reward",
+                    uid,
+                    {
+                        "place": str(p["rank"]),
+                        "season": p["season"],
+                        "xp": str(p.get("xp", 0)),
+                        "extra": f" · «{p['title']}»" if p.get("title") else "",
+                    },
+                )
+                for uid, p in prizes
+                if p["rank"] <= 10
+            ],
+        )
+    return closed
+
+
+@celery_app.task(name="games.seasons")
+def game_seasons_task() -> int:
+    """Season rotation: weekly and monthly seasons, final tables and prizes."""
+    return asyncio.run(_with_db(run_seasons))
 
 
 @celery_app.task(name="payments.poll_pending")

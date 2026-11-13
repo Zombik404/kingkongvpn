@@ -41,6 +41,10 @@ celery_app.conf.update(
             "task": "games.run_timers",
             "schedule": 5.0,
         },
+        "games-seasons": {
+            "task": "games.seasons",
+            "schedule": 60.0,
+        },
         "payments-poll-pending": {
             "task": "payments.poll_pending",
             "schedule": 60.0,

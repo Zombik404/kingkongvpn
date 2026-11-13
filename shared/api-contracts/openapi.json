@@ -20,6 +20,258 @@
         "title": "AcceptedOut",
         "type": "object"
       },
+      "AchievementIn": {
+        "properties": {
+          "category": {
+            "enum": [
+              "game",
+              "activity",
+              "progress",
+              "season"
+            ],
+            "title": "Category",
+            "type": "string"
+          },
+          "code": {
+            "pattern": "^[a-z0-9_]{3,32}$",
+            "title": "Code",
+            "type": "string"
+          },
+          "descriptions": {
+            "additionalProperties": {
+              "maxLength": 120,
+              "minLength": 1,
+              "type": "string"
+            },
+            "propertyNames": {
+              "enum": [
+                "ru",
+                "en",
+                "uk",
+                "de",
+                "hu"
+              ]
+            },
+            "title": "Descriptions",
+            "type": "object"
+          },
+          "enabled": {
+            "default": true,
+            "title": "Enabled",
+            "type": "boolean"
+          },
+          "icon": {
+            "maxLength": 8,
+            "minLength": 1,
+            "title": "Icon",
+            "type": "string"
+          },
+          "metric": {
+            "enum": [
+              "wins",
+              "rounds",
+              "blackjacks",
+              "best_win_streak",
+              "perfect_wins",
+              "best_day_streak",
+              "days_played",
+              "level",
+              "xp",
+              "season_rank"
+            ],
+            "title": "Metric",
+            "type": "string"
+          },
+          "names": {
+            "additionalProperties": {
+              "maxLength": 120,
+              "minLength": 1,
+              "type": "string"
+            },
+            "propertyNames": {
+              "enum": [
+                "ru",
+                "en",
+                "uk",
+                "de",
+                "hu"
+              ]
+            },
+            "title": "Names",
+            "type": "object"
+          },
+          "sort_order": {
+            "default": 0,
+            "title": "Sort Order",
+            "type": "integer"
+          },
+          "threshold": {
+            "maximum": 10000000.0,
+            "minimum": 1.0,
+            "title": "Threshold",
+            "type": "integer"
+          },
+          "title": {
+            "anyOf": [
+              {
+                "maxLength": 32,
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Title"
+          },
+          "xp_reward": {
+            "default": 0,
+            "maximum": 100000.0,
+            "minimum": 0.0,
+            "title": "Xp Reward",
+            "type": "integer"
+          }
+        },
+        "required": [
+          "code",
+          "category",
+          "names",
+          "descriptions",
+          "icon",
+          "metric",
+          "threshold"
+        ],
+        "title": "AchievementIn",
+        "type": "object"
+      },
+      "AchievementPatch": {
+        "properties": {
+          "descriptions": {
+            "anyOf": [
+              {
+                "additionalProperties": {
+                  "maxLength": 120,
+                  "minLength": 1,
+                  "type": "string"
+                },
+                "propertyNames": {
+                  "enum": [
+                    "ru",
+                    "en",
+                    "uk",
+                    "de",
+                    "hu"
+                  ]
+                },
+                "type": "object"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Descriptions"
+          },
+          "enabled": {
+            "anyOf": [
+              {
+                "type": "boolean"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Enabled"
+          },
+          "icon": {
+            "anyOf": [
+              {
+                "maxLength": 8,
+                "minLength": 1,
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Icon"
+          },
+          "names": {
+            "anyOf": [
+              {
+                "additionalProperties": {
+                  "maxLength": 120,
+                  "minLength": 1,
+                  "type": "string"
+                },
+                "propertyNames": {
+                  "enum": [
+                    "ru",
+                    "en",
+                    "uk",
+                    "de",
+                    "hu"
+                  ]
+                },
+                "type": "object"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Names"
+          },
+          "sort_order": {
+            "anyOf": [
+              {
+                "type": "integer"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Sort Order"
+          },
+          "threshold": {
+            "anyOf": [
+              {
+                "maximum": 10000000.0,
+                "minimum": 1.0,
+                "type": "integer"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Threshold"
+          },
+          "title": {
+            "anyOf": [
+              {
+                "maxLength": 32,
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Title"
+          },
+          "xp_reward": {
+            "anyOf": [
+              {
+                "maximum": 100000.0,
+                "minimum": 0.0,
+                "type": "integer"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Xp Reward"
+          }
+        },
+        "title": "AchievementPatch",
+        "type": "object"
+      },
       "ActionIn": {
         "properties": {
           "action": {
@@ -356,6 +608,148 @@
           "reason"
         ],
         "title": "BonusAdjustIn",
+        "type": "object"
+      },
+      "ChallengeIn": {
+        "properties": {
+          "code": {
+            "pattern": "^[a-z0-9_]{3,32}$",
+            "title": "Code",
+            "type": "string"
+          },
+          "difficulty": {
+            "enum": [
+              "easy",
+              "medium",
+              "hard"
+            ],
+            "title": "Difficulty",
+            "type": "string"
+          },
+          "enabled": {
+            "default": true,
+            "title": "Enabled",
+            "type": "boolean"
+          },
+          "metric": {
+            "enum": [
+              "rounds",
+              "wins",
+              "blackjacks",
+              "high_wins",
+              "win_run"
+            ],
+            "title": "Metric",
+            "type": "string"
+          },
+          "names": {
+            "additionalProperties": {
+              "maxLength": 120,
+              "minLength": 1,
+              "type": "string"
+            },
+            "propertyNames": {
+              "enum": [
+                "ru",
+                "en",
+                "uk",
+                "de",
+                "hu"
+              ]
+            },
+            "title": "Names",
+            "type": "object"
+          },
+          "target": {
+            "maximum": 1000.0,
+            "minimum": 1.0,
+            "title": "Target",
+            "type": "integer"
+          },
+          "xp_reward": {
+            "maximum": 100000.0,
+            "minimum": 0.0,
+            "title": "Xp Reward",
+            "type": "integer"
+          }
+        },
+        "required": [
+          "code",
+          "difficulty",
+          "names",
+          "metric",
+          "target",
+          "xp_reward"
+        ],
+        "title": "ChallengeIn",
+        "type": "object"
+      },
+      "ChallengePatch": {
+        "properties": {
+          "enabled": {
+            "anyOf": [
+              {
+                "type": "boolean"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Enabled"
+          },
+          "names": {
+            "anyOf": [
+              {
+                "additionalProperties": {
+                  "maxLength": 120,
+                  "minLength": 1,
+                  "type": "string"
+                },
+                "propertyNames": {
+                  "enum": [
+                    "ru",
+                    "en",
+                    "uk",
+                    "de",
+                    "hu"
+                  ]
+                },
+                "type": "object"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Names"
+          },
+          "target": {
+            "anyOf": [
+              {
+                "maximum": 1000.0,
+                "minimum": 1.0,
+                "type": "integer"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Target"
+          },
+          "xp_reward": {
+            "anyOf": [
+              {
+                "maximum": 100000.0,
+                "minimum": 0.0,
+                "type": "integer"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Xp Reward"
+          }
+        },
+        "title": "ChallengePatch",
         "type": "object"
       },
       "CheckoutIn": {
@@ -1683,16 +2077,44 @@
       },
       "ProfileIn": {
         "properties": {
+          "avatar": {
+            "anyOf": [
+              {
+                "maxLength": 8,
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Avatar"
+          },
           "nickname": {
-            "maxLength": 64,
-            "minLength": 1,
-            "title": "Nickname",
-            "type": "string"
+            "anyOf": [
+              {
+                "maxLength": 64,
+                "minLength": 1,
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Nickname"
+          },
+          "title": {
+            "anyOf": [
+              {
+                "maxLength": 32,
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Title"
           }
         },
-        "required": [
-          "nickname"
-        ],
         "title": "ProfileIn",
         "type": "object"
       },
@@ -2323,6 +2745,52 @@
         "title": "RevokeIn",
         "type": "object"
       },
+      "RewardTier": {
+        "description": "A season prize for places `from`..`to` (inclusive).",
+        "properties": {
+          "bonus_days": {
+            "maximum": 30.0,
+            "minimum": 0.0,
+            "title": "Bonus Days",
+            "type": "integer"
+          },
+          "frame": {
+            "enum": [
+              "gold",
+              "silver",
+              "bronze",
+              "jade"
+            ],
+            "title": "Frame",
+            "type": "string"
+          },
+          "places": {
+            "items": {
+              "maximum": 100000.0,
+              "minimum": 1.0,
+              "type": "integer"
+            },
+            "maxItems": 2,
+            "minItems": 2,
+            "title": "Places",
+            "type": "array"
+          },
+          "title": {
+            "maxLength": 32,
+            "minLength": 1,
+            "title": "Title",
+            "type": "string"
+          },
+          "xp": {
+            "maximum": 100000.0,
+            "minimum": 0.0,
+            "title": "Xp",
+            "type": "integer"
+          }
+        },
+        "title": "RewardTier",
+        "type": "object"
+      },
       "RoomActionIn": {
         "properties": {
           "reason": {
@@ -2360,6 +2828,137 @@
           "max_players"
         ],
         "title": "RoomCreateIn",
+        "type": "object"
+      },
+      "SeasonIn": {
+        "properties": {
+          "board": {
+            "default": "xp",
+            "enum": [
+              "xp",
+              "wins"
+            ],
+            "title": "Board",
+            "type": "string"
+          },
+          "ends_at": {
+            "format": "date-time",
+            "title": "Ends At",
+            "type": "string"
+          },
+          "name": {
+            "maxLength": 64,
+            "minLength": 3,
+            "title": "Name",
+            "type": "string"
+          },
+          "rewards": {
+            "anyOf": [
+              {
+                "items": {
+                  "$ref": "#/components/schemas/RewardTier"
+                },
+                "type": "array"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Rewards"
+          },
+          "starts_at": {
+            "format": "date-time",
+            "title": "Starts At",
+            "type": "string"
+          }
+        },
+        "required": [
+          "name",
+          "starts_at",
+          "ends_at"
+        ],
+        "title": "SeasonIn",
+        "type": "object"
+      },
+      "SeasonPatch": {
+        "properties": {
+          "board": {
+            "anyOf": [
+              {
+                "enum": [
+                  "xp",
+                  "wins"
+                ],
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Board"
+          },
+          "ends_at": {
+            "anyOf": [
+              {
+                "format": "date-time",
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Ends At"
+          },
+          "name": {
+            "anyOf": [
+              {
+                "maxLength": 64,
+                "minLength": 3,
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Name"
+          },
+          "reason": {
+            "maxLength": 200,
+            "minLength": 3,
+            "title": "Reason",
+            "type": "string"
+          },
+          "rewards": {
+            "anyOf": [
+              {
+                "items": {
+                  "$ref": "#/components/schemas/RewardTier"
+                },
+                "type": "array"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Rewards"
+          },
+          "starts_at": {
+            "anyOf": [
+              {
+                "format": "date-time",
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Starts At"
+          }
+        },
+        "required": [
+          "reason"
+        ],
+        "title": "SeasonPatch",
         "type": "object"
       },
       "ServerIn": {
@@ -3207,6 +3806,287 @@
         ]
       }
     },
+    "/api/v1/admin/games/achievements": {
+      "get": {
+        "operationId": "list_achievements_api_v1_admin_games_achievements_get",
+        "responses": {
+          "200": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "items": {
+                    "additionalProperties": true,
+                    "type": "object"
+                  },
+                  "title": "Response List Achievements Api V1 Admin Games Achievements Get",
+                  "type": "array"
+                }
+              }
+            },
+            "description": "Successful Response"
+          }
+        },
+        "security": [
+          {
+            "HTTPBearer": []
+          }
+        ],
+        "summary": "List Achievements",
+        "tags": [
+          "admin",
+          "games"
+        ]
+      },
+      "post": {
+        "operationId": "create_achievement_api_v1_admin_games_achievements_post",
+        "requestBody": {
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/AchievementIn"
+              }
+            }
+          },
+          "required": true
+        },
+        "responses": {
+          "201": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "additionalProperties": true,
+                  "title": "Response Create Achievement Api V1 Admin Games Achievements Post",
+                  "type": "object"
+                }
+              }
+            },
+            "description": "Successful Response"
+          },
+          "422": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/HTTPValidationError"
+                }
+              }
+            },
+            "description": "Validation Error"
+          }
+        },
+        "security": [
+          {
+            "HTTPBearer": []
+          }
+        ],
+        "summary": "Create Achievement",
+        "tags": [
+          "admin",
+          "games"
+        ]
+      }
+    },
+    "/api/v1/admin/games/achievements/{achievement_id}": {
+      "patch": {
+        "operationId": "update_achievement_api_v1_admin_games_achievements__achievement_id__patch",
+        "parameters": [
+          {
+            "in": "path",
+            "name": "achievement_id",
+            "required": true,
+            "schema": {
+              "format": "uuid",
+              "title": "Achievement Id",
+              "type": "string"
+            }
+          }
+        ],
+        "requestBody": {
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/AchievementPatch"
+              }
+            }
+          },
+          "required": true
+        },
+        "responses": {
+          "200": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "additionalProperties": true,
+                  "title": "Response Update Achievement Api V1 Admin Games Achievements  Achievement Id  Patch",
+                  "type": "object"
+                }
+              }
+            },
+            "description": "Successful Response"
+          },
+          "422": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/HTTPValidationError"
+                }
+              }
+            },
+            "description": "Validation Error"
+          }
+        },
+        "security": [
+          {
+            "HTTPBearer": []
+          }
+        ],
+        "summary": "Update Achievement",
+        "tags": [
+          "admin",
+          "games"
+        ]
+      }
+    },
+    "/api/v1/admin/games/challenges": {
+      "get": {
+        "operationId": "list_challenges_api_v1_admin_games_challenges_get",
+        "responses": {
+          "200": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "items": {
+                    "additionalProperties": true,
+                    "type": "object"
+                  },
+                  "title": "Response List Challenges Api V1 Admin Games Challenges Get",
+                  "type": "array"
+                }
+              }
+            },
+            "description": "Successful Response"
+          }
+        },
+        "security": [
+          {
+            "HTTPBearer": []
+          }
+        ],
+        "summary": "List Challenges",
+        "tags": [
+          "admin",
+          "games"
+        ]
+      },
+      "post": {
+        "operationId": "create_challenge_api_v1_admin_games_challenges_post",
+        "requestBody": {
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/ChallengeIn"
+              }
+            }
+          },
+          "required": true
+        },
+        "responses": {
+          "201": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "additionalProperties": true,
+                  "title": "Response Create Challenge Api V1 Admin Games Challenges Post",
+                  "type": "object"
+                }
+              }
+            },
+            "description": "Successful Response"
+          },
+          "422": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/HTTPValidationError"
+                }
+              }
+            },
+            "description": "Validation Error"
+          }
+        },
+        "security": [
+          {
+            "HTTPBearer": []
+          }
+        ],
+        "summary": "Create Challenge",
+        "tags": [
+          "admin",
+          "games"
+        ]
+      }
+    },
+    "/api/v1/admin/games/challenges/{challenge_id}": {
+      "patch": {
+        "description": "Changes apply to challenges handed out from now on (today's keep their target).",
+        "operationId": "update_challenge_api_v1_admin_games_challenges__challenge_id__patch",
+        "parameters": [
+          {
+            "in": "path",
+            "name": "challenge_id",
+            "required": true,
+            "schema": {
+              "format": "uuid",
+              "title": "Challenge Id",
+              "type": "string"
+            }
+          }
+        ],
+        "requestBody": {
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/ChallengePatch"
+              }
+            }
+          },
+          "required": true
+        },
+        "responses": {
+          "200": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "additionalProperties": true,
+                  "title": "Response Update Challenge Api V1 Admin Games Challenges  Challenge Id  Patch",
+                  "type": "object"
+                }
+              }
+            },
+            "description": "Successful Response"
+          },
+          "422": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/HTTPValidationError"
+                }
+              }
+            },
+            "description": "Validation Error"
+          }
+        },
+        "security": [
+          {
+            "HTTPBearer": []
+          }
+        ],
+        "summary": "Update Challenge",
+        "tags": [
+          "admin",
+          "games"
+        ]
+      }
+    },
     "/api/v1/admin/games/events": {
       "get": {
         "description": "Game-related audit events: staff actions, bonus adjustments and exchanges.",
@@ -3533,6 +4413,276 @@
           }
         ],
         "summary": "Adjust Bonus",
+        "tags": [
+          "admin",
+          "games"
+        ]
+      }
+    },
+    "/api/v1/admin/games/progress/players": {
+      "get": {
+        "description": "Game profiles by XP. `q`: nickname part or user id; `excluded`: only hidden ones.",
+        "operationId": "players_api_v1_admin_games_progress_players_get",
+        "parameters": [
+          {
+            "in": "query",
+            "name": "q",
+            "required": false,
+            "schema": {
+              "anyOf": [
+                {
+                  "maxLength": 64,
+                  "type": "string"
+                },
+                {
+                  "type": "null"
+                }
+              ],
+              "title": "Q"
+            }
+          },
+          {
+            "in": "query",
+            "name": "excluded",
+            "required": false,
+            "schema": {
+              "default": false,
+              "title": "Excluded",
+              "type": "boolean"
+            }
+          },
+          {
+            "in": "query",
+            "name": "limit",
+            "required": false,
+            "schema": {
+              "default": 50,
+              "maximum": 100,
+              "minimum": 1,
+              "title": "Limit",
+              "type": "integer"
+            }
+          },
+          {
+            "in": "query",
+            "name": "offset",
+            "required": false,
+            "schema": {
+              "default": 0,
+              "maximum": 100000,
+              "minimum": 0,
+              "title": "Offset",
+              "type": "integer"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "items": {
+                    "additionalProperties": true,
+                    "type": "object"
+                  },
+                  "title": "Response Players Api V1 Admin Games Progress Players Get",
+                  "type": "array"
+                }
+              }
+            },
+            "description": "Successful Response"
+          },
+          "422": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/HTTPValidationError"
+                }
+              }
+            },
+            "description": "Validation Error"
+          }
+        },
+        "security": [
+          {
+            "HTTPBearer": []
+          }
+        ],
+        "summary": "Players",
+        "tags": [
+          "admin",
+          "games"
+        ]
+      }
+    },
+    "/api/v1/admin/games/progress/players/{user_id}": {
+      "get": {
+        "operationId": "player_api_v1_admin_games_progress_players__user_id__get",
+        "parameters": [
+          {
+            "in": "path",
+            "name": "user_id",
+            "required": true,
+            "schema": {
+              "format": "uuid",
+              "title": "User Id",
+              "type": "string"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "additionalProperties": true,
+                  "title": "Response Player Api V1 Admin Games Progress Players  User Id  Get",
+                  "type": "object"
+                }
+              }
+            },
+            "description": "Successful Response"
+          },
+          "422": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/HTTPValidationError"
+                }
+              }
+            },
+            "description": "Validation Error"
+          }
+        },
+        "security": [
+          {
+            "HTTPBearer": []
+          }
+        ],
+        "summary": "Player",
+        "tags": [
+          "admin",
+          "games"
+        ]
+      }
+    },
+    "/api/v1/admin/games/progress/players/{user_id}/exclude": {
+      "post": {
+        "description": "Hide a player from every leaderboard and from season prizes (confirmed cheating).",
+        "operationId": "exclude_api_v1_admin_games_progress_players__user_id__exclude_post",
+        "parameters": [
+          {
+            "in": "path",
+            "name": "user_id",
+            "required": true,
+            "schema": {
+              "format": "uuid",
+              "title": "User Id",
+              "type": "string"
+            }
+          }
+        ],
+        "requestBody": {
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/ReasonIn"
+              }
+            }
+          },
+          "required": true
+        },
+        "responses": {
+          "200": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "additionalProperties": true,
+                  "title": "Response Exclude Api V1 Admin Games Progress Players  User Id  Exclude Post",
+                  "type": "object"
+                }
+              }
+            },
+            "description": "Successful Response"
+          },
+          "422": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/HTTPValidationError"
+                }
+              }
+            },
+            "description": "Validation Error"
+          }
+        },
+        "security": [
+          {
+            "HTTPBearer": []
+          }
+        ],
+        "summary": "Exclude",
+        "tags": [
+          "admin",
+          "games"
+        ]
+      }
+    },
+    "/api/v1/admin/games/progress/players/{user_id}/include": {
+      "post": {
+        "operationId": "include_api_v1_admin_games_progress_players__user_id__include_post",
+        "parameters": [
+          {
+            "in": "path",
+            "name": "user_id",
+            "required": true,
+            "schema": {
+              "format": "uuid",
+              "title": "User Id",
+              "type": "string"
+            }
+          }
+        ],
+        "requestBody": {
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/ReasonIn"
+              }
+            }
+          },
+          "required": true
+        },
+        "responses": {
+          "200": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "additionalProperties": true,
+                  "title": "Response Include Api V1 Admin Games Progress Players  User Id  Include Post",
+                  "type": "object"
+                }
+              }
+            },
+            "description": "Successful Response"
+          },
+          "422": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/HTTPValidationError"
+                }
+              }
+            },
+            "description": "Validation Error"
+          }
+        },
+        "security": [
+          {
+            "HTTPBearer": []
+          }
+        ],
+        "summary": "Include",
         "tags": [
           "admin",
           "games"
@@ -3904,6 +5054,333 @@
           }
         ],
         "summary": "Rounds",
+        "tags": [
+          "admin",
+          "games"
+        ]
+      }
+    },
+    "/api/v1/admin/games/seasons": {
+      "get": {
+        "operationId": "list_seasons_api_v1_admin_games_seasons_get",
+        "parameters": [
+          {
+            "in": "query",
+            "name": "status",
+            "required": false,
+            "schema": {
+              "anyOf": [
+                {
+                  "enum": [
+                    "active",
+                    "closed"
+                  ],
+                  "type": "string"
+                },
+                {
+                  "type": "null"
+                }
+              ],
+              "title": "Status"
+            }
+          },
+          {
+            "in": "query",
+            "name": "limit",
+            "required": false,
+            "schema": {
+              "default": 30,
+              "maximum": 100,
+              "minimum": 1,
+              "title": "Limit",
+              "type": "integer"
+            }
+          },
+          {
+            "in": "query",
+            "name": "offset",
+            "required": false,
+            "schema": {
+              "default": 0,
+              "maximum": 100000,
+              "minimum": 0,
+              "title": "Offset",
+              "type": "integer"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "items": {
+                    "additionalProperties": true,
+                    "type": "object"
+                  },
+                  "title": "Response List Seasons Api V1 Admin Games Seasons Get",
+                  "type": "array"
+                }
+              }
+            },
+            "description": "Successful Response"
+          },
+          "422": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/HTTPValidationError"
+                }
+              }
+            },
+            "description": "Validation Error"
+          }
+        },
+        "security": [
+          {
+            "HTTPBearer": []
+          }
+        ],
+        "summary": "List Seasons",
+        "tags": [
+          "admin",
+          "games"
+        ]
+      },
+      "post": {
+        "description": "A special event season with its own dates and prizes, next to the weekly/monthly ones.",
+        "operationId": "create_season_api_v1_admin_games_seasons_post",
+        "requestBody": {
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/SeasonIn"
+              }
+            }
+          },
+          "required": true
+        },
+        "responses": {
+          "201": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "additionalProperties": true,
+                  "title": "Response Create Season Api V1 Admin Games Seasons Post",
+                  "type": "object"
+                }
+              }
+            },
+            "description": "Successful Response"
+          },
+          "422": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/HTTPValidationError"
+                }
+              }
+            },
+            "description": "Validation Error"
+          }
+        },
+        "security": [
+          {
+            "HTTPBearer": []
+          }
+        ],
+        "summary": "Create Season",
+        "tags": [
+          "admin",
+          "games"
+        ]
+      }
+    },
+    "/api/v1/admin/games/seasons/{season_id}": {
+      "patch": {
+        "description": "Change an active season: name, dates (the start only before it begins), prize board,\nprizes. Closed seasons are history and can't change.",
+        "operationId": "update_season_api_v1_admin_games_seasons__season_id__patch",
+        "parameters": [
+          {
+            "in": "path",
+            "name": "season_id",
+            "required": true,
+            "schema": {
+              "format": "uuid",
+              "title": "Season Id",
+              "type": "string"
+            }
+          }
+        ],
+        "requestBody": {
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/SeasonPatch"
+              }
+            }
+          },
+          "required": true
+        },
+        "responses": {
+          "200": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "additionalProperties": true,
+                  "title": "Response Update Season Api V1 Admin Games Seasons  Season Id  Patch",
+                  "type": "object"
+                }
+              }
+            },
+            "description": "Successful Response"
+          },
+          "422": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/HTTPValidationError"
+                }
+              }
+            },
+            "description": "Validation Error"
+          }
+        },
+        "security": [
+          {
+            "HTTPBearer": []
+          }
+        ],
+        "summary": "Update Season",
+        "tags": [
+          "admin",
+          "games"
+        ]
+      }
+    },
+    "/api/v1/admin/games/seasons/{season_id}/finish": {
+      "post": {
+        "description": "End an active season now: freeze the tables and give the prizes (once).",
+        "operationId": "finish_season_api_v1_admin_games_seasons__season_id__finish_post",
+        "parameters": [
+          {
+            "in": "path",
+            "name": "season_id",
+            "required": true,
+            "schema": {
+              "format": "uuid",
+              "title": "Season Id",
+              "type": "string"
+            }
+          }
+        ],
+        "requestBody": {
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/ReasonIn"
+              }
+            }
+          },
+          "required": true
+        },
+        "responses": {
+          "200": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "additionalProperties": true,
+                  "title": "Response Finish Season Api V1 Admin Games Seasons  Season Id  Finish Post",
+                  "type": "object"
+                }
+              }
+            },
+            "description": "Successful Response"
+          },
+          "422": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/HTTPValidationError"
+                }
+              }
+            },
+            "description": "Validation Error"
+          }
+        },
+        "security": [
+          {
+            "HTTPBearer": []
+          }
+        ],
+        "summary": "Finish Season",
+        "tags": [
+          "admin",
+          "games"
+        ]
+      }
+    },
+    "/api/v1/admin/games/seasons/{season_id}/results": {
+      "get": {
+        "description": "Final table of a closed season, or the live ranking of an active one.",
+        "operationId": "season_results_api_v1_admin_games_seasons__season_id__results_get",
+        "parameters": [
+          {
+            "in": "path",
+            "name": "season_id",
+            "required": true,
+            "schema": {
+              "format": "uuid",
+              "title": "Season Id",
+              "type": "string"
+            }
+          },
+          {
+            "in": "query",
+            "name": "board",
+            "required": false,
+            "schema": {
+              "default": "xp",
+              "enum": [
+                "wins",
+                "winrate",
+                "xp"
+              ],
+              "title": "Board",
+              "type": "string"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "additionalProperties": true,
+                  "title": "Response Season Results Api V1 Admin Games Seasons  Season Id  Results Get",
+                  "type": "object"
+                }
+              }
+            },
+            "description": "Successful Response"
+          },
+          "422": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/HTTPValidationError"
+                }
+              }
+            },
+            "description": "Validation Error"
+          }
+        },
+        "security": [
+          {
+            "HTTPBearer": []
+          }
+        ],
+        "summary": "Season Results",
         "tags": [
           "admin",
           "games"
@@ -6287,6 +7764,195 @@
         ]
       }
     },
+    "/api/v1/games/achievements": {
+      "get": {
+        "operationId": "my_achievements_api_v1_games_achievements_get",
+        "responses": {
+          "200": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "items": {
+                    "additionalProperties": true,
+                    "type": "object"
+                  },
+                  "title": "Response My Achievements Api V1 Games Achievements Get",
+                  "type": "array"
+                }
+              }
+            },
+            "description": "Successful Response"
+          }
+        },
+        "security": [
+          {
+            "HTTPBearer": []
+          }
+        ],
+        "summary": "My Achievements",
+        "tags": [
+          "games"
+        ]
+      }
+    },
+    "/api/v1/games/boards": {
+      "get": {
+        "description": "Wins / win rate / XP for all time, this week's or this month's season, or any season.",
+        "operationId": "leaderboards_api_v1_games_boards_get",
+        "parameters": [
+          {
+            "in": "query",
+            "name": "board",
+            "required": false,
+            "schema": {
+              "default": "xp",
+              "enum": [
+                "wins",
+                "winrate",
+                "xp"
+              ],
+              "title": "Board",
+              "type": "string"
+            }
+          },
+          {
+            "in": "query",
+            "name": "period",
+            "required": false,
+            "schema": {
+              "default": "all",
+              "enum": [
+                "all",
+                "weekly",
+                "monthly"
+              ],
+              "title": "Period",
+              "type": "string"
+            }
+          },
+          {
+            "in": "query",
+            "name": "season_id",
+            "required": false,
+            "schema": {
+              "anyOf": [
+                {
+                  "format": "uuid",
+                  "type": "string"
+                },
+                {
+                  "type": "null"
+                }
+              ],
+              "title": "Season Id"
+            }
+          },
+          {
+            "in": "query",
+            "name": "q",
+            "required": false,
+            "schema": {
+              "anyOf": [
+                {
+                  "maxLength": 24,
+                  "type": "string"
+                },
+                {
+                  "type": "null"
+                }
+              ],
+              "title": "Q"
+            }
+          },
+          {
+            "in": "query",
+            "name": "limit",
+            "required": false,
+            "schema": {
+              "default": 20,
+              "maximum": 50,
+              "minimum": 1,
+              "title": "Limit",
+              "type": "integer"
+            }
+          },
+          {
+            "in": "query",
+            "name": "offset",
+            "required": false,
+            "schema": {
+              "default": 0,
+              "maximum": 100000,
+              "minimum": 0,
+              "title": "Offset",
+              "type": "integer"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "additionalProperties": true,
+                  "title": "Response Leaderboards Api V1 Games Boards Get",
+                  "type": "object"
+                }
+              }
+            },
+            "description": "Successful Response"
+          },
+          "422": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/HTTPValidationError"
+                }
+              }
+            },
+            "description": "Validation Error"
+          }
+        },
+        "security": [
+          {
+            "HTTPBearer": []
+          }
+        ],
+        "summary": "Leaderboards",
+        "tags": [
+          "games"
+        ]
+      }
+    },
+    "/api/v1/games/challenges": {
+      "get": {
+        "description": "Today's challenges (handed out on first look), the daily streak and its calendar.",
+        "operationId": "my_challenges_api_v1_games_challenges_get",
+        "responses": {
+          "200": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "additionalProperties": true,
+                  "title": "Response My Challenges Api V1 Games Challenges Get",
+                  "type": "object"
+                }
+              }
+            },
+            "description": "Successful Response"
+          }
+        },
+        "security": [
+          {
+            "HTTPBearer": []
+          }
+        ],
+        "summary": "My Challenges",
+        "tags": [
+          "games"
+        ]
+      }
+    },
     "/api/v1/games/history": {
       "get": {
         "operationId": "history_api_v1_games_history_get",
@@ -6382,8 +8048,38 @@
         ]
       }
     },
+    "/api/v1/games/me": {
+      "get": {
+        "description": "The game profile: level and XP, statistics, ranks, titles, achievements so far, avatars\nto choose from, the latest rounds.",
+        "operationId": "my_profile_api_v1_games_me_get",
+        "responses": {
+          "200": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "additionalProperties": true,
+                  "title": "Response My Profile Api V1 Games Me Get",
+                  "type": "object"
+                }
+              }
+            },
+            "description": "Successful Response"
+          }
+        },
+        "security": [
+          {
+            "HTTPBearer": []
+          }
+        ],
+        "summary": "My Profile",
+        "tags": [
+          "games"
+        ]
+      }
+    },
     "/api/v1/games/profile": {
       "put": {
+        "description": "Nickname, avatar (one of the offered ones) and the title to wear (only titles earned).",
         "operationId": "set_profile_api_v1_games_profile_put",
         "requestBody": {
           "content": {
@@ -6425,6 +8121,73 @@
           }
         ],
         "summary": "Set Profile",
+        "tags": [
+          "games"
+        ]
+      }
+    },
+    "/api/v1/games/rewards": {
+      "get": {
+        "operationId": "my_rewards_api_v1_games_rewards_get",
+        "parameters": [
+          {
+            "in": "query",
+            "name": "limit",
+            "required": false,
+            "schema": {
+              "default": 30,
+              "maximum": 100,
+              "minimum": 1,
+              "title": "Limit",
+              "type": "integer"
+            }
+          },
+          {
+            "in": "query",
+            "name": "offset",
+            "required": false,
+            "schema": {
+              "default": 0,
+              "maximum": 100000,
+              "minimum": 0,
+              "title": "Offset",
+              "type": "integer"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "items": {
+                    "additionalProperties": true,
+                    "type": "object"
+                  },
+                  "title": "Response My Rewards Api V1 Games Rewards Get",
+                  "type": "array"
+                }
+              }
+            },
+            "description": "Successful Response"
+          },
+          "422": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/HTTPValidationError"
+                }
+              }
+            },
+            "description": "Validation Error"
+          }
+        },
+        "security": [
+          {
+            "HTTPBearer": []
+          }
+        ],
+        "summary": "My Rewards",
         "tags": [
           "games"
         ]
@@ -6850,6 +8613,136 @@
         ]
       }
     },
+    "/api/v1/games/seasons": {
+      "get": {
+        "description": "This week's and month's seasons (timer, prizes, top 3, my place) and the archive.",
+        "operationId": "seasons_api_v1_games_seasons_get",
+        "parameters": [
+          {
+            "in": "query",
+            "name": "limit",
+            "required": false,
+            "schema": {
+              "default": 10,
+              "maximum": 50,
+              "minimum": 1,
+              "title": "Limit",
+              "type": "integer"
+            }
+          },
+          {
+            "in": "query",
+            "name": "offset",
+            "required": false,
+            "schema": {
+              "default": 0,
+              "maximum": 10000,
+              "minimum": 0,
+              "title": "Offset",
+              "type": "integer"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "additionalProperties": true,
+                  "title": "Response Seasons Api V1 Games Seasons Get",
+                  "type": "object"
+                }
+              }
+            },
+            "description": "Successful Response"
+          },
+          "422": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/HTTPValidationError"
+                }
+              }
+            },
+            "description": "Validation Error"
+          }
+        },
+        "security": [
+          {
+            "HTTPBearer": []
+          }
+        ],
+        "summary": "Seasons",
+        "tags": [
+          "games"
+        ]
+      }
+    },
+    "/api/v1/games/seasons/{season_id}/results": {
+      "get": {
+        "operationId": "season_results_api_v1_games_seasons__season_id__results_get",
+        "parameters": [
+          {
+            "in": "path",
+            "name": "season_id",
+            "required": true,
+            "schema": {
+              "format": "uuid",
+              "title": "Season Id",
+              "type": "string"
+            }
+          },
+          {
+            "in": "query",
+            "name": "board",
+            "required": false,
+            "schema": {
+              "default": "xp",
+              "enum": [
+                "wins",
+                "winrate",
+                "xp"
+              ],
+              "title": "Board",
+              "type": "string"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "additionalProperties": true,
+                  "title": "Response Season Results Api V1 Games Seasons  Season Id  Results Get",
+                  "type": "object"
+                }
+              }
+            },
+            "description": "Successful Response"
+          },
+          "422": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/HTTPValidationError"
+                }
+              }
+            },
+            "description": "Validation Error"
+          }
+        },
+        "security": [
+          {
+            "HTTPBearer": []
+          }
+        ],
+        "summary": "Season Results",
+        "tags": [
+          "games"
+        ]
+      }
+    },
     "/api/v1/games/wallet": {
       "get": {
         "description": "Bonus balance and the history of every change to it.",
@@ -6947,6 +8840,73 @@
           }
         ],
         "summary": "Redeem",
+        "tags": [
+          "games"
+        ]
+      }
+    },
+    "/api/v1/games/xp": {
+      "get": {
+        "operationId": "my_xp_api_v1_games_xp_get",
+        "parameters": [
+          {
+            "in": "query",
+            "name": "limit",
+            "required": false,
+            "schema": {
+              "default": 30,
+              "maximum": 100,
+              "minimum": 1,
+              "title": "Limit",
+              "type": "integer"
+            }
+          },
+          {
+            "in": "query",
+            "name": "offset",
+            "required": false,
+            "schema": {
+              "default": 0,
+              "maximum": 100000,
+              "minimum": 0,
+              "title": "Offset",
+              "type": "integer"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "items": {
+                    "additionalProperties": true,
+                    "type": "object"
+                  },
+                  "title": "Response My Xp Api V1 Games Xp Get",
+                  "type": "array"
+                }
+              }
+            },
+            "description": "Successful Response"
+          },
+          "422": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/HTTPValidationError"
+                }
+              }
+            },
+            "description": "Validation Error"
+          }
+        },
+        "security": [
+          {
+            "HTTPBearer": []
+          }
+        ],
+        "summary": "My Xp",
         "tags": [
           "games"
         ]

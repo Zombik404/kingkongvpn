@@ -138,6 +138,10 @@ def test_every_email_renders(lang: str, template: str) -> None:
         "result": "win",
         "change": "+2",
         "balance": "5",
+        "place": "1",
+        "season": "2026-W46",
+        "xp": "500",
+        "extra": " · «King of Jungle»",
     }
     out = render(
         EmailJob(template, "a@example.com", lang, params, "https://w.test/x?token=a&b=1"), s
@@ -365,7 +369,7 @@ async def test_migrations_up_down_up_on_fresh_database() -> None:
                 )
             ).scalar_one()
         await check.dispose()
-        assert tables == 34  # 33 app tables + alembic_version
+        assert tables == 45  # 44 app tables + alembic_version
     finally:
         async with engine.connect() as conn:
             await conn.execute(text(f'DROP DATABASE IF EXISTS "{name}" WITH (FORCE)'))

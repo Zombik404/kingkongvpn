@@ -34,6 +34,7 @@ TEMPLATES = frozenset(
         "game_kicked",
         "game_redeem",
         "game_bonus_admin",
+        "game_season_reward",
     }
 )
 
