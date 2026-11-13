@@ -121,7 +121,8 @@ export async function userPage(ctx, id) {
     lists.push(h("section", { class: "panel" }, h("h2", {}, "Блэкджек"), await api("/admin/games/players", { query: { user_id: u.id } }).then((rows) => {
       const p = rows[0];
       if (!p) return h("p", { class: "empty" }, "Ещё не играл.");
-      return h("p", {}, `Ник «${p.nickname}», раундов ${p.rounds}, побед ${p.wins}, блэкджеков ${p.blackjacks}. Фишек ${p.chips}, лучший куш ${p.best_win}. Бонусных часов: ${p.balance_hours}.`);
+      return h("div", {}, h("p", {}, `Ник «${p.nickname}», раундов ${p.rounds}, побед ${p.wins}, блэкджеков ${p.blackjacks}. Фишек ${p.chips}, лучший куш ${p.best_win}. Бонусных часов: ${p.balance_hours}.`),
+        h("a", { href: `#/progress/player/${u.id}` }, "Уровень, достижения, сезоны и исключение из рейтингов"));
     }).catch((e) => h("p", { class: "error-box" }, errorText(e)))));
   }
   if (ctx.can("audit:read")) {

@@ -187,6 +187,331 @@
   "default": 14,
   "description": "Free days for the referrer per invited user's first payment (0 = off)."
  },
+ "games.timezone": {
+  "value": "UTC",
+  "default": "UTC",
+  "description": "Time zone for game days, daily challenges and season boundaries."
+ },
+ "games.xp.round": {
+  "value": 5,
+  "default": 5,
+  "description": "XP for every finished round."
+ },
+ "games.xp.win": {
+  "value": 10,
+  "default": 10,
+  "description": "Extra XP for a win."
+ },
+ "games.xp.blackjack": {
+  "value": 10,
+  "default": 10,
+  "description": "Extra XP for a blackjack."
+ },
+ "games.xp.daily_round_cap": {
+  "value": 600,
+  "default": 600,
+  "description": "Most XP a player can get from rounds in one game day (0 = no limit); challenges, achievements and rewards are not capped. Slows down bots."
+ },
+ "games.levels.base_xp": {
+  "value": 100,
+  "default": 100,
+  "description": "XP from level 1 to level 2."
+ },
+ "games.levels.step_xp": {
+  "value": 50,
+  "default": 50,
+  "description": "How much more each next level costs (level 2→3 = base + step, 3→4 = base + 2·step…)."
+ },
+ "games.levels.titles": {
+  "value": {
+   "1": "Jungle Rookie",
+   "2": "Jungle Explorer",
+   "3": "Wild Player",
+   "4": "Jungle Hunter",
+   "5": "Gorilla Fighter",
+   "10": "Jungle Master",
+   "20": "King of Jungle"
+  },
+  "default": {
+   "1": "Jungle Rookie",
+   "2": "Jungle Explorer",
+   "3": "Wild Player",
+   "4": "Jungle Hunter",
+   "5": "Gorilla Fighter",
+   "10": "Jungle Master",
+   "20": "King of Jungle"
+  },
+  "description": "Title for each level (a level without one keeps the title of the level below)."
+ },
+ "games.leaderboard.min_rounds_winrate": {
+  "value": 20,
+  "default": 20,
+  "description": "Rounds (wins + losses) needed in the period to appear on the win-rate board."
+ },
+ "games.achievements.enabled": {
+  "value": true,
+  "default": true,
+  "description": "Achievements and their XP rewards."
+ },
+ "games.challenges.enabled": {
+  "value": true,
+  "default": true,
+  "description": "Daily challenges (easy, medium, hard)."
+ },
+ "games.streak.rewards": {
+  "value": {
+   "3": {
+    "xp": 30
+   },
+   "7": {
+    "xp": 100
+   },
+   "14": {
+    "xp": 250,
+    "title": "Jungle Regular"
+   },
+   "30": {
+    "xp": 600,
+    "title": "Jungle Devotee",
+    "bonus_days": 1
+   }
+  },
+  "default": {
+   "3": {
+    "xp": 30
+   },
+   "7": {
+    "xp": 100
+   },
+   "14": {
+    "xp": 250,
+    "title": "Jungle Regular"
+   },
+   "30": {
+    "xp": 600,
+    "title": "Jungle Devotee",
+    "bonus_days": 1
+   }
+  },
+  "description": "Rewards for playing N days in a row (a finished round counts, opening the app doesn't)."
+ },
+ "games.seasons.enabled": {
+  "value": true,
+  "default": true,
+  "description": "Weekly and monthly seasons with prizes."
+ },
+ "games.seasons.board": {
+  "value": "xp",
+  "default": "xp",
+  "description": "Which season board decides the prizes: xp or wins."
+ },
+ "games.seasons.rewards_weekly": {
+  "value": [
+   {
+    "places": [
+     1,
+     1
+    ],
+    "xp": 500,
+    "title": "King of Jungle",
+    "frame": "gold",
+    "bonus_days": 3
+   },
+   {
+    "places": [
+     2,
+     2
+    ],
+    "xp": 300,
+    "title": "Jungle Champion",
+    "frame": "silver",
+    "bonus_days": 2
+   },
+   {
+    "places": [
+     3,
+     3
+    ],
+    "xp": 200,
+    "title": "Jungle Warrior",
+    "frame": "bronze",
+    "bonus_days": 1
+   },
+   {
+    "places": [
+     4,
+     10
+    ],
+    "xp": 100
+   },
+   {
+    "places": [
+     11,
+     100
+    ],
+    "xp": 30
+   }
+  ],
+  "default": [
+   {
+    "places": [
+     1,
+     1
+    ],
+    "xp": 500,
+    "title": "King of Jungle",
+    "frame": "gold",
+    "bonus_days": 3
+   },
+   {
+    "places": [
+     2,
+     2
+    ],
+    "xp": 300,
+    "title": "Jungle Champion",
+    "frame": "silver",
+    "bonus_days": 2
+   },
+   {
+    "places": [
+     3,
+     3
+    ],
+    "xp": 200,
+    "title": "Jungle Warrior",
+    "frame": "bronze",
+    "bonus_days": 1
+   },
+   {
+    "places": [
+     4,
+     10
+    ],
+    "xp": 100
+   },
+   {
+    "places": [
+     11,
+     100
+    ],
+    "xp": 30
+   }
+  ],
+  "description": "Prizes of the weekly season by place."
+ },
+ "games.seasons.rewards_monthly": {
+  "value": [
+   {
+    "places": [
+     1,
+     1
+    ],
+    "xp": 1500,
+    "title": "King of Jungle",
+    "frame": "gold",
+    "bonus_days": 7
+   },
+   {
+    "places": [
+     2,
+     2
+    ],
+    "xp": 900,
+    "title": "Jungle Champion",
+    "frame": "silver",
+    "bonus_days": 5
+   },
+   {
+    "places": [
+     3,
+     3
+    ],
+    "xp": 600,
+    "title": "Jungle Warrior",
+    "frame": "bronze",
+    "bonus_days": 3
+   },
+   {
+    "places": [
+     4,
+     10
+    ],
+    "xp": 300,
+    "frame": "jade"
+   },
+   {
+    "places": [
+     11,
+     100
+    ],
+    "xp": 100
+   }
+  ],
+  "default": [
+   {
+    "places": [
+     1,
+     1
+    ],
+    "xp": 1500,
+    "title": "King of Jungle",
+    "frame": "gold",
+    "bonus_days": 7
+   },
+   {
+    "places": [
+     2,
+     2
+    ],
+    "xp": 900,
+    "title": "Jungle Champion",
+    "frame": "silver",
+    "bonus_days": 5
+   },
+   {
+    "places": [
+     3,
+     3
+    ],
+    "xp": 600,
+    "title": "Jungle Warrior",
+    "frame": "bronze",
+    "bonus_days": 3
+   },
+   {
+    "places": [
+     4,
+     10
+    ],
+    "xp": 300,
+    "frame": "jade"
+   },
+   {
+    "places": [
+     11,
+     100
+    ],
+    "xp": 100
+   }
+  ],
+  "description": "Prizes of the monthly season by place."
+ },
+ "games.seasons.min_rounds": {
+  "value": 10,
+  "default": 10,
+  "description": "Rounds in a season needed for a prize."
+ },
+ "games.seasons.participation_xp": {
+  "value": 20,
+  "default": 20,
+  "description": "XP for everyone who played the minimum rounds in a season (0 = off)."
+ },
+ "games.rewards.bonus_days_enabled": {
+  "value": false,
+  "default": false,
+  "description": "Pay the bonus days of season and streak prizes into the game bonus wallet. OFF until the legal check: until then prizes are XP, titles and frames only."
+ },
  "peers.idle_ttl_hours": {
   "value": 0,
   "default": 0,

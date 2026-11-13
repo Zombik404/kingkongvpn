@@ -2,6 +2,7 @@
 // in-memory stand-in of the staff API; nothing leaves the browser. Any email/password works,
 // the 2FA code is any 6 digits.
 import SETTINGS from "./settings.json";
+import { createAdminProgress } from "./progress-mock.js";
 
 const DAY = 864e5;
 const now = Date.now();
@@ -88,6 +89,7 @@ const serverOut = (s) => {
 const days = (n, f) => Array.from({ length: n }, (_, i) => { const d = new Date(now - (n - 1 - i) * DAY).toISOString().slice(0, 10); return { day: d, ...f(d) }; });
 const reasonOk = (b) => b?.reason && b.reason.length >= 3;
 const needReason = () => fail(422, "validation_error", "reason: напишите причину (от 3 символов)");
+const progressRoute = createAdminProgress({ audit, users: USERS, reasonOk, needReason, json, fail, page });
 
 function route(method, path, q, b) {
   if (path === "/auth/login") return json({ mfa_required: true, mfa_token: "demo-mfa-token-0000" });
@@ -217,6 +219,8 @@ function route(method, path, q, b) {
     if (q.get("target_id")) rows = rows.filter((a) => a.target_id === q.get("target_id"));
     return json(page(rows, q));
   }
+  const prog = progressRoute(method, path, q, b || {});
+  if (prog) return prog;
   return fail(404, "not_found", `Демо: нет ответа для ${method} ${path}`);
 }
 

@@ -12,7 +12,7 @@ const GROUPS = [
   ["games.", "Блэкджек"],
 ];
 
-function editor(key, def, write) {
+export function editor(key, def, write) {
   const kind = typeof def.default === "boolean" ? "bool" : typeof def.default === "number" ? "number" : "json";
   const err = h("span", { class: "error-box small" });
   let input;

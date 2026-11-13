@@ -8,6 +8,7 @@ import { paymentsPage } from "./pages/payments.js";
 import { plansPage, promoPage } from "./pages/catalog.js";
 import { serversPage } from "./pages/servers.js";
 import { gamesPage } from "./pages/games.js";
+import { progressPage } from "./pages/progress.js";
 import { settingsPage } from "./pages/settings.js";
 import { auditPage } from "./pages/audit.js";
 
@@ -24,6 +25,7 @@ const SECTIONS = [
   { id: "promo", label: "Промокоды", perm: "plans:read", page: promoPage },
   { id: "servers", label: "Серверы", perm: "servers:read", page: serversPage },
   { id: "games", label: "Блэкджек", perm: "games:read", page: gamesPage },
+  { id: "progress", label: "Прогресс и сезоны", perm: "games:read", page: progressPage },
   { id: "settings", label: "Настройки", perm: "settings:read", page: settingsPage },
   { id: "audit", label: "Журнал действий", perm: "audit:read", page: auditPage },
 ];
