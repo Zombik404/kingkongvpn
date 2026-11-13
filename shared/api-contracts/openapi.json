@@ -787,6 +787,17 @@
             "title": "Currency",
             "type": "string"
           },
+          "discount": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Discount"
+          },
           "expires_at": {
             "anyOf": [
               {
@@ -882,6 +893,7 @@
           "expires_at",
           "paid_at",
           "failure_reason",
+          "discount",
           "created_at"
         ],
         "title": "PaymentOut",
@@ -1781,6 +1793,78 @@
         "title": "PromoValidateIn",
         "type": "object"
       },
+      "ReferralClaimIn": {
+        "additionalProperties": false,
+        "properties": {
+          "code": {
+            "maxLength": 16,
+            "minLength": 4,
+            "pattern": "^[A-Za-z0-9]+$",
+            "title": "Code",
+            "type": "string"
+          }
+        },
+        "required": [
+          "code"
+        ],
+        "title": "ReferralClaimIn",
+        "type": "object"
+      },
+      "ReferralOut": {
+        "properties": {
+          "code": {
+            "title": "Code",
+            "type": "string"
+          },
+          "enabled": {
+            "title": "Enabled",
+            "type": "boolean"
+          },
+          "invited": {
+            "title": "Invited",
+            "type": "integer"
+          },
+          "link": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Link"
+          },
+          "paid": {
+            "title": "Paid",
+            "type": "integer"
+          },
+          "percent_off": {
+            "title": "Percent Off",
+            "type": "integer"
+          },
+          "rewards_available": {
+            "title": "Rewards Available",
+            "type": "integer"
+          },
+          "rewards_used": {
+            "title": "Rewards Used",
+            "type": "integer"
+          }
+        },
+        "required": [
+          "enabled",
+          "code",
+          "link",
+          "percent_off",
+          "invited",
+          "paid",
+          "rewards_available",
+          "rewards_used"
+        ],
+        "title": "ReferralOut",
+        "type": "object"
+      },
       "RefreshIn": {
         "additionalProperties": false,
         "properties": {
@@ -2131,6 +2215,108 @@
         "title": "TotpSetupOut",
         "type": "object"
       },
+      "UsageDevice": {
+        "properties": {
+          "device_id": {
+            "format": "uuid",
+            "title": "Device Id",
+            "type": "string"
+          },
+          "download": {
+            "title": "Download",
+            "type": "integer"
+          },
+          "name": {
+            "title": "Name",
+            "type": "string"
+          },
+          "platform": {
+            "title": "Platform",
+            "type": "string"
+          },
+          "status": {
+            "title": "Status",
+            "type": "string"
+          },
+          "upload": {
+            "title": "Upload",
+            "type": "integer"
+          }
+        },
+        "required": [
+          "device_id",
+          "name",
+          "platform",
+          "status",
+          "download",
+          "upload"
+        ],
+        "title": "UsageDevice",
+        "type": "object"
+      },
+      "UsageOut": {
+        "description": "Aggregate bytes per day for the user's devices (no destinations are ever recorded).",
+        "properties": {
+          "days": {
+            "title": "Days",
+            "type": "integer"
+          },
+          "series": {
+            "items": {
+              "$ref": "#/components/schemas/UsagePoint"
+            },
+            "title": "Series",
+            "type": "array"
+          },
+          "top_devices": {
+            "items": {
+              "$ref": "#/components/schemas/UsageDevice"
+            },
+            "title": "Top Devices",
+            "type": "array"
+          },
+          "total_download": {
+            "title": "Total Download",
+            "type": "integer"
+          },
+          "total_upload": {
+            "title": "Total Upload",
+            "type": "integer"
+          }
+        },
+        "required": [
+          "days",
+          "series",
+          "total_download",
+          "total_upload",
+          "top_devices"
+        ],
+        "title": "UsageOut",
+        "type": "object"
+      },
+      "UsagePoint": {
+        "properties": {
+          "date": {
+            "title": "Date",
+            "type": "string"
+          },
+          "download": {
+            "title": "Download",
+            "type": "integer"
+          },
+          "upload": {
+            "title": "Upload",
+            "type": "integer"
+          }
+        },
+        "required": [
+          "date",
+          "download",
+          "upload"
+        ],
+        "title": "UsagePoint",
+        "type": "object"
+      },
       "UserOut": {
         "properties": {
           "created_at": {
@@ -2259,7 +2445,7 @@
     }
   },
   "info": {
-    "title": "GlobalVPN API",
+    "title": "VpnHub API",
     "version": "1.0.0"
   },
   "openapi": "3.1.0",
@@ -4347,6 +4533,73 @@
         ]
       }
     },
+    "/api/v1/referrals": {
+      "get": {
+        "description": "Your referral link and stats. Each invitee's first payment gives you a one-time discount\n(applied automatically at your next checkout).",
+        "operationId": "my_referrals_api_v1_referrals_get",
+        "responses": {
+          "200": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ReferralOut"
+                }
+              }
+            },
+            "description": "Successful Response"
+          }
+        },
+        "security": [
+          {
+            "HTTPBearer": []
+          }
+        ],
+        "summary": "My Referrals",
+        "tags": [
+          "referrals"
+        ]
+      }
+    },
+    "/api/v1/referrals/claim": {
+      "post": {
+        "description": "Attach the referrer from a `ref_<code>` link (only before your first payment).",
+        "operationId": "claim_referral_api_v1_referrals_claim_post",
+        "requestBody": {
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/ReferralClaimIn"
+              }
+            }
+          },
+          "required": true
+        },
+        "responses": {
+          "204": {
+            "description": "Successful Response"
+          },
+          "422": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/HTTPValidationError"
+                }
+              }
+            },
+            "description": "Validation Error"
+          }
+        },
+        "security": [
+          {
+            "HTTPBearer": []
+          }
+        ],
+        "summary": "Claim Referral",
+        "tags": [
+          "referrals"
+        ]
+      }
+    },
     "/api/v1/subscription": {
       "get": {
         "operationId": "get_subscription_api_v1_subscription_get",
@@ -4761,6 +5014,56 @@
           }
         ],
         "summary": "List Locations",
+        "tags": [
+          "vpn"
+        ]
+      }
+    },
+    "/api/v1/vpn/usage": {
+      "get": {
+        "operationId": "usage_api_v1_vpn_usage_get",
+        "parameters": [
+          {
+            "in": "query",
+            "name": "days",
+            "required": false,
+            "schema": {
+              "default": 7,
+              "maximum": 90,
+              "minimum": 1,
+              "title": "Days",
+              "type": "integer"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/UsageOut"
+                }
+              }
+            },
+            "description": "Successful Response"
+          },
+          "422": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/HTTPValidationError"
+                }
+              }
+            },
+            "description": "Validation Error"
+          }
+        },
+        "security": [
+          {
+            "HTTPBearer": []
+          }
+        ],
+        "summary": "Usage",
         "tags": [
           "vpn"
         ]

@@ -39,6 +39,11 @@
       "subject": "Fizetés beérkezett – {app_name}",
       "body": "Köszönjük! A fizetésed beérkezett. A(z) {plan} hozzáférésed eddig aktív: {date}.",
       "action": "Előfizetésem"
+    },
+    "referral_reward": {
+      "subject": "Barátod csatlakozott a(z) {app_name} szolgáltatáshoz – {percent}% kedvezmény neked",
+      "body": "Egy barátod, akit meghívtál, előfizetett. A következő fizetésedből {percent}% kedvezményt kapsz – automatikusan érvényesül.",
+      "action": "{app_name} megnyitása"
     }
   }
 }

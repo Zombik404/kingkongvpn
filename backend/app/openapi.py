@@ -16,7 +16,7 @@ DEFAULT_OUTPUT = Path(__file__).resolve().parents[2] / "shared" / "api-contracts
 
 
 def generate() -> dict[str, Any]:
-    settings = Settings(app_env="development", app_name="GlobalVPN")
+    settings = Settings(app_env="development", app_name="VpnHub")
     return create_app(settings).openapi()
 
 

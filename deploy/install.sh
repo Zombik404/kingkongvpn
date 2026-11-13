@@ -65,7 +65,7 @@ ask TELEGRAM_BOT_USERNAME "Bot username without @"
 ask CRYPTOBOT_API_TOKEN "Crypto Pay token from @CryptoTestnetBot (Enter to skip payments)" "" secret
 ask NODE_COUNTRY "Country code of this server (DE, NL, FI, ...)" "DE"
 ask NODE_CITY "City" "Frankfurt"
-APP_NAME=$(env_get APP_NAME); APP_NAME=${APP_NAME:-GlobalVPN}
+APP_NAME=$(env_get APP_NAME); APP_NAME=${APP_NAME:-VpnHub}
 TELEGRAM_BOT_USERNAME=${TELEGRAM_BOT_USERNAME#@}
 [[ $DOMAIN =~ ^[A-Za-z0-9.-]+\.[A-Za-z]{2,}$ ]] || die "domain looks wrong: $DOMAIN"
 

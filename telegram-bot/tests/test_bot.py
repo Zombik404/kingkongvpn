@@ -32,8 +32,11 @@ def test_start_plain_and_with_invite() -> None:
 
 def test_open_button_keeps_existing_query() -> None:
     cfg = BotConfig("t", "https://vpn.example.org/app/?v=2", "X")
-    assert open_button(cfg, "en", "INV-AAAA-BBBB").inline_keyboard[0][0].web_app.url.endswith(
-        "?v=2&invite=INV-AAAA-BBBB")
+    assert (
+        open_button(cfg, "en", "INV-AAAA-BBBB")
+        .inline_keyboard[0][0]
+        .web_app.url.endswith("?v=2&invite=INV-AAAA-BBBB")
+    )
 
 
 def test_config_requires_https(monkeypatch: pytest.MonkeyPatch) -> None:
@@ -48,3 +51,11 @@ def test_config_requires_https(monkeypatch: pytest.MonkeyPatch) -> None:
 def test_dispatcher_builds() -> None:
     dp = build_dispatcher(CFG)
     assert len(dp.message.handlers) == 3
+
+
+def test_referral_deep_link() -> None:
+    text, kb = start_reply(CFG, "ru", "ref_AB23CD45")
+    assert "пригласили" in text
+    assert kb.inline_keyboard[0][0].web_app.url.endswith("/app/?ref=AB23CD45")
+    _, kb = start_reply(CFG, "en", "ref_bad")
+    assert kb.inline_keyboard[0][0].web_app.url == "https://vpn.example.org/app/"

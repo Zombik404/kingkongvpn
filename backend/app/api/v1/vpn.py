@@ -77,6 +77,38 @@ async def connect(body: ConnectIn, principal: CurrentPrincipal, ctx: Ctx, db: Db
     return ConnectOut(**info.__dict__)
 
 
+class UsagePoint(BaseModel):
+    date: str
+    download: int
+    upload: int
+
+
+class UsageDevice(BaseModel):
+    device_id: uuid.UUID
+    name: str
+    platform: str
+    status: str
+    download: int
+    upload: int
+
+
+class UsageOut(BaseModel):
+    """Aggregate bytes per day for the user's devices (no destinations are ever recorded)."""
+
+    days: int
+    series: list[UsagePoint]
+    total_download: int
+    total_upload: int
+    top_devices: list[UsageDevice]
+
+
+@router.get("/usage", response_model=UsageOut)
+async def usage(
+    principal: CurrentPrincipal, db: Db, days: Annotated[int, Query(ge=1, le=90)] = 7
+) -> dict[str, Any]:
+    return await vpn.usage(db, principal.user.id, days)
+
+
 # --- internal: node agent ---------------------------------------------------------------------
 class HeartbeatIn(BaseModel):
     model_config = ConfigDict(extra="ignore")
@@ -89,6 +121,8 @@ class HeartbeatIn(BaseModel):
     errors: list[str] = Field(default_factory=list, max_length=50)
     agent_version: str | None = Field(default=None, max_length=32)
     handshakes: dict[str, int] = Field(default_factory=dict, max_length=20000)
+    # public key → [rx_bytes, tx_bytes] cumulative WireGuard counters (server view)
+    transfer: dict[str, list[int]] = Field(default_factory=dict, max_length=20000)
 
 
 def _token(authorization: str | None) -> str | None:

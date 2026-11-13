@@ -59,6 +59,15 @@ Discount codes: `POST /promo/validate` previews the price (applied at checkout, 
 - Node API (not public, `/internal/v1`, bearer node token): `GET nodes/{id}/desired-state?since=REV`
   (long-poll, ≤ `NODE_LONGPOLL_SECONDS`), `POST nodes/{id}/heartbeat`.
 
+## Traffic and referrals
+
+- `GET /vpn/usage?days=7|30|90` (1–90) → `{series: [{date, download, upload}], total_download,
+  total_upload, top_devices: [≤5]}` — aggregate bytes per device per day; no destinations.
+- `GET /referrals` → `{code, link, percent_off, invited, paid, rewards_available, rewards_used}`.
+- `POST /referrals/claim {code}` — attach the referrer (only before the first payment; idempotent).
+  A checkout without a promo code automatically uses one available reward
+  (`PaymentOut.discount = "referral"`).
+
 ## Payments (crypto via @CryptoBot)
 
 Prices are in fiat (USD by default); the customer pays in the accepted crypto assets

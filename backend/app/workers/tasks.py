@@ -80,6 +80,7 @@ async def cleanup_tokens(ctx: AppContext, db: AsyncSession) -> int:
     )
     await db.commit()
     c = await vpn_service.purge_removed_assignments(db, dt.timedelta(days=1))
+    c += await vpn_service.purge_old_usage(db, keep_days=90)
     return int(getattr(a, "rowcount", 0) or 0) + int(getattr(b, "rowcount", 0) or 0) + c
 
 

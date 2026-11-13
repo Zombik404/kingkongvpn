@@ -39,6 +39,11 @@
       "subject": "Payment received — {app_name}",
       "body": "Thank you! Your payment was received. Your {plan} access is active until {date}.",
       "action": "My subscription"
+    },
+    "referral_reward": {
+      "subject": "Your friend joined {app_name} — {percent}% off for you",
+      "body": "A friend you invited has bought a subscription. You get {percent}% off your next payment — it's applied automatically.",
+      "action": "Open {app_name}"
     }
   }
 }

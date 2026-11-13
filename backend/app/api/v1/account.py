@@ -6,6 +6,7 @@ import uuid
 from typing import Annotated, Any
 
 from fastapi import APIRouter, Query, Request, Response, status
+from pydantic import BaseModel, ConfigDict, Field
 from sqlalchemy import select, update
 
 from app.api.deps import Client, Ctx, CurrentPrincipal, Db
@@ -29,7 +30,7 @@ from app.schemas.domain import (
     UserOut,
     UserUpdateIn,
 )
-from app.services import catalog, devices, users
+from app.services import catalog, devices, referrals, users
 from app.services import settings as settings_service
 from app.subscriptions import service as subs
 
@@ -38,6 +39,7 @@ devices_router = APIRouter(prefix="/devices", tags=["devices"])
 plans_router = APIRouter(prefix="/plans", tags=["plans"])
 subs_router = APIRouter(prefix="/subscription", tags=["subscription"])
 promo_router = APIRouter(prefix="/promo", tags=["promo"])
+referral_router = APIRouter(prefix="/referrals", tags=["referrals"])
 
 
 # --- profile ------------------------------------------------------------------------
@@ -264,3 +266,36 @@ async def redeem_promo(
     out = await subscription_out(db, principal.user)
     assert out is not None
     return out
+
+
+# --- referrals ------------------------------------------------------------------------
+class ReferralOut(BaseModel):
+    enabled: bool
+    code: str
+    link: str | None
+    percent_off: int
+    invited: int
+    paid: int
+    rewards_available: int
+    rewards_used: int
+
+
+class ReferralClaimIn(BaseModel):
+    model_config = ConfigDict(extra="forbid")
+    code: str = Field(min_length=4, max_length=16, pattern=r"^[A-Za-z0-9]+$")
+
+
+@referral_router.get("", response_model=ReferralOut)
+async def my_referrals(principal: CurrentPrincipal, ctx: Ctx, db: Db) -> dict[str, Any]:
+    """Your referral link and stats. Each invitee's first payment gives you a one-time discount
+    (applied automatically at your next checkout)."""
+    return await referrals.summary(db, ctx.settings, principal.user.id)
+
+
+@referral_router.post("/claim", status_code=status.HTTP_204_NO_CONTENT)
+async def claim_referral(
+    body: ReferralClaimIn, principal: CurrentPrincipal, db: Db, client: Client
+) -> Response:
+    """Attach the referrer from a `ref_<code>` link (only before your first payment)."""
+    await referrals.claim(db, principal.user.id, body.code, client.ip)
+    return Response(status_code=status.HTTP_204_NO_CONTENT)

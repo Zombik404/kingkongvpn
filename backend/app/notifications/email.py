@@ -28,6 +28,7 @@ TEMPLATES = frozenset(
         "subscription_ending",
         "subscription_expired",
         "payment_received",
+        "referral_reward",
     }
 )
 

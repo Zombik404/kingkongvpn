@@ -47,3 +47,20 @@ test("tunnel names and fragments", () => {
   assert.doesNotMatch(frag, /[+/=]/);
   assert.equal(fromFragment(frag), text);
 });
+
+import { arcPath, formatBytes, scalePoints, smoothPath } from "../src/charts.js";
+
+test("chart helpers", () => {
+  assert.equal(formatBytes(0), "0 B");
+  assert.equal(formatBytes(1536), "1.5 KB");
+  assert.equal(formatBytes(5 * 1024 ** 3, "ru"), "5 ГБ");
+  const pts = scalePoints([0, 10, 5], 100, 50, { l: 0, r: 0, t: 0, b: 0 });
+  assert.deepEqual(pts, [[0, 50], [50, 0], [100, 25]]);
+  const d = smoothPath(pts);
+  assert.match(d, /^M0\.0,50\.0 C/);
+  // monotone: control points never go above the peak (y < 0) or below the floor (y > 50)
+  for (const n of d.match(/-?\d+\.\d/g).map(Number)) assert.ok(n >= 0 && n <= 100);
+  assert.equal(smoothPath([]), "");
+  assert.match(arcPath(50, 50, 40, 0.25), /^M50,10 A40,40 0 0 1 90\.00,50\.00$/);
+  assert.match(arcPath(50, 50, 40, 1), / 0 1 1 /); // full circle uses the large-arc flag
+});

@@ -1,14 +1,16 @@
-// Telegram Mini App. All user data is inserted with textContent (no innerHTML of API data).
+// VpnHub — Telegram Mini App. User data is inserted with textContent only.
 import qrcode from "qrcode-generator";
+import { areaChart, formatBytes, progressRing, ringsChart, RING_COLORS } from "./charts.js";
 import { makeT, pickLang } from "./i18n.js";
 import { buildConfig, generateKeyPair, toFragment, tunnelName } from "./wg.js";
 
 const API = "/api/v1";
-const APP_NAME = document.documentElement.dataset.appName || "VPN";
+const APP_NAME = document.documentElement.dataset.appName || "VpnHub"; // brand: one place (index.html)
 const tg = window.Telegram && window.Telegram.WebApp;
-const lang = pickLang(tg && tg.initDataUnsafe && tg.initDataUnsafe.user && tg.initDataUnsafe.user.language_code);
+const lang = pickLang(tg?.initDataUnsafe?.user?.language_code);
 const t = makeT(lang);
 const root = document.getElementById("app");
+const NS = "http://www.w3.org/2000/svg";
 
 const APPS = [
   ["Android", "https://play.google.com/store/apps/details?id=com.wireguard.android"],
@@ -19,10 +21,25 @@ const PLATFORMS = [
   ["android", "Android"], ["ios", "iPhone / iPad"], ["windows", "Windows"],
   ["macos", "macOS"], ["linux", "Linux"], ["router", "Router"], ["other", "Other"],
 ];
+// 24×24 stroke icons (own drawings)
+const ICONS = {
+  globe: "M12 3a9 9 0 1 0 0 18a9 9 0 1 0 0-18Z M3.5 9h17 M3.5 15h17 M12 3c2.4 2.6 3.6 5.6 3.6 9s-1.2 6.4-3.6 9 M12 3c-2.4 2.6-3.6 5.6-3.6 9s1.2 6.4 3.6 9",
+  card: "M3 6.5h18v11H3z M3 10.5h18 M7 14.5h4",
+  upgrade: "M12 18V6 M6.5 11.5 12 6l5.5 5.5 M6 21h12",
+  friends: "M9 11a3.5 3.5 0 1 0 0-7a3.5 3.5 0 0 0 0 7Z M2.5 20c.8-3.4 3.4-5.5 6.5-5.5s5.7 2.1 6.5 5.5 M16 4.6a3.3 3.3 0 0 1 0 6.2 M17.6 14.8c2 .7 3.4 2.5 3.9 5.2",
+  devices: "M8 3h6.5a1 1 0 0 1 1 1v16a1 1 0 0 1-1 1H8a1 1 0 0 1-1-1V4a1 1 0 0 1 1-1Z M10.5 18h1.5 M18.5 8h2a1 1 0 0 1 1 1v7a1 1 0 0 1-1 1h-2",
+  help: "M12 21a9 9 0 1 0 0-18a9 9 0 0 0 0 18Z M9.6 9.4a2.5 2.5 0 1 1 3.4 2.4c-.6.3-1 .8-1 1.5v.7 M12 17h.01",
+  ticket: "M3 8.5a2 2 0 0 0 2-2h14a2 2 0 0 0 2 2v2a1.5 1.5 0 0 0 0 3v2a2 2 0 0 0-2 2H5a2 2 0 0 0-2-2v-2a1.5 1.5 0 0 0 0-3Z M14 6.5v11",
+  copy: "M9 9h10v11H9z M5 15V4h10",
+  share: "M4 12v7a1 1 0 0 0 1 1h14a1 1 0 0 0 1-1v-7 M12 3v12 M7.5 7.5 12 3l4.5 4.5",
+  trash: "M4 7h16 M9 7V4h6v3 M6.5 7l1 13h9l1-13",
+};
 
 let token = null;
+let state = { sub: null, devices: null, plans: null, ref: null, usage: null, days: 7 };
+let backHandler = null;
 
-// ---------------------------------------------------------------- helpers
+// ------------------------------------------------------------------ helpers
 function h(tag, attrs = {}, ...children) {
   const el = document.createElement(tag);
   for (const [k, v] of Object.entries(attrs)) {
@@ -38,15 +55,53 @@ function h(tag, attrs = {}, ...children) {
   return el;
 }
 
-const fmtDate = (iso) =>
-  new Date(iso).toLocaleDateString(lang === "ru" ? "ru-RU" : "en-GB", { day: "numeric", month: "long", year: "numeric" });
+function icon(name, cls = "ic") {
+  const svg = document.createElementNS(NS, "svg");
+  svg.setAttribute("viewBox", "0 0 24 24");
+  svg.setAttribute("class", cls);
+  svg.setAttribute("aria-hidden", "true");
+  const p = document.createElementNS(NS, "path");
+  p.setAttribute("d", ICONS[name]);
+  svg.append(p);
+  return svg;
+}
+
+function logo() {
+  const svg = document.createElementNS(NS, "svg");
+  svg.setAttribute("viewBox", "0 0 32 32");
+  svg.setAttribute("class", "logo-mark");
+  svg.innerHTML = // static markup, no user data
+    '<defs><linearGradient id="lg" x1="0" y1="0" x2="1" y2="1"><stop offset="0" stop-color="#ffb347"/><stop offset="1" stop-color="#ff3d00"/></linearGradient></defs>' +
+    '<path d="M16 2.5 28 9.3v13.4L16 29.5 4 22.7V9.3Z" fill="url(#lg)"/>' +
+    '<path d="M10.5 11.5 16 21l5.5-9.5" fill="none" stroke="#120c08" stroke-width="2.6" stroke-linecap="round" stroke-linejoin="round"/>' +
+    '<circle cx="16" cy="21" r="1.9" fill="#120c08"/>';
+  return svg;
+}
+
+const locale = lang === "ru" ? "ru-RU" : "en-GB";
+const fmtDate = (iso) => new Date(iso).toLocaleDateString(locale, { day: "numeric", month: "long" });
+const fmtShort = (iso) => new Date(iso).toLocaleDateString(locale, { day: "2-digit", month: "2-digit" });
 const fmtPrice = (minor, cur) =>
-  new Intl.NumberFormat(lang === "ru" ? "ru-RU" : "en-US", { style: "currency", currency: cur }).format(minor / 100);
+  new Intl.NumberFormat(lang === "ru" ? "ru-RU" : "en-US", { style: "currency", currency: cur, maximumFractionDigits: minor % 100 ? 2 : 0 }).format(minor / 100);
+const flag = (cc) => String(cc || "").toUpperCase().replace(/[A-Z]/g, (c) => String.fromCodePoint(127397 + c.charCodeAt(0)));
 
 function toast(msg) {
-  if (tg && tg.showAlert) tg.showAlert(msg);
+  if (tg?.showAlert) tg.showAlert(msg);
   else alert(msg); // eslint-disable-line no-alert
 }
+
+const store = {
+  get(k) { try { return localStorage.getItem(k); } catch { return null; } },
+  set(k, v) { try { localStorage.setItem(k, v); } catch { /* storage unavailable */ } },
+  del(k) { try { localStorage.removeItem(k); } catch { /* storage unavailable */ } },
+};
+// Private keys stay on this device only (never sent anywhere); used to re-issue a config
+// when moving a device to another country.
+const keyStore = {
+  get: (id) => store.get(`vpnhub.key.${id}`),
+  set: (id, k) => store.set(`vpnhub.key.${id}`, k),
+  del: (id) => store.del(`vpnhub.key.${id}`),
+};
 
 async function login() {
   const r = await fetch(`${API}/auth/telegram/webapp`, {
@@ -61,60 +116,115 @@ async function login() {
 async function api(path, { method = "GET", body } = {}, retry = true) {
   const r = await fetch(API + path, {
     method,
-    headers: {
-      Authorization: `Bearer ${token}`,
-      "Accept-Language": lang,
-      ...(body ? { "Content-Type": "application/json" } : {}),
-    },
+    headers: { Authorization: `Bearer ${token}`, "Accept-Language": lang, ...(body ? { "Content-Type": "application/json" } : {}) },
     body: body ? JSON.stringify(body) : undefined,
   });
   if (r.status === 401 && retry) {
-    await login(); // access tokens are short-lived; initData is still valid
+    await login();
     return api(path, { method, body }, false);
   }
   if (r.status === 204) return null;
   const data = await r.json().catch(() => ({}));
   if (!r.ok) {
-    const msg = (data.error && data.error.message) || (Array.isArray(data.detail) && data.detail[0] && data.detail[0].msg) || `HTTP ${r.status}`;
+    const msg = data.error?.message || (Array.isArray(data.detail) && data.detail[0]?.msg) || `HTTP ${r.status}`;
     const err = new Error(msg);
-    err.code = data.error && data.error.code;
+    err.code = data.error?.code;
     throw err;
   }
   return data;
 }
 
-// ---------------------------------------------------------------- screens
-async function render() {
-  root.replaceChildren(h("p", { class: "muted" }, t("loading")));
-  const [sub, devices, plans] = await Promise.all([api("/subscription"), api("/devices"), api("/plans")]);
-  const cards = [
-    statusCard(sub),
-    sub.entitled ? null : inviteCard(),
-    plansCard(plans, sub.entitled),
-    devicesCard(devices, sub.entitled),
-    appsCard(),
-  ];
-  root.replaceChildren(...cards.filter(Boolean)); // replaceChildren would print "null"
+function setBack(fn) {
+  backHandler = fn;
+  if (!tg?.BackButton) return;
+  if (fn) tg.BackButton.show();
+  else tg.BackButton.hide();
 }
 
-function statusCard(sub) {
-  const s = sub.subscription;
-  const body = s
-    ? [
-        h("p", { class: "big ok" }, t("activeUntil", { date: fmtDate(s.current_period_end) })),
-        h("p", { class: "muted" }, t("planLine", { plan: s.plan_name })),
-        s.status === "grace" && s.grace_until ? h("p", { class: "warn" }, t("graceNote", { date: fmtDate(s.grace_until) })) : null,
-      ]
-    : [h("p", { class: "big" }, t("noAccess"))];
-  return h("section", { class: "card" }, h("h2", {}, t("access")), ...body);
+function page(title, ...content) {
+  window.scrollTo(0, 0);
+  root.replaceChildren(
+    h("header", { class: "bar" },
+      h("button", { class: "ghost back", onclick: () => goHome(), "aria-label": t("back") }, "‹"),
+      h("h1", {}, title)),
+    ...content.filter(Boolean));
+  setBack(goHome);
+}
+
+// ------------------------------------------------------------------ data
+async function loadAll() {
+  const [sub, devices, plans, ref, usage] = await Promise.all([
+    api("/subscription"), api("/devices"), api("/plans"),
+    api("/referrals").catch(() => null), api(`/vpn/usage?days=${state.days}`),
+  ]);
+  Object.assign(state, { sub, devices, plans, ref, usage });
+}
+
+// ------------------------------------------------------------------ home
+async function goHome() {
+  setBack(null);
+  root.replaceChildren(h("p", { class: "muted center pad" }, t("loading")));
+  await loadAll();
+  root.replaceChildren(...[
+    h("header", { class: "brand" }, logo(), h("span", { class: "word" }, APP_NAME)),
+    wheel(),
+    state.sub.entitled ? null : inviteCard(),
+    dashboard(),
+  ].filter(Boolean));
+}
+
+function periodInfo() {
+  const s = state.sub.subscription;
+  if (!s) return { days: 0, frac: 0 };
+  const end = new Date(s.status === "grace" && s.grace_until ? s.grace_until : s.current_period_end);
+  const start = new Date(s.current_period_start);
+  const now = Date.now();
+  const days = Math.max(0, Math.ceil((end - now) / 86400000));
+  const frac = Math.min(1, Math.max(0, (end - now) / Math.max(1, end - start)));
+  return { days, frac, end };
+}
+
+function wheel() {
+  const s = state.sub.subscription;
+  const { days, frac } = periodInfo();
+  const center = h("div", { class: "hub" },
+    progressRing(frac),
+    h("div", { class: "hub-text" },
+      s ? [h("div", { class: "hub-kicker" }, t("left")),
+           h("div", { class: "hub-num" }, String(days)),
+           h("div", { class: "hub-unit" }, t("daysLeft")(days))]
+        : [h("div", { class: "hub-kicker" }, "VPN"), h("div", { class: "hub-off" }, t("noAccess"))],
+      s ? h("div", { class: "hub-sub" }, s.status === "grace" ? t("graceNote", { date: fmtDate(s.grace_until) }) : `${s.plan_name} · ${t("activeUntil", { date: fmtDate(s.current_period_end) })}`) : null));
+  const items = [
+    ["globe", t("wCountry"), countryScreen],
+    ["card", t("wPay"), () => plansScreen(false)],
+    ["upgrade", t("wUpgrade"), () => plansScreen(true)],
+    ["friends", t("wReferral"), referralScreen],
+    ["devices", t("wDevices"), devicesScreen],
+    ["help", t("wHelp"), helpScreen],
+  ];
+  const spokes = items.map(([ic, label, fn], i) => {
+    const angle = -90 + i * (360 / items.length);
+    const badge = ic === "friends" && state.ref?.rewards_available ? h("span", { class: "badge" }, `−${state.ref.percent_off}%`) : null;
+    return h("button", { class: "spoke", "data-angle": angle, onclick: fn, "aria-label": label },
+      h("span", { class: "spoke-ic" }, icon(ic)), h("span", { class: "spoke-label" }, label), badge);
+  });
+  const w = h("section", { class: "wheel" }, h("div", { class: "orbit" }), center, ...spokes);
+  // place spokes on the circle (CSSOM custom properties — allowed by our strict CSP)
+  for (const b of spokes) {
+    const a = (Number(b.dataset.angle) * Math.PI) / 180;
+    b.style.setProperty("--x", `${(50 + 40 * Math.cos(a)).toFixed(2)}%`);
+    b.style.setProperty("--y", `${(50 + 40 * Math.sin(a)).toFixed(2)}%`);
+  }
+  return w;
 }
 
 function inviteCard() {
   const input = h("input", { type: "text", placeholder: t("invitePlaceholder"), autocomplete: "off", maxlength: 40, autocapitalize: "characters" });
-  // Invite links t.me/<bot>?start=INV-… open the app with ?invite=… (set by the bot).
   const fromLink = new URLSearchParams(location.search).get("invite");
   if (fromLink && /^INV-[A-Z0-9]{4}-[A-Z0-9]{4}$/.test(fromLink)) input.value = fromLink;
   const btn = h("button", {
+    class: "primary",
     onclick: async () => {
       const code = input.value.trim();
       if (!code) return;
@@ -122,33 +232,86 @@ function inviteCard() {
       try {
         await api("/promo/redeem", { method: "POST", body: { code } });
         toast(t("redeemed"));
-        await render();
+        await goHome();
       } catch (e) {
         toast(t("error", { msg: e.message }));
         btn.disabled = false;
       }
     },
   }, t("redeem"));
-  return h("section", { class: "card" }, h("h2", {}, t("invite")), h("p", { class: "muted" }, t("inviteHelp")), h("div", { class: "row" }, input, btn));
+  return h("section", { class: "card glow" },
+    h("div", { class: "card-title" }, icon("ticket"), t("invite")),
+    h("p", { class: "muted" }, t("inviteHelp")),
+    h("div", { class: "row" }, input, btn));
 }
 
-function plansCard(plans, entitled) {
-  const buttons = [];
-  for (const plan of plans) {
-    for (const price of plan.prices) {
-      const label = `${t("months")(price.period_count)} — ${fmtPrice(price.amount_minor, price.currency)}`;
-      buttons.push(h("button", { class: "secondary wide", onclick: (ev) => startPayment(price, ev.currentTarget) }, label));
+function dashboard() {
+  const u = state.usage;
+  const total = u.total_download + u.total_upload;
+  const seg = h("div", { class: "seg" }, [7, 30, 90].map((d) =>
+    h("button", { class: d === state.days ? "on" : "", onclick: async () => { state.days = d; await goHome(); } }, t(`d${d}`))));
+  const share = total ? u.total_download / total : 0;
+  const top = u.top_devices;
+  const legend = top.map((d, i) =>
+    h("li", {}, h("i", { class: "dot", "data-c": i }),
+      h("span", { class: "lg-name" }, d.name),
+      h("span", { class: "lg-val" }, formatBytes(d.download + d.upload, lang))));
+  const card = h("section", { class: "card dash" },
+    h("div", { class: "card-title" }, t("traffic"), seg),
+    h("div", { class: "split" },
+      h("div", {}, h("div", { class: "lbl" }, t("download")), h("div", { class: "val hot" }, formatBytes(u.total_download, lang))),
+      h("div", { class: "right" }, h("div", { class: "lbl" }, t("upload")), h("div", { class: "val warm" }, formatBytes(u.total_upload, lang)))),
+    h("div", { class: "bar-track" }, h("div", { class: "bar-fill", "data-w": Math.round(share * 100) })),
+    h("div", { class: "total" }, h("div", { class: "lbl center" }, t("totalTraffic")), h("div", { class: "big center" }, formatBytes(total, lang))),
+    total ? areaChart(u.series, { labels: u.series.map((p) => fmtShort(p.date)) }) : h("p", { class: "muted center pad" }, t("noTraffic")),
+    top.length ? h("div", { class: "card-sub" }, t("topDevices")) : null,
+    top.length ? h("div", { class: "rings-wrap" }, ringsChart(top.map((d) => ({ value: d.download + d.upload }))), h("ul", { class: "legend" }, legend)) : null,
+    h("p", { class: "muted small note" }, t("appsNote")));
+  card.querySelectorAll(".bar-fill").forEach((b) => b.style.setProperty("--w", `${b.dataset.w}%`));
+  card.querySelectorAll(".dot").forEach((d) => d.style.setProperty("--c", RING_COLORS[Number(d.dataset.c)]));
+  return card;
+}
+
+// ------------------------------------------------------------------ plans & payment
+function monthsOf(p) {
+  return p.period_unit === "year" ? 12 * p.period_count : p.period_unit === "month" ? p.period_count : p.period_count / 30;
+}
+
+function plansScreen(upgrade) {
+  const s = state.sub.subscription;
+  const refPct = state.ref?.rewards_available ? state.ref.percent_off : 0;
+  const rows = [];
+  for (const plan of state.plans) {
+    const base = plan.prices.find((p) => p.period_unit === "month" && p.period_count === 1);
+    const perMonth = (p) => p.amount_minor / monthsOf(p);
+    const best = [...plan.prices].sort((a, b) => perMonth(a) - perMonth(b))[0];
+    for (const price of [...plan.prices].sort((a, b) => monthsOf(a) - monthsOf(b))) {
+      const saving = base && price !== base ? Math.round((1 - perMonth(price) / base.amount_minor) * 100) : 0;
+      const final = refPct ? price.amount_minor - Math.floor((price.amount_minor * refPct) / 100) : price.amount_minor;
+      rows.push(h("button", { class: `plan ${upgrade && price === best ? "best" : ""}`, onclick: (ev) => startPayment(price, ev.currentTarget) },
+        h("div", { class: "plan-main" },
+          h("div", { class: "plan-period" }, t("months")(Math.round(monthsOf(price)))),
+          h("div", { class: "plan-meta" }, `${plan.name} · ${t("devicesIncluded", { n: plan.device_limit })}`),
+          upgrade ? h("div", { class: "plan-meta" }, t("perMonth", { price: fmtPrice(Math.round(perMonth(price)), price.currency) })) : null),
+        h("div", { class: "plan-price" },
+          refPct ? h("s", {}, fmtPrice(price.amount_minor, price.currency)) : null,
+          h("strong", {}, fmtPrice(final, price.currency)),
+          saving > 0 ? h("span", { class: "pill" }, t("save", { p: saving })) : null,
+          upgrade && price === best ? h("span", { class: "pill solid" }, t("bestValue")) : null)));
     }
   }
-  if (!buttons.length) return null;
-  return h("section", { class: "card" }, h("h2", {}, entitled ? t("renew") : t("plans")), ...buttons, h("p", { class: "muted small" }, t("payHint")));
+  page(upgrade ? t("upgradeTitle") : t("payTitle"),
+    s ? h("p", { class: "muted pad-x" }, t("currentPlan", { plan: s.plan_name, date: fmtDate(s.current_period_end) })) : null,
+    refPct ? h("div", { class: "card glow small" }, t("refDiscount", { p: refPct })) : null,
+    h("section", { class: "card" }, ...rows),
+    h("p", { class: "muted small pad-x" }, t("payHint")));
 }
 
 async function startPayment(price, btn) {
   btn.disabled = true;
   try {
     const p = await api("/payments/checkout", { method: "POST", body: { price_id: price.id } });
-    if (p.checkout_url && p.checkout_url.startsWith("https://t.me/") && tg.openTelegramLink) tg.openTelegramLink(p.checkout_url);
+    if (p.checkout_url?.startsWith("https://t.me/") && tg.openTelegramLink) tg.openTelegramLink(p.checkout_url);
     else tg.openLink(p.checkout_url);
     await waitForPayment(p.id);
   } catch (e) {
@@ -159,11 +322,9 @@ async function startPayment(price, btn) {
 }
 
 async function waitForPayment(id) {
-  if (tg.MainButton) {
-    tg.MainButton.setText(t("waitingPayment"));
-    tg.MainButton.showProgress();
-    tg.MainButton.show();
-  }
+  tg.MainButton?.setText(t("waitingPayment"));
+  tg.MainButton?.showProgress();
+  tg.MainButton?.show();
   try {
     const until = Date.now() + 15 * 60 * 1000;
     while (Date.now() < until) {
@@ -171,7 +332,7 @@ async function waitForPayment(id) {
       const p = await api(`/payments/${id}?refresh=true`);
       if (p.status === "succeeded") {
         toast(t("paid"));
-        await render();
+        await goHome();
         return;
       }
       if (p.status === "failed") {
@@ -180,26 +341,81 @@ async function waitForPayment(id) {
       }
     }
   } finally {
-    if (tg.MainButton) {
-      tg.MainButton.hideProgress();
-      tg.MainButton.hide();
-    }
+    tg.MainButton?.hideProgress();
+    tg.MainButton?.hide();
   }
 }
 
-function devicesCard(list, entitled) {
+// ------------------------------------------------------------------ referral
+function referralScreen() {
+  const r = state.ref;
+  const link = r?.link;
+  const copyBtn = h("button", { class: "primary wide", onclick: async () => {
+    try { await navigator.clipboard.writeText(link); copyBtn.textContent = t("copied"); } catch { toast(link); }
+  } }, icon("copy", "ic sm"), t("copyLink"));
+  const shareBtn = h("button", { class: "secondary wide", onclick: () => {
+    const url = `https://t.me/share/url?url=${encodeURIComponent(link)}&text=${encodeURIComponent(t("shareText"))}`;
+    tg.openTelegramLink ? tg.openTelegramLink(url) : tg.openLink(url);
+  } }, icon("share", "ic sm"), t("share"));
+  page(t("refTitle"),
+    h("section", { class: "card glow" },
+      h("div", { class: "promo-num" }, `−${r?.percent_off ?? 30}%`),
+      h("p", {}, t("refText", { p: r?.percent_off ?? 30 }))),
+    h("section", { class: "card stats3" },
+      h("div", {}, h("div", { class: "big" }, String(r?.invited ?? 0)), h("div", { class: "lbl" }, t("refInvited"))),
+      h("div", {}, h("div", { class: "big" }, String(r?.paid ?? 0)), h("div", { class: "lbl" }, t("refPaid"))),
+      h("div", {}, h("div", { class: "big hot" }, String(r?.rewards_available ?? 0)), h("div", { class: "lbl" }, t("refRewards")))),
+    link
+      ? h("section", { class: "card" }, h("div", { class: "linkbox" }, link), copyBtn, shareBtn)
+      : h("p", { class: "muted pad-x" }, t("refNoBot")));
+}
+
+// ------------------------------------------------------------------ country
+async function countryScreen() {
+  if (!state.sub.entitled) return toast(t("needAccess"));
+  const locations = await api("/vpn/locations");
+  if (!locations.length) return toast(t("noLocations"));
+  const chosen = store.get("vpnhub.location") || locations[0].id;
+  const list = h("section", { class: "card" });
+  const movable = state.devices.devices.filter((d) => keyStore.get(d.id));
+  const render = (sel) => {
+    list.replaceChildren(...locations.map((l) =>
+      h("button", { class: `country ${l.id === sel ? "on" : ""}`, onclick: () => { store.set("vpnhub.location", l.id); render(l.id); } },
+        h("span", { class: "flag" }, flag(l.country_code)), h("span", {}, l.name), l.id === sel ? h("span", { class: "check" }, "●") : null)),
+    h("button", { class: "primary wide", onclick: () => addDeviceForm(sel) }, t("newHere", { c: (locations.find((l) => l.id === sel) || {}).name })),
+    ...movable.map((d) => h("button", { class: "secondary wide", onclick: () => moveDevice(d, sel, locations) }, `${t("moveHere")}: ${d.name}`)));
+  };
+  render(chosen);
+  page(t("countryTitle"), h("p", { class: "muted pad-x" }, t("countryHint")), list);
+}
+
+async function moveDevice(device, locationId, locations) {
+  try {
+    const info = await api("/vpn/connect", { method: "POST", body: { device_id: device.id, location_id: locationId } });
+    const cc = (locations.find((l) => l.id === locationId) || {}).country_code;
+    toast(t("moved"));
+    showResult(buildConfig(keyStore.get(device.id), info), tunnelName(APP_NAME, cc));
+  } catch (e) {
+    toast(t("error", { msg: e.message }));
+  }
+}
+
+// ------------------------------------------------------------------ devices
+function devicesScreen() {
+  const list = state.devices;
   const items = list.devices.map((d) =>
     h("li", { class: "device" },
-      h("div", {},
+      h("span", { class: "dev-ic" }, icon("devices")),
+      h("div", { class: "dev-main" },
         h("strong", {}, d.name),
         h("div", { class: "muted small" }, `${d.platform} · ${d.ipv4 || ""}`),
         h("div", { class: "muted small" }, d.last_handshake_at ? t("lastSeen", { date: fmtDate(d.last_handshake_at) }) : t("never"))),
-      h("button", { class: "danger small", onclick: () => removeDevice(d) }, t("remove"))));
-  const add = h("button", { class: "wide", disabled: list.active_count >= list.limit || undefined, onclick: () => addDeviceForm(entitled) }, t("addDevice"));
-  return h("section", { class: "card" },
-    h("h2", {}, t("devices"), " ", h("span", { class: "muted small" }, t("deviceLimit", { n: list.active_count, limit: list.limit }))),
-    items.length ? h("ul", { class: "list" }, items) : h("p", { class: "muted" }, t("noDevices")),
-    add);
+      h("button", { class: "ghost danger", "aria-label": t("remove"), onclick: () => removeDevice(d) }, icon("trash"))));
+  page(t("devices"),
+    h("section", { class: "card" },
+      h("div", { class: "card-title" }, t("devices"), h("span", { class: "muted small" }, t("deviceLimit", { n: list.active_count, limit: list.limit }))),
+      items.length ? h("ul", { class: "list" }, items) : h("p", { class: "muted" }, t("noDevices")),
+      h("button", { class: "primary wide", disabled: list.active_count >= list.limit || undefined, onclick: () => addDeviceForm(store.get("vpnhub.location")) }, t("addDevice"))));
 }
 
 function removeDevice(d) {
@@ -207,7 +423,9 @@ function removeDevice(d) {
     if (!ok) return;
     try {
       await api(`/devices/${d.id}`, { method: "DELETE" });
-      await render();
+      keyStore.del(d.id);
+      await loadAll();
+      devicesScreen();
     } catch (e) {
       toast(t("error", { msg: e.message }));
     }
@@ -217,40 +435,40 @@ function removeDevice(d) {
   else go(confirm(msg)); // eslint-disable-line no-alert
 }
 
-async function addDeviceForm(entitled) {
-  if (!entitled) return toast(t("needAccess"));
+async function addDeviceForm(preferredLocation) {
+  if (!state.sub.entitled) return toast(t("needAccess"));
   const locations = await api("/vpn/locations");
   if (!locations.length) return toast(t("noLocations"));
   const name = h("input", { type: "text", maxlength: 64, placeholder: t("deviceNamePh") });
   const platform = h("select", {}, PLATFORMS.map(([v, l]) => h("option", { value: v }, l)));
   const ua = navigator.userAgent;
   platform.value = /iPhone|iPad/.test(ua) ? "ios" : /Android/.test(ua) ? "android" : /Windows/.test(ua) ? "windows" : /Mac/.test(ua) ? "macos" : "other";
-  const loc = h("select", {}, locations.map((l) => h("option", { value: l.id }, `${l.name}`)));
+  const loc = h("select", {}, locations.map((l) => h("option", { value: l.id }, `${flag(l.country_code)} ${l.name}`)));
+  if (preferredLocation && locations.some((l) => l.id === preferredLocation)) loc.value = preferredLocation;
   const status = h("p", { class: "muted" });
   const submit = h("button", {
-    class: "wide",
+    class: "primary wide",
     onclick: async () => {
       submit.disabled = true;
       status.textContent = t("creating");
       try {
         const keys = generateKeyPair();
         const dev = await api("/devices", { method: "POST", body: { name: name.value.trim() || t("deviceNamePh"), platform: platform.value, public_key: keys.publicKey } });
+        keyStore.set(dev.id, keys.privateKey);
         const info = await api("/vpn/connect", { method: "POST", body: { device_id: dev.id, location_id: loc.value } });
-        const country = (locations.find((l) => l.id === loc.value) || {}).country_code;
-        showResult(buildConfig(keys.privateKey, info), tunnelName(APP_NAME, country));
+        const cc = (locations.find((l) => l.id === loc.value) || {}).country_code;
+        showResult(buildConfig(keys.privateKey, info), tunnelName(APP_NAME, cc));
       } catch (e) {
         status.textContent = t("error", { msg: e.message });
         submit.disabled = false;
       }
     },
   }, t("create"));
-  root.replaceChildren(h("section", { class: "card" },
-    h("h2", {}, t("addDevice")),
+  page(t("addDevice"), h("section", { class: "card" },
     h("label", {}, t("deviceName"), name),
     h("label", {}, t("platform"), platform),
     h("label", {}, t("location"), loc),
-    submit, status,
-    h("button", { class: "secondary wide", onclick: () => render() }, "←")));
+    submit, status));
 }
 
 function qrSvg(text) {
@@ -258,7 +476,7 @@ function qrSvg(text) {
   qr.addData(text);
   qr.make();
   const wrap = h("div", { class: "qr" });
-  wrap.innerHTML = qr.createSvgTag({ cellSize: 4, margin: 4, scalable: true }); // generated locally, no user HTML
+  wrap.innerHTML = qr.createSvgTag({ cellSize: 4, margin: 4, scalable: true }); // generated locally
   return wrap;
 }
 
@@ -272,47 +490,49 @@ function download(text, filename) {
 }
 
 function showResult(config, name) {
-  const copyBtn = h("button", {
-    class: "secondary wide",
-    onclick: async () => {
-      try {
-        await navigator.clipboard.writeText(config);
-        copyBtn.textContent = t("copied");
-      } catch {
-        toast(config);
-      }
-    },
-  }, t("copy"));
-  root.replaceChildren(h("section", { class: "card" },
-    h("h2", {}, t("resultTitle")),
-    h("p", { class: "warn" }, t("resultWarn")),
-    h("p", { class: "muted" }, t("scanHint")),
-    qrSvg(config),
-    h("button", { class: "wide", onclick: () => download(config, `${name}.conf`) }, t("download")),
-    // The fragment (#...) never leaves the device: browsers don't send it to the server.
-    h("button", { class: "secondary wide", onclick: () => tg.openLink(`${location.origin}/app/conf.html#n=${encodeURIComponent(name)}&c=${toFragment(config)}`) }, t("openBrowser")),
-    copyBtn,
-    h("button", { class: "wide", onclick: () => render() }, t("done"))),
-  appsCard());
+  const copyBtn = h("button", { class: "secondary wide", onclick: async () => {
+    try { await navigator.clipboard.writeText(config); copyBtn.textContent = t("copied"); } catch { toast(config); }
+  } }, t("copy"));
+  page(t("resultTitle"),
+    h("section", { class: "card" },
+      h("p", { class: "warn" }, t("resultWarn")),
+      h("p", { class: "muted" }, t("scanHint")),
+      qrSvg(config),
+      h("button", { class: "primary wide", onclick: () => download(config, `${name}.conf`) }, t("downloadConf")),
+      // The fragment (#...) never leaves the device: browsers don't send it to the server.
+      h("button", { class: "secondary wide", onclick: () => tg.openLink(`${location.origin}/app/conf.html#n=${encodeURIComponent(name)}&c=${toFragment(config)}`) }, t("openBrowser")),
+      copyBtn,
+      h("button", { class: "ghost wide", onclick: () => goHome() }, t("done"))));
 }
 
-function appsCard() {
-  return h("section", { class: "card" }, h("p", { class: "muted small" }, t("getApp")),
-    h("ul", { class: "links" }, APPS.map(([label, url]) => h("li", {}, h("a", { href: url, onclick: (e) => { e.preventDefault(); tg.openLink(url); } }, label)))));
+// ------------------------------------------------------------------ help
+function helpScreen() {
+  page(t("helpTitle"),
+    h("section", { class: "card" },
+      h("ol", { class: "steps" }, h("li", {}, t("help1")), h("li", {}, t("help2")), h("li", {}, t("help3")))),
+    h("section", { class: "card" }, h("div", { class: "card-sub" }, t("getApp")),
+      h("ul", { class: "links" }, APPS.map(([label, url]) =>
+        h("li", {}, h("a", { href: url, onclick: (e) => { e.preventDefault(); tg.openLink(url); } }, label))))));
 }
 
-// ---------------------------------------------------------------- boot
+// ------------------------------------------------------------------ boot
 (async () => {
   if (!tg || !tg.initData) {
-    root.replaceChildren(h("p", {}, t("openInTelegram")));
+    root.replaceChildren(h("p", { class: "pad" }, t("openInTelegram")));
     return;
   }
   tg.ready();
   tg.expand();
+  try { tg.setHeaderColor?.("#0b0a09"); tg.setBackgroundColor?.("#0b0a09"); } catch { /* older clients */ }
+  tg.BackButton?.onClick(() => backHandler && backHandler());
   try {
     await login();
-    await render();
+    const ref = new URLSearchParams(location.search).get("ref");
+    if (ref && /^[A-Z0-9]{8}$/.test(ref)) {
+      await api("/referrals/claim", { method: "POST", body: { code: ref } }).catch(() => null);
+    }
+    await goHome();
   } catch (e) {
-    root.replaceChildren(h("p", { class: "warn" }, e.message || t("loginFailed")));
+    root.replaceChildren(h("p", { class: "warn pad" }, e.message || t("loginFailed")));
   }
 })();

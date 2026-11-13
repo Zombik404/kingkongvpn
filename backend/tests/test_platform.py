@@ -125,7 +125,13 @@ def test_negotiate() -> None:
 @pytest.mark.parametrize("template", sorted(email_mod.TEMPLATES))
 def test_every_email_renders(lang: str, template: str) -> None:
     s = make_settings()
-    params = {"hours": "24", "minutes": "30", "plan": "<b>Std</b>", "date": "1 Dec 2026"}
+    params = {
+        "hours": "24",
+        "minutes": "30",
+        "plan": "<b>Std</b>",
+        "date": "1 Dec 2026",
+        "percent": "30",
+    }
     out = render(
         EmailJob(template, "a@example.com", lang, params, "https://w.test/x?token=a&b=1"), s
     )
@@ -352,7 +358,7 @@ async def test_migrations_up_down_up_on_fresh_database() -> None:
                 )
             ).scalar_one()
         await check.dispose()
-        assert tables == 24  # 23 app tables + alembic_version
+        assert tables == 26  # 25 app tables + alembic_version
     finally:
         async with engine.connect() as conn:
             await conn.execute(text(f'DROP DATABASE IF EXISTS "{name}" WITH (FORCE)'))

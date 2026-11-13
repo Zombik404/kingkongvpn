@@ -56,6 +56,12 @@ REGISTRY: dict[str, SettingDef] = {
         False,
         "Closed test: paying or a trial requires having redeemed an invite (free-days) code.",
     ),
+    "referrals.enabled": _def(bool, True, "Reward users whose invitees buy a subscription."),
+    "referrals.percent_off": _def(
+        Annotated[int, Field(ge=1, le=100)],
+        30,
+        "One-time discount the referrer gets per invitee's first payment.",
+    ),
     "peers.idle_ttl_hours": _def(
         Annotated[int, Field(ge=1, le=24 * 30)],
         24,

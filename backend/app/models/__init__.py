@@ -10,6 +10,7 @@ from app.models.billing import (
     PlanPrice,
     PromoCode,
     PromoRedemption,
+    ReferralReward,
     Subscription,
 )
 from app.models.ops import (
@@ -21,7 +22,7 @@ from app.models.ops import (
     TicketMessage,
 )
 from app.models.user import AuthSession, RefreshToken, User, UserActionToken
-from app.models.vpn import Device, Location, PeerAssignment, Server
+from app.models.vpn import Device, DeviceUsageDaily, Location, PeerAssignment, Server
 
 __all__ = [
     "AuditLog",
@@ -29,6 +30,7 @@ __all__ = [
     "Base",
     "Campaign",
     "Device",
+    "DeviceUsageDaily",
     "FamilyMember",
     "Location",
     "Notification",
@@ -40,6 +42,7 @@ __all__ = [
     "PlanPrice",
     "PromoCode",
     "PromoRedemption",
+    "ReferralReward",
     "RefreshToken",
     "Server",
     "Setting",

@@ -85,6 +85,9 @@ class Agent:
             "tx_bytes": sum(p.tx_bytes for p in state.peers.values()),
             "handshakes": {k: p.latest_handshake for k, p in state.peers.items()
                            if p.latest_handshake},
+            # cumulative per-peer counters; the backend turns them into daily totals
+            "transfer": {k: [p.rx_bytes, p.tx_bytes] for k, p in state.peers.items()
+                         if p.rx_bytes or p.tx_bytes},
             "errors": self.last_errors,
             "agent_version": __version__,
         }

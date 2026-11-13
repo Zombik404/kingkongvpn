@@ -9,6 +9,7 @@ from sqlalchemy import (
     BigInteger,
     Boolean,
     CheckConstraint,
+    Date,
     DateTime,
     ForeignKey,
     Integer,
@@ -123,3 +124,24 @@ class PeerAssignment(UUIDPk, Timestamps, Base):
     )
     last_seen_at: Mapped[dt.datetime | None] = mapped_column(DateTime(timezone=True))
     revision: Mapped[int] = mapped_column(BigInteger, default=0, server_default="0")
+    # Last cumulative WireGuard counters seen for this peer (server view), to compute deltas.
+    last_rx_bytes: Mapped[int] = mapped_column(BigInteger, default=0, server_default="0")
+    last_tx_bytes: Mapped[int] = mapped_column(BigInteger, default=0, server_default="0")
+
+
+class DeviceUsageDaily(Base):
+    """Aggregate bytes per device per UTC day (ADR-010: no destinations, kept 90 days).
+
+    `download` = bytes sent to the device, `upload` = bytes received from it."""
+
+    __tablename__ = "device_usage_daily"
+    __table_args__ = (
+        CheckConstraint("download_bytes >= 0 AND upload_bytes >= 0", name="non_negative"),
+    )
+
+    device_id: Mapped[uuid.UUID] = mapped_column(
+        UUID(as_uuid=True), ForeignKey("devices.id", ondelete="CASCADE"), primary_key=True
+    )
+    day: Mapped[dt.date] = mapped_column(Date, primary_key=True, index=True)
+    download_bytes: Mapped[int] = mapped_column(BigInteger, default=0, server_default="0")
+    upload_bytes: Mapped[int] = mapped_column(BigInteger, default=0, server_default="0")

@@ -17,11 +17,12 @@ from dataclasses import dataclass
 from typing import Any
 
 from sqlalchemy import and_, delete, func, select, update
+from sqlalchemy.dialects.postgresql import insert as pg_insert
 from sqlalchemy.ext.asyncio import AsyncSession
 
 from app.core.context import AppContext
 from app.core.errors import AppError, NotAuthenticated, NotFound
-from app.models import Device, Location, PeerAssignment, Server, Subscription
+from app.models import Device, DeviceUsageDaily, Location, PeerAssignment, Server, Subscription
 from app.models.base import utcnow
 from app.models.enums import AssignmentState, DeviceStatus, ServerStatus
 from app.subscriptions import service as subs
@@ -257,6 +258,7 @@ async def heartbeat(db: AsyncSession, server: Server, data: dict[str, Any]) -> N
         for k, ts in (data.get("handshakes") or {}).items()
         if isinstance(ts, int) and ts > 0 and now.timestamp() - ts < 3600
     ]
+    await record_transfer(db, srv.id, data.get("transfer") or {}, now.date())
     if hour_ago_keys:
         stamp = now.replace(minute=0, second=0, microsecond=0)
         await db.execute(
@@ -274,5 +276,125 @@ async def purge_removed_assignments(db: AsyncSession, older_than: dt.timedelta) 
             PeerAssignment.updated_at < utcnow() - older_than,
         )
     )
+    await db.commit()
+    return int(getattr(result, "rowcount", 0) or 0)
+
+
+async def record_transfer(
+    db: AsyncSession, server_id: uuid.UUID, transfer: dict[str, Any], day: dt.date
+) -> int:
+    """Turn cumulative per-peer counters into per-device daily totals.
+
+    WireGuard counters restart from 0 when a peer is re-added, so a counter smaller than the
+    last one seen is treated as a fresh start. Returns the number of devices updated."""
+    clean: dict[str, tuple[int, int]] = {}
+    for key, pair in transfer.items():
+        if (
+            isinstance(key, str)
+            and len(key) == 44
+            and isinstance(pair, list | tuple)
+            and len(pair) == 2
+            and all(isinstance(v, int) and 0 <= v < 2**62 for v in pair)
+        ):
+            clean[key] = (int(pair[0]), int(pair[1]))
+    if not clean:
+        return 0
+    rows = (
+        await db.execute(
+            select(PeerAssignment, Device.public_key)
+            .join(Device, Device.id == PeerAssignment.device_id)
+            .where(PeerAssignment.server_id == server_id, Device.public_key.in_(list(clean)))
+            .with_for_update(of=PeerAssignment)
+        )
+    ).all()
+    updated = 0
+    for assignment, key in rows:
+        rx, tx = clean[key]
+        d_up = rx - assignment.last_rx_bytes if rx >= assignment.last_rx_bytes else rx
+        d_down = tx - assignment.last_tx_bytes if tx >= assignment.last_tx_bytes else tx
+        assignment.last_rx_bytes, assignment.last_tx_bytes = rx, tx
+        if d_up or d_down:
+            stmt = pg_insert(DeviceUsageDaily).values(
+                device_id=assignment.device_id, day=day, download_bytes=d_down, upload_bytes=d_up
+            )
+            await db.execute(
+                stmt.on_conflict_do_update(
+                    index_elements=["device_id", "day"],
+                    set_={
+                        "download_bytes": DeviceUsageDaily.download_bytes + d_down,
+                        "upload_bytes": DeviceUsageDaily.upload_bytes + d_up,
+                    },
+                )
+            )
+            updated += 1
+    return updated
+
+
+async def usage(db: AsyncSession, user_id: uuid.UUID, days: int) -> dict[str, Any]:
+    """Daily totals for the user's devices over `days` (zero-filled) + top devices."""
+    today = utcnow().date()
+    start = today - dt.timedelta(days=days - 1)
+    rows = (
+        await db.execute(
+            select(
+                DeviceUsageDaily.day,
+                func.sum(DeviceUsageDaily.download_bytes),
+                func.sum(DeviceUsageDaily.upload_bytes),
+            )
+            .join(Device, Device.id == DeviceUsageDaily.device_id)
+            .where(Device.user_id == user_id, DeviceUsageDaily.day >= start)
+            .group_by(DeviceUsageDaily.day)
+        )
+    ).all()
+    per_day = {d: (int(a or 0), int(b or 0)) for d, a, b in rows}
+    series = []
+    for i in range(days):
+        d = start + dt.timedelta(days=i)
+        down, up = per_day.get(d, (0, 0))
+        series.append({"date": d.isoformat(), "download": down, "upload": up})
+    top = (
+        await db.execute(
+            select(
+                Device.id,
+                Device.name,
+                Device.platform,
+                Device.status,
+                func.sum(DeviceUsageDaily.download_bytes).label("down"),
+                func.sum(DeviceUsageDaily.upload_bytes).label("up"),
+            )
+            .join(DeviceUsageDaily, DeviceUsageDaily.device_id == Device.id)
+            .where(Device.user_id == user_id, DeviceUsageDaily.day >= start)
+            .group_by(Device.id)
+            .order_by(
+                (
+                    func.sum(DeviceUsageDaily.download_bytes)
+                    + func.sum(DeviceUsageDaily.upload_bytes)
+                ).desc()
+            )
+            .limit(5)
+        )
+    ).all()
+    return {
+        "days": days,
+        "series": series,
+        "total_download": sum(p["download"] for p in series),
+        "total_upload": sum(p["upload"] for p in series),
+        "top_devices": [
+            {
+                "device_id": str(i),
+                "name": n,
+                "platform": p,
+                "status": s,
+                "download": int(dn or 0),
+                "upload": int(u or 0),
+            }
+            for i, n, p, s, dn, u in top
+        ],
+    }
+
+
+async def purge_old_usage(db: AsyncSession, keep_days: int = 90) -> int:
+    cutoff = utcnow().date() - dt.timedelta(days=keep_days)
+    result = await db.execute(delete(DeviceUsageDaily).where(DeviceUsageDaily.day < cutoff))
     await db.commit()
     return int(getattr(result, "rowcount", 0) or 0)

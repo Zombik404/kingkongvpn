@@ -39,6 +39,11 @@
       "subject": "Zahlung erhalten – {app_name}",
       "body": "Danke! Deine Zahlung ist eingegangen. Dein Zugang ({plan}) ist bis {date} aktiv.",
       "action": "Mein Abo"
+    },
+    "referral_reward": {
+      "subject": "Dein Freund ist bei {app_name} – {percent} % Rabatt für dich",
+      "body": "Ein Freund, den du eingeladen hast, hat ein Abo abgeschlossen. Du bekommst {percent} % Rabatt auf deine nächste Zahlung – er wird automatisch angewendet.",
+      "action": "{app_name} öffnen"
     }
   }
 }

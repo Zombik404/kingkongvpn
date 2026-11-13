@@ -18,7 +18,7 @@ Android/iOS/Windows/macOS apps, website and admin panel. Working name — the br
 | `node-agent/` | Agent on each VPN server; reconciles WireGuard peers with the backend | Test slice ✅ — reconciler, control-plane client, systemd unit |
 | `vpn-infrastructure/` | Ansible roles, Terraform, nftables, unbound, exporters | Phase 3 |
 | `telegram-bot/` | aiogram 3 bot (entry point to the Mini App) | Test slice ✅ |
-| `miniapp/` | Telegram Mini App (keys generated on the device) | Test slice ✅ |
+| `miniapp/` | Telegram Mini App "VpnHub": radial menu, traffic dashboard, referrals, country switch (keys generated on the device) | Test slice ✅ |
 | `deploy/` | One-server test deployment (`install.sh`) | Ready — guide: `documentation/TEST_LAUNCH_RU.md` |
 | `mobile-app/` | Flutter app with native Android VpnService / iOS Network Extension | Phase 6 |
 | `desktop-app/` | Flutter desktop with native Windows / macOS tunnel integration | Phase 7 |

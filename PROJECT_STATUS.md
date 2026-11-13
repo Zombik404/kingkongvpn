@@ -34,6 +34,15 @@ Last updated: 2026-11-13 · Current phase: **Telegram test version built and ver
 - **Contract & docs**: `shared/api-contracts/openapi.json` (49 operations), `documentation/BACKEND_API.md`, `documentation/DATABASE_SCHEMA.md`, `documentation/adr/0015-backend-core-decisions.md`.
 - **Tooling**: hash-pinned `requirements.lock` / `requirements-dev.lock`; Dockerfile installs from them; Compose `migrate` service runs before API/worker; CI workflow (`.github/workflows/ci.yml`); `app.cli grant-role` / `seed-dev`; new Makefile targets.
 
+## VpnHub redesign (2026-11-13) — ADR-018
+- Mini App rebuilt in black & orange: radial menu (country, payment, upgrade, friends, devices, help) around a ring showing days left; traffic dashboard (7/30/90 days, download/upload, smooth area chart, top-5 devices as concentric rings).
+- **Traffic accounting** from per-peer WireGuard counters (agent 0.3.0) → `device_usage_daily`, `GET /vpn/usage`.
+- **Referrals:** `GET /referrals`, `POST /referrals/claim`, bot `ref_` deep links, 30 % one-time discount for the referrer per invitee's first payment (reserved/released/used with the invoice), Telegram/email notice.
+- **Country switch** for devices created on the same phone (key kept in the device's local storage only).
+- Not possible in the Telegram Mini App: per-app traffic (see ADR-018 §2) — shown as top devices; planned for the Android app.
+- ⚠️ Name "VpnHub": an existing VPN "VPNhub" with a similar look exists (trademark filings) — clear the name before public launch.
+- Verified: 211 backend tests (Python 3.12/3.13), Mini App flows in Chromium (invite → device → config → move to another country → remove; QR = file), screenshots reviewed.
+
 ## Telegram test version (2026-11-13) — ADR-017
 - **Mini App** (`miniapp/`, built bundle in `miniapp/dist/`): sign-in with Telegram `initData`, invite code (auto-filled from `t.me/<bot>?start=INV-…`), plans and @CryptoBot payment with auto-confirmation, devices (add/remove), WireGuard keypair generated on the device, config as QR / file / browser page / copy.
 - **Backend**: `POST /auth/telegram/webapp`, invite-only gate, `GET /vpn/locations`, `POST /vpn/connect`, node API `/internal/v1/nodes/{id}/desired-state` (long-poll) + `/heartbeat`, Telegram notifications, CLIs `node-register`, `create-invites`, `set-setting`; migration `0003`.
@@ -69,7 +78,7 @@ Last updated: 2026-11-13 · Current phase: **Telegram test version built and ver
 ## Tests
 | Suite | Result | Command |
 |---|---|---|
-| Backend: 200 tests on real PostgreSQL 16 + Redis 7 | ✅ pass (Python 3.12 and 3.13) | `make up && make test-backend` |
+| Backend: 211 tests on real PostgreSQL 16 + Redis 7 | ✅ pass (Python 3.12 and 3.13) | `make up && make test-backend` |
 | Backend coverage | ✅ 97 % total — auth 96 %, subscriptions 96 %, devices 95 %, payments 94 % (target ≥ 85 %) | same |
 | Migration up → down → up on a fresh DB; models ↔ migration drift; OpenAPI drift | ✅ pass | part of backend suite |
 | Concurrency: 8 parallel device registrations vs limit 3; parallel address allocation; parallel promo redemption vs `max_redemptions` | ✅ pass | part of backend suite |

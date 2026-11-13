@@ -27,6 +27,7 @@ from aiogram.types import (
 
 log = logging.getLogger("globalvpn.bot")
 INVITE_RE = re.compile(r"^INV-[A-Z0-9]{4}-[A-Z0-9]{4}$")
+REF_RE = re.compile(r"^REF_([A-Z0-9]{8})$")
 
 TEXT = {
     "ru": {
@@ -34,6 +35,7 @@ TEXT = {
         "Нажмите «Открыть VPN»: там можно активировать доступ, оплатить и подключить устройство.",
         "hello_invite": "Привет! Ваш инвайт-код {code} уже подставлен — нажмите «Открыть VPN» "
         "и затем «Активировать».",
+        "hello_ref": "Привет! Вас пригласили в {app}. Нажмите «Открыть VPN», чтобы начать.",
         "open": "Открыть VPN",
         "help": "Как подключиться:\n"
         "1. Установите приложение WireGuard (Android, iPhone, Windows, macOS).\n"
@@ -42,13 +44,14 @@ TEXT = {
         "Ключ создаётся на вашем устройстве и не хранится у нас, поэтому сохраните "
         "конфигурацию сразу. Потеряли — просто создайте новое подключение.",
         "other": "Всё управление — в приложении:",
-        "menu": "VPN",
+        "menu": "VpnHub",
     },
     "en": {
         "hello": "Hi! This is {app} — a VPN right inside Telegram.\n\n"
         "Tap “Open VPN” to activate access, pay and connect your devices.",
         "hello_invite": "Hi! Your invite code {code} is already filled in — tap “Open VPN”, "
         "then “Activate”.",
+        "hello_ref": "Hi! You've been invited to {app}. Tap “Open VPN” to get started.",
         "open": "Open VPN",
         "help": "How to connect:\n"
         "1. Install the WireGuard app (Android, iPhone, Windows, macOS).\n"
@@ -57,7 +60,7 @@ TEXT = {
         "The key is created on your device and isn't stored by us, so save the configuration "
         "right away. Lost it? Just create a new connection.",
         "other": "Everything is managed in the app:",
-        "menu": "VPN",
+        "menu": "VpnHub",
     },
 }
 
@@ -73,8 +76,9 @@ class BotConfig:
         url = os.environ["MINIAPP_URL"].strip()
         if not url.startswith("https://"):
             raise ValueError("MINIAPP_URL must be https:// (Telegram requires it)")
-        return cls(os.environ["TELEGRAM_BOT_TOKEN"].strip(), url,
-                   os.environ.get("APP_NAME", "GlobalVPN"))
+        return cls(
+            os.environ["TELEGRAM_BOT_TOKEN"].strip(), url, os.environ.get("APP_NAME", "VpnHub")
+        )
 
 
 def lang_of(code: str | None) -> str:
@@ -82,18 +86,26 @@ def lang_of(code: str | None) -> str:
     return "ru" if c.startswith(("ru", "uk", "be")) else "en"
 
 
-def open_button(cfg: BotConfig, lang: str, invite: str | None = None) -> InlineKeyboardMarkup:
+def open_button(
+    cfg: BotConfig, lang: str, invite: str | None = None, ref: str | None = None
+) -> InlineKeyboardMarkup:
     url = cfg.miniapp_url
-    if invite:
-        url += ("&" if "?" in url else "?") + "invite=" + quote(invite)
-    return InlineKeyboardMarkup(inline_keyboard=[[
-        InlineKeyboardButton(text=TEXT[lang]["open"], web_app=WebAppInfo(url=url))]])
+    for key, value in (("invite", invite), ("ref", ref)):
+        if value:
+            url += ("&" if "?" in url else "?") + f"{key}=" + quote(value)
+    return InlineKeyboardMarkup(
+        inline_keyboard=[
+            [InlineKeyboardButton(text=TEXT[lang]["open"], web_app=WebAppInfo(url=url))]
+        ]
+    )
 
 
 def start_reply(cfg: BotConfig, lang: str, payload: str | None) -> tuple[str, InlineKeyboardMarkup]:
     invite = (payload or "").strip().upper()
     if INVITE_RE.match(invite):
         return TEXT[lang]["hello_invite"].format(code=invite), open_button(cfg, lang, invite)
+    if m := REF_RE.match(invite):
+        return TEXT[lang]["hello_ref"].format(app=cfg.app_name), open_button(cfg, lang, ref=m[1])
     return TEXT[lang]["hello"].format(app=cfg.app_name), open_button(cfg, lang)
 
 
@@ -122,11 +134,17 @@ def build_dispatcher(cfg: BotConfig) -> Dispatcher:
 async def configure(bot: Bot, cfg: BotConfig) -> None:
     for lang in ("ru", "en"):
         await bot.set_my_commands(
-            [BotCommand(command="start", description=TEXT[lang]["open"]),
-             BotCommand(command="help", description="Help" if lang == "en" else "Помощь")],
-            language_code=lang)
-    await bot.set_chat_menu_button(menu_button=MenuButtonWebApp(
-        text=TEXT["en"]["menu"], web_app=WebAppInfo(url=cfg.miniapp_url)))
+            [
+                BotCommand(command="start", description=TEXT[lang]["open"]),
+                BotCommand(command="help", description="Help" if lang == "en" else "Помощь"),
+            ],
+            language_code=lang,
+        )
+    await bot.set_chat_menu_button(
+        menu_button=MenuButtonWebApp(
+            text=TEXT["en"]["menu"], web_app=WebAppInfo(url=cfg.miniapp_url)
+        )
+    )
 
 
 async def run() -> None:

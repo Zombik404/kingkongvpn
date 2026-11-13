@@ -103,6 +103,7 @@ def test_step_applies_desired_state_and_heartbeat(backend: Backend) -> None:
     hb = backend.heartbeats[-1]
     assert hb["peers_total"] == 1 and hb["applied_revision"] == 7
     assert hb["wg_public_key"] == key(255) and hb["agent_version"]
+    assert hb["transfer"] == {}  # FakeDriver peers have zero counters
 
 
 def test_backend_down_keeps_peers(backend: Backend) -> None:

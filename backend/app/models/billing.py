@@ -179,6 +179,11 @@ class Payment(UUIDPk, Timestamps, Base):
     paid_asset: Mapped[str | None] = mapped_column(String(16))
     paid_amount: Mapped[str | None] = mapped_column(String(64))
     failure_reason: Mapped[str | None] = mapped_column(String(64))
+    referral_reward_id: Mapped[uuid.UUID | None] = mapped_column(
+        # use_alter: payments ↔ referral_rewards reference each other
+        UUID(as_uuid=True),
+        ForeignKey("referral_rewards.id", ondelete="SET NULL", use_alter=True),
+    )
 
 
 class PaymentEvent(UUIDPk, Base):
@@ -262,3 +267,29 @@ class PromoRedemption(UUIDPk, Base):
     redeemed_at: Mapped[dt.datetime] = mapped_column(
         DateTime(timezone=True), server_default=text("now()")
     )
+
+
+class ReferralReward(UUIDPk, Timestamps, Base):
+    """One per referred user who paid: a one-time percentage discount for the referrer.
+
+    available → reserved (by a pending checkout) → used (payment succeeded);
+    reserved → available again if that invoice fails or expires."""
+
+    __tablename__ = "referral_rewards"
+    __table_args__ = (
+        CheckConstraint("status IN ('available', 'reserved', 'used')", name="status"),
+        CheckConstraint("percent_off BETWEEN 1 AND 100", name="percent_off"),
+    )
+
+    referrer_id: Mapped[uuid.UUID] = mapped_column(
+        UUID(as_uuid=True), ForeignKey("users.id", ondelete="CASCADE"), index=True
+    )
+    referred_id: Mapped[uuid.UUID | None] = mapped_column(
+        UUID(as_uuid=True), ForeignKey("users.id", ondelete="SET NULL"), unique=True
+    )
+    source_payment_id: Mapped[uuid.UUID | None] = mapped_column(
+        UUID(as_uuid=True), ForeignKey("payments.id", ondelete="SET NULL")
+    )
+    percent_off: Mapped[int] = mapped_column(Integer, default=30, server_default="30")
+    status: Mapped[str] = mapped_column(String(16), default="available", server_default="available")
+    used_payment_id: Mapped[uuid.UUID | None] = mapped_column(UUID(as_uuid=True))

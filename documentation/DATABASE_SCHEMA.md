@@ -1,7 +1,7 @@
 # Database schema
 
 PostgreSQL 16. Defined by SQLAlchemy models in `backend/app/models/` and the Alembic migration
-`backend/migrations/versions/` (`0001_initial_schema`, `0002_cryptobot_payments`) (a test fails if the two drift apart, and the
+`backend/migrations/versions/` (`0001`–`0004`) (a test fails if the two drift apart, and the
 migration is tested up → down → up on a fresh database).
 
 **Conventions:** UUIDv7 primary keys (time-ordered), `created_at`/`updated_at` in UTC
@@ -29,6 +29,7 @@ Run migrations: `make migrate` (Docker) or `cd backend && alembic upgrade head`.
 | `locations` | Country/city | `country_code ~ '^[A-Z]{2}$'`, unique (country, city), i18n `names` |
 | `servers` | VPN nodes | unique `hostname`, `wg_public_key`, `agent_cert_fingerprint`; `status ∈ provisioning/active/draining/maintenance/disabled`; `revision` bumps when its peer set changes; `last_metrics` = latest snapshot only (time series live in Prometheus — no `server_metrics` table) |
 | `peer_assignments` | Device ↔ node | unique (device, server); `state ∈ pending/active/removing` |
+| `device_usage_daily` | Aggregate traffic | PK (device, day); `download_bytes`, `upload_bytes`; 90-day retention. `peer_assignments.last_rx_bytes/last_tx_bytes` keep the last counters to compute deltas |
 
 Sequence `tunnel_address_seq` feeds address allocation; when it passes the end of the pool the
 allocator reuses indices freed by purged devices. The unique constraint on `address_index` is what
@@ -44,6 +45,7 @@ guarantees no two devices ever share an address, even under concurrency (tested)
 | `family_members` | Shared plans (future) | unique (subscription, user) |
 | `payments` | Charges/refunds — no card data | unique (provider, provider_payment_id) = (cryptobot, invoice_id); `status ∈ pending/succeeded/failed/refunded`; `plan_price_id` (what was bought — the granted period comes from here), `promo_code_id`, `checkout_url`, `expires_at`, `paid_at`, `paid_asset`/`paid_amount` (crypto actually received), `failure_reason` (`expired`, `amount_mismatch`, `needs_manual_review`); `user_id ON DELETE SET NULL` (accounting records outlive accounts) |
 | `payment_events` | Provider events (webhook or poll), minimal fields only | unique (provider, event_id); for @CryptoBot `event_id = invoice:<id>:<status>` because its `update_id` is not unique |
+| `referral_rewards` | Referral discounts | one per referred user (unique `referred_id`); `status ∈ available/reserved/used`; `payments.referral_reward_id` links the payment that used it. `users.referral_code` (unique), `users.referred_by_id` |
 | `campaigns`, `promo_codes`, `promo_redemptions` | Promotions | code citext unique; `CHECK` that fields match the kind (percent 1–100 / amount + currency / free days + plan); one redemption per user per code; `redemption_count` updated under a row lock so `max_redemptions` holds under concurrency |
 
 Subscription transitions are implemented once, in `app/subscriptions/state_machine.py`

@@ -47,6 +47,10 @@ class User(UUIDPk, Timestamps, Base):
     trial_used_at: Mapped[dt.datetime | None] = mapped_column(DateTime(timezone=True))
     last_login_at: Mapped[dt.datetime | None] = mapped_column(DateTime(timezone=True))
     deleted_at: Mapped[dt.datetime | None] = mapped_column(DateTime(timezone=True), index=True)
+    referral_code: Mapped[str | None] = mapped_column(String(16), unique=True)
+    referred_by_id: Mapped[uuid.UUID | None] = mapped_column(
+        UUID(as_uuid=True), ForeignKey("users.id", ondelete="SET NULL"), index=True
+    )
 
     @property
     def is_active(self) -> bool:

@@ -50,6 +50,7 @@ class PaymentOut(BaseModel):
     expires_at: dt.datetime | None
     paid_at: dt.datetime | None
     failure_reason: str | None
+    discount: str | None  # "promo" | "referral" | None
     created_at: dt.datetime
 
 
@@ -77,6 +78,7 @@ async def _out(db: Db, p: Payment) -> PaymentOut:
         expires_at=p.expires_at,
         paid_at=p.paid_at,
         failure_reason=p.failure_reason,
+        discount="promo" if p.promo_code_id else "referral" if p.referral_reward_id else None,
         created_at=p.created_at,
     )
 

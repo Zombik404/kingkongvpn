@@ -35,7 +35,8 @@ from app.models.enums import (
 )
 from app.notifications.notify import notify
 from app.payments.cryptobot import CryptoBotClient, Invoice
-from app.services import audit, catalog
+from app.services import audit, catalog, referrals
+from app.services import settings as settings_service
 from app.subscriptions import service as subs
 
 log = logging.getLogger(__name__)
@@ -134,10 +135,15 @@ async def checkout(
     if (pending or 0) >= ctx.settings.payment_pending_limit_per_user:
         raise TooManyPendingPayments()
 
-    amount, promo_id = price.amount_minor, None
+    amount, promo_id, reward = price.amount_minor, None, None
     if promo_code:
         promo, amount = await catalog.apply_discount(db, user_id, promo_code, price)
         promo_id = promo.id
+    else:
+        # A referral reward applies automatically (one per payment, not with a promo code).
+        reward = await referrals.reserve_reward(db, user_id)
+        if reward is not None:
+            amount = price.amount_minor - (price.amount_minor * reward.percent_off) // 100
     if amount < MIN_AMOUNT_MINOR:
         raise catalog.InvalidPromo("This code can't be used for a paid checkout.")
 
@@ -160,6 +166,7 @@ async def checkout(
         kind=(PaymentKind.RENEWAL if live else PaymentKind.INITIAL).value,
         plan_price_id=price.id,
         promo_code_id=promo_id,
+        referral_reward_id=reward.id if reward else None,
         checkout_url=invoice.pay_url,
         expires_at=invoice.expires_at
         or now + dt.timedelta(seconds=ctx.settings.cryptobot_invoice_ttl_seconds),
@@ -239,6 +246,7 @@ async def apply_invoice(
         if invoice.amount != expected or (invoice.fiat or "") != payment.currency:
             payment.status = PaymentStatus.FAILED.value
             payment.failure_reason = "amount_mismatch"
+            await referrals.release_reward(db, payment)
             audit.record(
                 db,
                 action="payment.mismatch",
@@ -260,6 +268,7 @@ async def apply_invoice(
     if invoice.status == "expired" and payment.status == PaymentStatus.PENDING:
         payment.status = PaymentStatus.FAILED.value
         payment.failure_reason = "expired"
+        await referrals.release_reward(db, payment)
         await db.commit()
         return "expired"
     return "ignored"
@@ -311,6 +320,7 @@ async def _credit(
     payment.paid_amount = invoice.paid_amount
     if payment.promo_code_id is not None:
         await catalog.record_redemption(db, payment.promo_code_id, user.id, sub.id)
+    referrer = await referrals.on_payment_succeeded(db, payment, user)
     audit.record(
         db,
         action="payment.succeeded",
@@ -338,6 +348,15 @@ async def _credit(
         },
         f"{ctx.settings.public_web_url}/account/subscription",
     )
+    if referrer is not None:
+        percent = int(await settings_service.get_value(db, "referrals.percent_off"))
+        await notify(
+            ctx,
+            referrer,
+            "referral_reward",
+            {"percent": str(percent)},
+            f"{ctx.settings.public_web_url}/app/",
+        )
     return "credited"
 
 
