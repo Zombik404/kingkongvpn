@@ -64,3 +64,27 @@ test("chart helpers", () => {
   assert.match(arcPath(50, 50, 40, 0.25), /^M50,10 A40,40 0 0 1 90\.00,50\.00$/);
   assert.match(arcPath(50, 50, 40, 1), / 0 1 1 /); // full circle uses the large-arc flag
 });
+
+// ---- provably fair: the device's shuffle must equal the server's (backend/app/games/fair.py)
+import { dealMatches, shuffledShoe, verifyRound } from "../src/fair.js";
+
+test("fair shuffle matches the server's known vector", async () => {
+  // python: fair.shuffled_shoe("a"*64, "0=abc", 3, 6)[:8]
+  const shoe = await shuffledShoe("a".repeat(64), "0=abc", 3, 6);
+  assert.equal(shoe.slice(0, 8).join(" "), "KH KD 8C JS 3C 9C QH 6C");
+  assert.equal(shoe.length, 312);
+});
+
+test("deal check: right round passes, another round or a swapped card fails", async () => {
+  const shoe = await shuffledShoe("a".repeat(64), "0=abc", 3, 6); // KH KD 8C JS 3C 9C …
+  // one seat: first KH, dealer up KD, second 8C, hole JS; the player then draws 3C
+  const summary = { seats: [{ hands: [{ cards: ["KH", "8C", "3C"] }] }], dealer: { cards: ["KD", "JS"] } };
+  assert.equal(dealMatches(shoe, summary), true);
+  assert.equal(dealMatches(shoe, { ...summary, dealer: { cards: ["JS", "KD"] } }), false);
+  assert.equal(dealMatches(shoe, { ...summary, seats: [{ hands: [{ cards: ["KH", "8C", "9C"] }] }] }), false);
+  const { createHash } = await import("node:crypto");
+  const f = { server_seed: "a".repeat(64), server_seed_hash: createHash("sha256").update("a".repeat(64)).digest("hex"), client_seed: "0=abc", number: 3, decks: 6, summary };
+  assert.deepEqual(await verifyRound(f), { ok: true, hashOk: true, dealOk: true });
+  assert.equal((await verifyRound({ ...f, server_seed_hash: "00" })).ok, false);
+  assert.equal((await verifyRound({ ...f, server_seed: null })).ok, false);
+});

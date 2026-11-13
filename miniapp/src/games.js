@@ -2,6 +2,8 @@
 // this module only draws the table it is given and sends the player's choices.
 // Built with the app's own helpers and styles (passed in by app.js) so it looks like the rest.
 
+import { verifyRound } from "./fair.js";
+
 const SUIT = { S: "♠", H: "♥", D: "♦", C: "♣" };
 const RANK = { T: "10" };
 const LIVE = ["insurance", "playing"];
@@ -468,35 +470,6 @@ export function initGames(d) {
     sheet(t("gRules"), h("ul", { class: "steps" }, ...t("gRulesList")(r).map((x) => h("li", {}, x))));
   }
 
-  async function sha256hex(s) {
-    const buf = await crypto.subtle.digest("SHA-256", new TextEncoder().encode(s));
-    return Array.from(new Uint8Array(buf), (b) => b.toString(16).padStart(2, "0")).join("");
-  }
-  // The same shuffle as the server (backend/app/games/fair.py), run on this device.
-  async function shuffledShoe(serverSeed, clientSeed, nonce, decks) {
-    const enc = new TextEncoder();
-    const key = await crypto.subtle.importKey("raw", enc.encode(serverSeed), { name: "HMAC", hash: "SHA-256" }, false, ["sign"]);
-    const shoe = [];
-    for (let k = 0; k < decks; k++) for (const s of "SHDC") for (const r of "A23456789TJQK") shoe.push(r + s);
-    let counter = 0, block = [], pos = 8;
-    const next = async () => {
-      if (pos >= 8) {
-        const sig = new DataView(await crypto.subtle.sign("HMAC", key, enc.encode(`${clientSeed}:${nonce}:${counter++}`)));
-        block = Array.from({ length: 8 }, (_, i) => sig.getUint32(i * 4));
-        pos = 0;
-      }
-      return block[pos++];
-    };
-    for (let i = shoe.length - 1; i > 0; i--) {
-      const span = i + 1, limit = 2 ** 32 - (2 ** 32 % span);
-      let x;
-      do { x = await next(); } while (x >= limit);
-      const j = x % span;
-      [shoe[i], shoe[j]] = [shoe[j], shoe[i]];
-    }
-    return shoe;
-  }
-
   function fairSheet(view) {
     const f = view.last_fair;
     const out = h("p", { class: "small" });
@@ -508,17 +481,12 @@ export function initGames(d) {
         h("div", { class: "card-sub" }, t("gFairLast", { n: f.number })),
         mono(t("gFairHash"), f.server_seed_hash), mono(t("gFairSeed"), f.server_seed), mono(t("gFairClient"), f.client_seed),
         h("button", { class: "secondary wide", onclick: async () => {
+          out.className = "small muted"; out.textContent = t("loading");
           try {
-            const okHash = (await sha256hex(f.server_seed)) === f.server_seed_hash;
-            const shoe = await shuffledShoe(f.server_seed, f.client_seed, f.number, f.decks);
-            const r = view.round;
-            const n = r.seats.length;
-            const dealt = r.seats.every((s, i) => { // deal order: first cards, dealer up, second cards, hole
-              const first = s.hands[0].cards[0];
-              return shoe[i] === first || s.hands.length > 1; // after a split the first hand still starts with it
-            }) && shoe[n] === r.dealer.cards[0] && shoe[2 * n + 1] === r.dealer.cards[1];
-            out.className = okHash && dealt ? "small ok" : "small warn";
-            out.textContent = okHash && dealt ? t("gFairOk") : t("gFairBad");
+            // the cards of exactly this round, from the server's record of it
+            const res = await verifyRound(await api(`/games/rounds/${f.round_id}/fairness`));
+            out.className = res.ok ? "small ok" : "small warn";
+            out.textContent = res.ok ? t("gFairOk") : t("gFairBad");
           } catch { out.className = "small warn"; out.textContent = t("gFairUnavailable"); }
         } }, t("gFairCheck")),
         out,
