@@ -14,6 +14,7 @@ from app.schemas.auth import (
     PasswordResetConfirmIn,
     RefreshIn,
     RegisterIn,
+    TelegramLoginIn,
     TokenIn,
     TokenPairOut,
     TotpCodeIn,
@@ -67,6 +68,12 @@ async def login(body: LoginIn, ctx: Ctx, db: Db, client: Client) -> TokenPairOut
     if isinstance(result, MfaRequired):
         return MfaChallengeOut(mfa_token=result.mfa_token)
     return _pair_out(result)
+
+
+@router.post("/telegram/webapp", response_model=TokenPairOut)
+async def telegram_webapp(body: TelegramLoginIn, ctx: Ctx, db: Db, client: Client) -> TokenPairOut:
+    """Mini App sign-in with `Telegram.WebApp.initData`; creates the account on first use."""
+    return _pair_out(await AuthService(ctx, db).telegram_webapp_login(body.init_data, client))
 
 
 @router.post("/mfa/verify", response_model=TokenPairOut)

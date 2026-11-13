@@ -19,9 +19,11 @@ from app.models import AuthSession, User, UserActionToken
 from app.models.base import utcnow
 from app.models.enums import UserStatus
 from app.notifications.email import EmailJob, render, send_smtp
+from app.notifications.telegram import TelegramJob, TelegramSendError, send_sync
 from app.payments import service as payments
 from app.services.users import DELETED_ACCOUNT_RETENTION_DAYS
 from app.subscriptions import service as subs
+from app.vpn import service as vpn_service
 from app.workers.celery_app import celery_app
 
 log = logging.getLogger(__name__)
@@ -77,7 +79,8 @@ async def cleanup_tokens(ctx: AppContext, db: AsyncSession) -> int:
         )
     )
     await db.commit()
-    return int(getattr(a, "rowcount", 0) or 0) + int(getattr(b, "rowcount", 0) or 0)
+    c = await vpn_service.purge_removed_assignments(db, dt.timedelta(days=1))
+    return int(getattr(a, "rowcount", 0) or 0) + int(getattr(b, "rowcount", 0) or 0) + c
 
 
 @celery_app.task(name="subscriptions.process_due")
@@ -103,3 +106,15 @@ def cleanup_tokens_task() -> int:
 @celery_app.task(name="payments.poll_pending")
 def poll_payments_task() -> dict[str, int]:
     return asyncio.run(_with_db(lambda c, s: payments.poll_pending(c, s)))
+
+
+@celery_app.task(
+    name="telegram.send",
+    autoretry_for=(TelegramSendError,),
+    retry_backoff=True,
+    retry_backoff_max=600,
+    retry_jitter=True,
+    max_retries=8,
+)
+def send_telegram(job: dict[str, Any]) -> None:
+    send_sync(TelegramJob.from_dict(job), get_settings())

@@ -44,6 +44,21 @@ the plan (or the `devices.limit_without_subscription` setting); exceeding it giv
 (cancel = stop at period end). Free-days promo codes: `POST /promo/redeem`.
 Discount codes: `POST /promo/validate` previews the price (applied at checkout, Phase 10).
 
+## Telegram Mini App and VPN connect
+
+- `POST /auth/telegram/webapp {init_data}` — sign in with `Telegram.WebApp.initData` (HMAC-checked
+  with the bot token, ≤ 24 h old). Creates a Telegram-only account (no email) on first use.
+  Staff accounts are refused here (they must use password + TOTP).
+- Closed test: with setting `access.invite_only = true`, trial and checkout return
+  `403 invite_required` until the account has redeemed an invite (`POST /promo/redeem`).
+- `GET /vpn/locations` — locations with at least one healthy node.
+- `POST /vpn/connect {device_id, location_id?}` → `{endpoint, server_public_key, addresses, dns,
+  allowed_ips, persistent_keepalive}`; requires an active subscription (`402 subscription_required`).
+  The client adds its own private key to build the config. One active node per device; connecting
+  to another location moves the peer.
+- Node API (not public, `/internal/v1`, bearer node token): `GET nodes/{id}/desired-state?since=REV`
+  (long-poll, ≤ `NODE_LONGPOLL_SECONDS`), `POST nodes/{id}/heartbeat`.
+
 ## Payments (crypto via @CryptoBot)
 
 Prices are in fiat (USD by default); the customer pays in the accepted crypto assets
@@ -111,6 +126,7 @@ then sign in again and enable 2FA.
 | `users.purge_deleted` | daily | hard-deletes accounts anonymised more than 30 days ago |
 | `auth.cleanup_tokens` | daily | removes sessions/tokens expired or revoked more than 7 days ago |
 | `payments.poll_pending` | every 60 s | re-checks unpaid @CryptoBot invoices (lost webhooks, no-webhook setups) |
+| `telegram.send` | on demand | Bot API `sendMessage` with back-off (payment received, access ending/ended) |
 | `email.send` | on demand | SMTP delivery with exponential back-off (8 retries) |
 
 ## Health

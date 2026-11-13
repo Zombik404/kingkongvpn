@@ -52,3 +52,10 @@ Thumbs.db
 .idea/
 .vscode/*
 !.vscode/extensions.json
+
+# Deployment secrets (generated on the server)
+deploy/.env.prod
+deploy/secrets/
+
+# The Mini App bundle is committed so servers need no Node.js
+!miniapp/dist/

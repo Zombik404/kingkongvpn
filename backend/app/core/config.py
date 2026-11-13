@@ -98,6 +98,11 @@ class Settings(BaseSettings):
     node_ca_cert_file: Path | None = None
     node_ca_key_file: Path | None = None
     node_heartbeat_stale_seconds: int = 90
+    node_longpoll_seconds: int = Field(default=25, ge=0, le=60)
+    vpn_client_dns: Annotated[list[str], NoDecode] = Field(
+        default_factory=lambda: ["1.1.1.1", "2606:4700:4700::1111"]
+    )
+    vpn_persistent_keepalive: int = Field(default=25, ge=0, le=120)
     peer_idle_ttl_hours: int = 24
 
     # --- Telegram (Phase 5) --------------------------------------------------
@@ -106,6 +111,9 @@ class Settings(BaseSettings):
     bot_service_client_secret: SecretStr = SecretStr("")
 
     telegram_bot_username: str = ""  # without '@'; used for "Return to bot" buttons
+    # Mini App login: reject initData older than this (Telegram re-signs it on each open).
+    telegram_webapp_max_age_seconds: int = Field(default=86400, ge=60, le=7 * 86400)
+    telegram_delivery: Literal["celery", "memory", "off"] = "celery"
 
     # --- Payments: Crypto Pay API (@CryptoBot) -------------------------------
     cryptobot_api_token: SecretStr = SecretStr("")
@@ -127,6 +135,13 @@ class Settings(BaseSettings):
     def _split_origins(cls, value: object) -> object:
         if isinstance(value, str):
             return [o.strip() for o in value.split(",") if o.strip()]
+        return value
+
+    @field_validator("vpn_client_dns", mode="before")
+    @classmethod
+    def _split_dns(cls, value: object) -> object:
+        if isinstance(value, str):
+            return [d.strip() for d in value.split(",") if d.strip()]
         return value
 
     @field_validator("cryptobot_accepted_assets", mode="before")

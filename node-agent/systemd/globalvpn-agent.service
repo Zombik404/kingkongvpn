@@ -1,0 +1,33 @@
+[Unit]
+Description=globalvpn node agent (WireGuard peer reconciler)
+After=network-online.target wg-quick@wg0.service
+Wants=network-online.target
+Requires=wg-quick@wg0.service
+
+[Service]
+Type=simple
+User=globalvpn-agent
+Group=globalvpn-agent
+WorkingDirectory=/opt/globalvpn/node-agent
+ExecStart=/usr/bin/python3 -m agent --env /etc/globalvpn/agent.env
+Restart=always
+RestartSec=3
+# `wg show/set` need only CAP_NET_ADMIN — no root.
+AmbientCapabilities=CAP_NET_ADMIN
+CapabilityBoundingSet=CAP_NET_ADMIN
+NoNewPrivileges=yes
+ProtectSystem=strict
+ProtectHome=yes
+PrivateTmp=yes
+PrivateDevices=yes
+ProtectKernelModules=yes
+ProtectKernelTunables=yes
+ProtectControlGroups=yes
+RestrictAddressFamilies=AF_INET AF_INET6 AF_NETLINK AF_UNIX
+RestrictNamespaces=yes
+LockPersonality=yes
+MemoryDenyWriteExecute=yes
+SystemCallArchitectures=native
+
+[Install]
+WantedBy=multi-user.target

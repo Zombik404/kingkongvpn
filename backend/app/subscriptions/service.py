@@ -21,7 +21,7 @@ from app.models.enums import (
     Provider,
     SubscriptionStatus,
 )
-from app.notifications.email import EmailJob
+from app.notifications.notify import notify
 from app.services import audit
 from app.services import settings as settings_service
 from app.subscriptions import state_machine as sm
@@ -110,6 +110,18 @@ async def revoke_peer_access(db: AsyncSession, user_id: uuid.UUID) -> int:
     return len(servers)
 
 
+async def has_access_to_purchase(db: AsyncSession, user_id: uuid.UUID) -> bool:
+    """Closed-test gate (`access.invite_only`): only invited accounts may trial or pay."""
+    if not await settings_service.get_value(db, "access.invite_only"):
+        return True
+    from app.models import PromoRedemption
+
+    return (
+        await db.scalar(select(PromoRedemption.id).where(PromoRedemption.user_id == user_id))
+        is not None
+    )
+
+
 # --- user-facing operations ------------------------------------------------------
 async def start_trial(
     ctx: AppContext, db: AsyncSession, user_id: uuid.UUID, ip: str | None
@@ -118,8 +130,10 @@ async def start_trial(
     assert user is not None
     if not await settings_service.get_value(db, "trial.enabled") or user.trial_used_at is not None:
         raise TrialUnavailable()
-    if user.email_verified_at is None:
+    if user.email_verified_at is None and user.telegram_id is None:
         raise TrialUnavailable("Confirm your email to start a trial.")
+    if not await has_access_to_purchase(db, user.id):
+        raise TrialUnavailable("This is a closed test — enter your invite code first.")
     if await get_live(db, user.id) is not None:
         raise TrialUnavailable("You already have access.")
     code = await settings_service.get_value(db, "trial.plan_code")
@@ -292,7 +306,7 @@ async def process_due(
             .with_for_update(of=Subscription, skip_locked=True)
         )
     ).all()
-    emails: list[EmailJob] = []
+    notices: list[tuple[User, str, dict[str, str], str]] = []
     for sub, user, plan in rows:
         before = to_state(sub)
         event = (
@@ -310,19 +324,17 @@ async def process_due(
         )
         if not after.entitled:
             await revoke_peer_access(db, sub.user_id)
-            if user.email and user.is_active:
-                emails.append(
-                    EmailJob(
-                        "subscription_expired",
-                        user.email,
-                        user.locale,
-                        {"plan": plan_name(plan, user.locale)},
-                        f"{ctx.settings.public_web_url}/pricing",
-                    )
+            notices.append(
+                (
+                    user,
+                    "subscription_expired",
+                    {"plan": plan_name(plan, user.locale)},
+                    f"{ctx.settings.public_web_url}/pricing",
                 )
+            )
     await db.commit()
-    for job in emails:
-        await ctx.mailer.dispatch(job)
+    for user, template, params, url in notices:
+        await notify(ctx, user, template, params, url)
     return len(rows)
 
 
@@ -352,7 +364,7 @@ async def send_reminders(
             .with_for_update(of=Subscription, skip_locked=True)
         )
     ).all()
-    jobs: list[EmailJob] = []
+    jobs: list[tuple[User, dict[str, str]]] = []
     for sub, user, plan in rows:
         remaining = math.ceil((sub.current_period_end - now) / dt.timedelta(days=1))
         target = min(d for d in thresholds if remaining <= d)
@@ -365,22 +377,25 @@ async def send_reminders(
             continue
         sub.reminder_sent_for = sub.current_period_end
         sub.reminder_threshold_days = target
-        if user.email and user.is_active:
+        if user.is_active and (user.email or user.telegram_id):
             jobs.append(
-                EmailJob(
-                    "subscription_ending",
-                    user.email,
-                    user.locale,
+                (
+                    user,
                     {
                         "plan": plan_name(plan, user.locale),
                         "date": format_date(
                             sub.current_period_end, format="long", locale=user.locale
                         ),
                     },
-                    f"{ctx.settings.public_web_url}/account/subscription",
                 )
             )
     await db.commit()
-    for job in jobs:
-        await ctx.mailer.dispatch(job)
+    for user, params in jobs:
+        await notify(
+            ctx,
+            user,
+            "subscription_ending",
+            params,
+            f"{ctx.settings.public_web_url}/account/subscription",
+        )
     return len(jobs)

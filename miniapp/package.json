@@ -1,0 +1,15 @@
+{
+  "name": "globalvpn-miniapp",
+  "private": true,
+  "version": "0.1.0",
+  "description": "Telegram Mini App: account, payments, devices; WireGuard keys are generated on the user's device (ADR-003).",
+  "scripts": {
+    "build": "node build.mjs",
+    "test": "node --test test/*.test.mjs"
+  },
+  "devDependencies": {
+    "@noble/curves": "1.9.7",
+    "esbuild": "0.25.10",
+    "qrcode-generator": "1.4.4"
+  }
+}

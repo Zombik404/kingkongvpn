@@ -6,6 +6,7 @@ Android/iOS/Windows/macOS apps, website and admin panel. Working name — the br
 - **Architecture and decisions:** [`documentation/PROJECT_ARCHITECTURE.md`](documentation/PROJECT_ARCHITECTURE.md)
 - **Roadmap:** [`documentation/ROADMAP.md`](documentation/ROADMAP.md)
 - **Status (what works, what's blocked):** [`PROJECT_STATUS.md`](PROJECT_STATUS.md)
+- **Запуск тестовой версии (RU):** [`documentation/TEST_LAUNCH_RU.md`](documentation/TEST_LAUNCH_RU.md)
 - **Backend API / database:** [`documentation/BACKEND_API.md`](documentation/BACKEND_API.md), [`documentation/DATABASE_SCHEMA.md`](documentation/DATABASE_SCHEMA.md)
 - **Accounts and credentials needed:** [`documentation/EXTERNAL_REQUIREMENTS.md`](documentation/EXTERNAL_REQUIREMENTS.md)
 
@@ -13,10 +14,12 @@ Android/iOS/Windows/macOS apps, website and admin panel. Working name — the br
 
 | Path | Contents | Status |
 |---|---|---|
-| `backend/` | FastAPI control-plane API + Celery workers | Phase 2 ✅ — auth, devices, subscriptions, admin API, crypto payments; 187 tests |
-| `node-agent/` | Agent on each VPN server; reconciles WireGuard peers with the backend | Phase 3 — reconciler core implemented & tested |
+| `backend/` | FastAPI control-plane API + Celery workers | Phase 2 ✅ — auth, devices, subscriptions, admin API, crypto payments, VPN connect, Telegram auth; 200 tests |
+| `node-agent/` | Agent on each VPN server; reconciles WireGuard peers with the backend | Test slice ✅ — reconciler, control-plane client, systemd unit |
 | `vpn-infrastructure/` | Ansible roles, Terraform, nftables, unbound, exporters | Phase 3 |
-| `telegram-bot/` | aiogram 3 bot (webhook) | Phase 5 |
+| `telegram-bot/` | aiogram 3 bot (entry point to the Mini App) | Test slice ✅ |
+| `miniapp/` | Telegram Mini App (keys generated on the device) | Test slice ✅ |
+| `deploy/` | One-server test deployment (`install.sh`) | Ready — guide: `documentation/TEST_LAUNCH_RU.md` |
 | `mobile-app/` | Flutter app with native Android VpnService / iOS Network Extension | Phase 6 |
 | `desktop-app/` | Flutter desktop with native Windows / macOS tunnel integration | Phase 7 |
 | `web-app/` | Next.js website and account dashboard | Phase 8 |

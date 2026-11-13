@@ -14,6 +14,7 @@ from prometheus_client import CONTENT_TYPE_LATEST, Counter, Histogram, generate_
 from sqlalchemy import text
 
 from app.api.v1 import router as api_v1
+from app.api.v1.vpn import internal as vpn_internal
 from app.core.config import Settings, get_settings
 from app.core.context import AppContext
 from app.core.errors import AppError
@@ -124,6 +125,7 @@ def create_app(settings: Settings | None = None, ctx: AppContext | None = None) 
             return Response(generate_latest(), media_type=CONTENT_TYPE_LATEST)
 
     app.include_router(api_v1)
+    app.include_router(vpn_internal)
     return app
 
 

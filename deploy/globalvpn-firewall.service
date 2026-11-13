@@ -1,0 +1,13 @@
+[Unit]
+Description=globalvpn firewall (own nftables table + Docker forward exemption for wg0)
+After=network-online.target docker.service
+Wants=network-online.target
+
+[Service]
+Type=oneshot
+RemainAfterExit=yes
+ExecStart=/usr/sbin/nft -f /etc/globalvpn/firewall.nft
+ExecStart=/opt/globalvpn/deploy/docker-user.sh
+
+[Install]
+WantedBy=multi-user.target

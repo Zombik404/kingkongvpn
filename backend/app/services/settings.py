@@ -51,6 +51,11 @@ REGISTRY: dict[str, SettingDef] = {
         [3],
         "Days before a non-renewing period ends to email a reminder.",
     ),
+    "access.invite_only": _def(
+        bool,
+        False,
+        "Closed test: paying or a trial requires having redeemed an invite (free-days) code.",
+    ),
     "peers.idle_ttl_hours": _def(
         Annotated[int, Field(ge=1, le=24 * 30)],
         24,

@@ -17,6 +17,7 @@ from sqlalchemy.ext.asyncio import AsyncSession
 
 from app.core.context import AppContext
 from app.core.errors import AppError, Conflict, InvalidCredentials, InvalidToken, NotAuthenticated
+from app.i18n import normalize
 from app.models import AuthSession, RefreshToken, User, UserActionToken
 from app.models.base import utcnow
 from app.models.enums import ActionTokenPurpose, ActorType, AuditResult, UserStatus
@@ -25,6 +26,7 @@ from app.security import rate_limit as rl
 from app.security import totp
 from app.security.principal import ClientInfo, Principal
 from app.security.rbac import is_staff
+from app.security.telegram import validate_init_data
 from app.services import audit
 
 STAFF_SESSION_TTL = dt.timedelta(hours=12)
@@ -589,3 +591,44 @@ class AuthService:
             ip=client.ip,
         )
         await self.db.commit()
+
+    # --- Telegram Mini App -----------------------------------------------------------
+    async def telegram_webapp_login(self, init_data: str, client: ClientInfo) -> TokenPair:
+        """Sign in (or sign up) with the signed `initData` Telegram gives the Mini App.
+
+        Telegram has verified the account, so no email is needed. Staff accounts can't use
+        this path: their sessions need TOTP, which only the password login offers."""
+        await self.ctx.limiter.hit(rl.LOGIN_PER_IP, client.ip or "unknown")
+        tg = validate_init_data(
+            init_data,
+            self.ctx.settings.telegram_bot_token.get_secret_value(),
+            max_age=dt.timedelta(seconds=self.ctx.settings.telegram_webapp_max_age_seconds),
+            now=utcnow(),
+        )
+        user = await self.db.scalar(select(User).where(User.telegram_id == tg.id))
+        if user is None:
+            user = User(telegram_id=tg.id, locale=normalize(tg.language_code) or "en")
+            self.db.add(user)
+            try:
+                await self.db.flush()
+            except IntegrityError:  # two first opens racing
+                await self.db.rollback()
+                user = await self.db.scalar(select(User).where(User.telegram_id == tg.id))
+                assert user is not None
+            else:
+                audit.record(
+                    self.db,
+                    action="auth.register",
+                    actor_id=user.id,
+                    target_type="user",
+                    target_id=user.id,
+                    ip=client.ip,
+                    details={"channel": "telegram"},
+                )
+        if user.status == UserStatus.SUSPENDED:
+            raise AccountSuspended()
+        if user.status != UserStatus.ACTIVE or is_staff(user.roles):
+            raise NotAuthenticated("This account can't sign in with Telegram.")
+        return await self._start_session(
+            user, client, mfa_verified=False, action="auth.login_telegram"
+        )

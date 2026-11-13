@@ -26,6 +26,7 @@ os.environ.update(
         "CELERY_BROKER_URL": "memory://",
         "CELERY_RESULT_BACKEND": "cache+memory://",
         "EMAIL_DELIVERY": "memory",
+        "TELEGRAM_DELIVERY": "memory",
         "PASSWORD_HASH_PROFILE": "fast-insecure-for-tests",
         "REFRESH_TOKEN_PEPPER": "test-pepper-" + "x" * 40,
         "PUBLIC_WEB_URL": "https://web.test",

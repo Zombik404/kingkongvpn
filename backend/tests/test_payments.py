@@ -488,3 +488,25 @@ async def test_cli_bootstrap_catalog_idempotent(db: Any, ctx: AppContext) -> Non
     assert sorted((p.period_count, p.amount_minor) for p in prices) == [
         (m, int(Decimal(a) * 100)) for m, a in LAUNCH_PRICES_USD
     ]
+
+
+async def test_closed_test_requires_invite_before_paying(
+    client: AsyncClient, outbox: list[Any], db: Any, fake: FakeCryptoPay
+) -> None:
+    from app.services import settings as settings_service
+
+    prices = await seed(db)
+    plan = await db.scalar(select(Plan).where(Plan.code == "standard"))
+    db.add(
+        PromoCode(
+            code="INV-TEST-0001", kind="free_days", free_days=7, plan_id=plan.id, max_redemptions=1
+        )
+    )
+    await settings_service.set_value(db, "access.invite_only", True, actor_id=None)
+    await db.commit()
+    user = await new_user(client, outbox, "pay13@example.com")
+    r = await checkout(client, user, prices[1])
+    assert r.status_code == 403 and r.json()["error"]["code"] == "invite_required"
+    assert not [c for c in fake.calls if c[0] == "createInvoice"]
+    await client.post("/api/v1/promo/redeem", headers=user.headers, json={"code": "INV-TEST-0001"})
+    assert (await checkout(client, user, prices[1])).status_code == 201

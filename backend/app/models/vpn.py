@@ -12,6 +12,7 @@ from sqlalchemy import (
     DateTime,
     ForeignKey,
     Integer,
+    LargeBinary,
     String,
     UniqueConstraint,
     text,
@@ -94,6 +95,8 @@ class Server(UUIDPk, Timestamps, Base):
     max_peers: Mapped[int] = mapped_column(Integer, default=1500, server_default="1500")
     bandwidth_capacity_mbps: Mapped[int | None] = mapped_column(Integer)
     agent_cert_fingerprint: Mapped[str | None] = mapped_column(String(64), unique=True)
+    # HMAC of the node's API token (test-phase node auth; mTLS replaces it — ADR-017).
+    agent_token_hash: Mapped[bytes | None] = mapped_column(LargeBinary(32), unique=True)
     last_heartbeat_at: Mapped[dt.datetime | None] = mapped_column(DateTime(timezone=True))
     last_metrics: Mapped[dict[str, Any] | None] = mapped_column(JSONB)
     revision: Mapped[int] = mapped_column(BigInteger, default=0, server_default="0")

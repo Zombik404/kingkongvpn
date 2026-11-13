@@ -37,6 +37,10 @@ class MfaVerifyIn(_In):
     code: str = Field(min_length=6, max_length=10)
 
 
+class TelegramLoginIn(_In):
+    init_data: str = Field(min_length=10, max_length=8192)
+
+
 class RefreshIn(_In):
     refresh_token: str = OpaqueToken
 

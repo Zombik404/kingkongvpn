@@ -272,6 +272,93 @@
         "title": "CheckoutIn",
         "type": "object"
       },
+      "ConnectIn": {
+        "additionalProperties": false,
+        "properties": {
+          "device_id": {
+            "format": "uuid",
+            "title": "Device Id",
+            "type": "string"
+          },
+          "location_id": {
+            "anyOf": [
+              {
+                "format": "uuid",
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Location Id"
+          }
+        },
+        "required": [
+          "device_id"
+        ],
+        "title": "ConnectIn",
+        "type": "object"
+      },
+      "ConnectOut": {
+        "description": "Everything a client needs to build its WireGuard config locally (it adds its own\nprivate key — the platform never sees it).",
+        "properties": {
+          "addresses": {
+            "items": {
+              "type": "string"
+            },
+            "title": "Addresses",
+            "type": "array"
+          },
+          "allowed_ips": {
+            "items": {
+              "type": "string"
+            },
+            "title": "Allowed Ips",
+            "type": "array"
+          },
+          "dns": {
+            "items": {
+              "type": "string"
+            },
+            "title": "Dns",
+            "type": "array"
+          },
+          "endpoint": {
+            "title": "Endpoint",
+            "type": "string"
+          },
+          "location_id": {
+            "format": "uuid",
+            "title": "Location Id",
+            "type": "string"
+          },
+          "persistent_keepalive": {
+            "title": "Persistent Keepalive",
+            "type": "integer"
+          },
+          "server_id": {
+            "format": "uuid",
+            "title": "Server Id",
+            "type": "string"
+          },
+          "server_public_key": {
+            "title": "Server Public Key",
+            "type": "string"
+          }
+        },
+        "required": [
+          "server_id",
+          "location_id",
+          "endpoint",
+          "server_public_key",
+          "addresses",
+          "dns",
+          "allowed_ips",
+          "persistent_keepalive"
+        ],
+        "title": "ConnectOut",
+        "type": "object"
+      },
       "DeleteAccountIn": {
         "additionalProperties": false,
         "properties": {
@@ -520,6 +607,47 @@
           }
         },
         "title": "HTTPValidationError",
+        "type": "object"
+      },
+      "LocationOut": {
+        "properties": {
+          "city": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "City"
+          },
+          "country_code": {
+            "title": "Country Code",
+            "type": "string"
+          },
+          "id": {
+            "format": "uuid",
+            "title": "Id",
+            "type": "string"
+          },
+          "name": {
+            "title": "Name",
+            "type": "string"
+          },
+          "servers": {
+            "title": "Servers",
+            "type": "integer"
+          }
+        },
+        "required": [
+          "id",
+          "country_code",
+          "city",
+          "name",
+          "servers"
+        ],
+        "title": "LocationOut",
         "type": "object"
       },
       "LoginIn": {
@@ -1877,6 +2005,22 @@
           "trial_available"
         ],
         "title": "SubscriptionStatusOut",
+        "type": "object"
+      },
+      "TelegramLoginIn": {
+        "additionalProperties": false,
+        "properties": {
+          "init_data": {
+            "maxLength": 8192,
+            "minLength": 10,
+            "title": "Init Data",
+            "type": "string"
+          }
+        },
+        "required": [
+          "init_data"
+        ],
+        "title": "TelegramLoginIn",
         "type": "object"
       },
       "TokenIn": {
@@ -3627,6 +3771,48 @@
         ]
       }
     },
+    "/api/v1/auth/telegram/webapp": {
+      "post": {
+        "description": "Mini App sign-in with `Telegram.WebApp.initData`; creates the account on first use.",
+        "operationId": "telegram_webapp_api_v1_auth_telegram_webapp_post",
+        "requestBody": {
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/TelegramLoginIn"
+              }
+            }
+          },
+          "required": true
+        },
+        "responses": {
+          "200": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/TokenPairOut"
+                }
+              }
+            },
+            "description": "Successful Response"
+          },
+          "422": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/HTTPValidationError"
+                }
+              }
+            },
+            "description": "Validation Error"
+          }
+        },
+        "summary": "Telegram Webapp",
+        "tags": [
+          "auth"
+        ]
+      }
+    },
     "/api/v1/auth/verify-email": {
       "post": {
         "operationId": "verify_email_api_v1_auth_verify_email_post",
@@ -4471,6 +4657,112 @@
         "summary": "Revoke Session",
         "tags": [
           "account"
+        ]
+      }
+    },
+    "/api/v1/vpn/connect": {
+      "post": {
+        "description": "Assign the device to a node (least loaded in the location) and return its parameters.\nThe node installs the peer within a couple of seconds.",
+        "operationId": "connect_api_v1_vpn_connect_post",
+        "requestBody": {
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/ConnectIn"
+              }
+            }
+          },
+          "required": true
+        },
+        "responses": {
+          "200": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ConnectOut"
+                }
+              }
+            },
+            "description": "Successful Response"
+          },
+          "422": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/HTTPValidationError"
+                }
+              }
+            },
+            "description": "Validation Error"
+          }
+        },
+        "security": [
+          {
+            "HTTPBearer": []
+          }
+        ],
+        "summary": "Connect",
+        "tags": [
+          "vpn"
+        ]
+      }
+    },
+    "/api/v1/vpn/locations": {
+      "get": {
+        "operationId": "list_locations_api_v1_vpn_locations_get",
+        "parameters": [
+          {
+            "in": "query",
+            "name": "locale",
+            "required": false,
+            "schema": {
+              "anyOf": [
+                {
+                  "maxLength": 8,
+                  "type": "string"
+                },
+                {
+                  "type": "null"
+                }
+              ],
+              "title": "Locale"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "items": {
+                    "$ref": "#/components/schemas/LocationOut"
+                  },
+                  "title": "Response List Locations Api V1 Vpn Locations Get",
+                  "type": "array"
+                }
+              }
+            },
+            "description": "Successful Response"
+          },
+          "422": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/HTTPValidationError"
+                }
+              }
+            },
+            "description": "Validation Error"
+          }
+        },
+        "security": [
+          {
+            "HTTPBearer": []
+          }
+        ],
+        "summary": "List Locations",
+        "tags": [
+          "vpn"
         ]
       }
     }

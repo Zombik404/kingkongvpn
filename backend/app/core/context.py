@@ -10,6 +10,7 @@ from sqlalchemy.ext.asyncio import AsyncEngine, AsyncSession, async_sessionmaker
 from app.core.config import Settings
 from app.core.db import make_engine, make_sessionmaker
 from app.notifications.email import EmailDispatcher, make_dispatcher
+from app.notifications.telegram import TelegramDispatcher, make_telegram_dispatcher
 from app.payments.cryptobot import CryptoBotClient
 from app.security.crypto import FieldCipher
 from app.security.passwords import PasswordService
@@ -30,6 +31,7 @@ class AppContext:
     limiter: RateLimiter
     mailer: EmailDispatcher
     address_pool: AddressPool
+    telegram: TelegramDispatcher
     cryptobot: CryptoBotClient | None = None
 
     @classmethod
@@ -40,6 +42,7 @@ class AppContext:
         mailer: EmailDispatcher | None = None,
         null_pool: bool = False,
         cryptobot: CryptoBotClient | None = None,
+        telegram: TelegramDispatcher | None = None,
     ) -> AppContext:
         engine = make_engine(settings, null_pool=null_pool)
         redis = Redis.from_url(settings.redis_url, decode_responses=False)
@@ -54,6 +57,7 @@ class AppContext:
             limiter=RateLimiter(redis, enabled=settings.rate_limit_enabled),
             mailer=mailer or make_dispatcher(settings),
             address_pool=AddressPool.from_settings(settings),
+            telegram=telegram or make_telegram_dispatcher(settings),
             cryptobot=cryptobot
             or (CryptoBotClient(settings) if settings.cryptobot_enabled else None),
         )

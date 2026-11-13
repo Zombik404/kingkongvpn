@@ -1,6 +1,6 @@
 # Project Status
 
-Last updated: 2026-11-12 · Current phase: **Phase 2 complete + crypto payments (@CryptoBot) → next: Telegram test version (Phases 3–5 minimal slice)**
+Last updated: 2026-11-13 · Current phase: **Telegram test version built and verified → next: deploy to a VPS (`documentation/TEST_LAUNCH_RU.md`)**
 
 ## Phases
 
@@ -8,9 +8,9 @@ Last updated: 2026-11-12 · Current phase: **Phase 2 complete + crypto payments 
 |---|---|---|
 | 1 — Initialization | ✅ Complete | Repo, architecture, ADR summary, roadmap, env template, dev Compose, scripts |
 | 2 — Database & backend | ✅ Complete | FastAPI + SQLAlchemy 2 + Alembic + Celery; auth, users, devices, plans, subscriptions, promo, RBAC, audit, email; 165 tests, 97 % coverage |
-| 3 — VPN infrastructure | 🟡 In progress | Node-agent reconciler core done + tested with a fake driver. Unblocked now: enrollment + desired-state API. Real WireGuard needs a VPS |
-| 4 — VPN management engine | ⏳ Pending | Unblocked by Phase 2 |
-| 5 — Telegram bot | ⏳ Pending | Needs bot token |
+| 3 — VPN infrastructure | 🟡 Test slice done | Agent network client + systemd unit, firewall, one-command install; real tunnels verified with wireguard-go in netns. Open: mTLS enrollment, unbound, Ansible/Terraform, real VPS run |
+| 4 — VPN management engine | 🟡 Test slice done | Locations, `POST /vpn/connect` (least-loaded healthy node, one active peer per device), long-poll desired state. Open: admin server API, idle GC, auto-scaling |
+| 5 — Telegram bot | 🟡 Test slice done | aiogram bot + Mini App (keys on device, QR/file), invites, Telegram notifications. Open: admin commands, Stars |
 | 6 — Mobile apps | ⏳ Pending | Needs Flutter SDK, Android device/emulator, Mac + Xcode, Apple org account |
 | 7 — Desktop apps | ⏳ Pending | Needs Windows machine, Mac, code-signing |
 | 8 — Web app | ⏳ Pending | API contract ready (`shared/api-contracts/openapi.json`) |
@@ -34,6 +34,30 @@ Last updated: 2026-11-12 · Current phase: **Phase 2 complete + crypto payments 
 - **Contract & docs**: `shared/api-contracts/openapi.json` (49 operations), `documentation/BACKEND_API.md`, `documentation/DATABASE_SCHEMA.md`, `documentation/adr/0015-backend-core-decisions.md`.
 - **Tooling**: hash-pinned `requirements.lock` / `requirements-dev.lock`; Dockerfile installs from them; Compose `migrate` service runs before API/worker; CI workflow (`.github/workflows/ci.yml`); `app.cli grant-role` / `seed-dev`; new Makefile targets.
 
+## Telegram test version (2026-11-13) — ADR-017
+- **Mini App** (`miniapp/`, built bundle in `miniapp/dist/`): sign-in with Telegram `initData`, invite code (auto-filled from `t.me/<bot>?start=INV-…`), plans and @CryptoBot payment with auto-confirmation, devices (add/remove), WireGuard keypair generated on the device, config as QR / file / browser page / copy.
+- **Backend**: `POST /auth/telegram/webapp`, invite-only gate, `GET /vpn/locations`, `POST /vpn/connect`, node API `/internal/v1/nodes/{id}/desired-state` (long-poll) + `/heartbeat`, Telegram notifications, CLIs `node-register`, `create-invites`, `set-setting`; migration `0003`.
+- **Node agent**: control-plane client, heartbeat thread, systemd unit with only `CAP_NET_ADMIN`.
+- **Bot** (`telegram-bot/`): /start (with invite deep links), /help, menu button → Mini App.
+- **Deploy** (`deploy/`): `install.sh` (one command on Ubuntu 24.04), `docker-compose.prod.yml`, Caddy with automatic HTTPS and strict CSP, own nftables table, daily DB backup. Guide: `documentation/TEST_LAUNCH_RU.md`.
+
+### Verified here
+| Check | Result |
+|---|---|
+| Backend suite (incl. Telegram auth, invites, connect, long-poll, notifications) | ✅ 200 passed (Python 3.12 and 3.13), 96 % coverage |
+| Mini App in Chromium against the live API (mocked Telegram object, signed initData): invite → access → device → config → remove | ✅ no JS errors; QR decodes to exactly the downloaded config; private key never reached the server (DB, logs, audit) |
+| Mini App crypto: X25519 public key equals libsodium/WireGuard reference | ✅ |
+| **Real tunnels** (wireguard-go, 5 network namespaces, real agent + API + firewall from install.sh): handshake, internet via tunnel, NAT, LAN/metadata blocked, client-to-client blocked, SMTP rejected, revocation | ✅ 12/12; revoked device removed from the node in **0.44 s** (target ≤ 5 s); negative control: without the firewall the LAN *is* reachable |
+| nftables rules loaded twice into a real kernel netns (idempotent) | ✅ |
+| `install.sh` / helper scripts: `bash -n`, shellcheck; prod compose `config` | ✅ |
+| Bot handlers (5), node agent (31 incl. loop/heartbeat), Mini App (4) | ✅ |
+
+### Not verified yet (needs the VPS)
+- `install.sh` end to end on a fresh Ubuntu 24.04 (Docker build, Let's Encrypt, systemd units, DOCKER-USER rules).
+- IPv6 inside the tunnel (this build environment's kernel has no IPv6).
+- Inside real Telegram clients (iOS/Android/Desktop webviews): file download behaviour differs — QR and "open in browser" are the fallbacks.
+- @CryptoBot testnet with the real token.
+
 ## Added after Phase 2: crypto payments (@CryptoBot)
 - Prices in USD — **1 mo $5, 3 mo $13, 6 mo $24, 12 mo $42** (confirmed by the owner 2026-11-13); paid in **Gram or USDC**; GRAM is matched to the API's `TON` code automatically if @CryptoBot hasn't renamed it yet — ADR-016.
 - `POST /payments/checkout`, `GET /payments`, `GET /payments/{id}?refresh=true`, `POST /webhooks/cryptobot`.
@@ -45,7 +69,7 @@ Last updated: 2026-11-12 · Current phase: **Phase 2 complete + crypto payments 
 ## Tests
 | Suite | Result | Command |
 |---|---|---|
-| Backend: 187 tests on real PostgreSQL 16 + Redis 7 | ✅ pass (Python 3.12 and 3.13) | `make up && make test-backend` |
+| Backend: 200 tests on real PostgreSQL 16 + Redis 7 | ✅ pass (Python 3.12 and 3.13) | `make up && make test-backend` |
 | Backend coverage | ✅ 97 % total — auth 96 %, subscriptions 96 %, devices 95 %, payments 94 % (target ≥ 85 %) | same |
 | Migration up → down → up on a fresh DB; models ↔ migration drift; OpenAPI drift | ✅ pass | part of backend suite |
 | Concurrency: 8 parallel device registrations vs limit 3; parallel address allocation; parallel promo redemption vs `max_redemptions` | ✅ pass | part of backend suite |

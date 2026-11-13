@@ -33,7 +33,7 @@ from app.models.enums import (
     PeriodUnit,
     Provider,
 )
-from app.notifications.email import EmailJob
+from app.notifications.notify import notify
 from app.payments.cryptobot import CryptoBotClient, Invoice
 from app.services import audit, catalog
 from app.subscriptions import service as subs
@@ -49,6 +49,12 @@ class PaymentsDisabled(AppError):
     status_code = 503
     code = "payments_disabled"
     message = "Payments are not available right now."
+
+
+class InviteRequired(AppError):
+    status_code = 403
+    code = "invite_required"
+    message = "This is a closed test — enter your invite code first."
 
 
 class TooManyPendingPayments(AppError):
@@ -114,6 +120,8 @@ async def checkout(
         raise NotFound("Price not found.")
     if price.currency not in SUPPORTED_FIAT:
         raise NotFound("Price not available for this payment method.")
+    if not await subs.has_access_to_purchase(db, user_id):
+        raise InviteRequired()
     pending = await db.scalar(
         select(func.count())
         .select_from(Payment)
@@ -320,19 +328,16 @@ async def _credit(
         },
     )
     await db.commit()
-    if user.email and user.is_active:
-        await ctx.mailer.dispatch(
-            EmailJob(
-                "payment_received",
-                user.email,
-                user.locale,
-                {
-                    "plan": subs.plan_name(plan, user.locale),
-                    "date": format_date(sub.current_period_end, format="long", locale=user.locale),
-                },
-                f"{ctx.settings.public_web_url}/account/subscription",
-            )
-        )
+    await notify(
+        ctx,
+        user,
+        "payment_received",
+        {
+            "plan": subs.plan_name(plan, user.locale),
+            "date": format_date(sub.current_period_end, format="long", locale=user.locale),
+        },
+        f"{ctx.settings.public_web_url}/account/subscription",
+    )
     return "credited"
 
 

@@ -1,0 +1,31 @@
+# HTTPS certificate is obtained automatically (Let's Encrypt) for {$DOMAIN}.
+{$DOMAIN} {
+	encode zstd gzip
+
+	header {
+		Strict-Transport-Security "max-age=31536000"
+		X-Content-Type-Options "nosniff"
+		Referrer-Policy "no-referrer"
+		-Server
+	}
+
+	# Never public: node API (agent uses 127.0.0.1:8000), metrics, health, API docs.
+	@private path /internal/* /metrics /health/* /api/docs* /api/v1/openapi.json
+	respond @private 404
+
+	handle /api/* {
+		reverse_proxy backend:8000
+	}
+
+	redir /app /app/ 308
+	handle_path /app/* {
+		root * /srv/miniapp
+		header Content-Security-Policy "default-src 'self'; script-src 'self' https://telegram.org; connect-src 'self'; img-src 'self' data:; style-src 'self'; frame-ancestors https://web.telegram.org https://*.telegram.org; base-uri 'none'; form-action 'none'; object-src 'none'"
+		header Cache-Control "no-cache"
+		file_server
+	}
+
+	handle {
+		respond "Not found" 404
+	}
+}

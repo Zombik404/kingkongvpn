@@ -7,7 +7,8 @@ ENV PYTHONDONTWRITEBYTECODE=1 \
     PYTHONUNBUFFERED=1 \
     PIP_NO_CACHE_DIR=1 \
     PIP_DISABLE_PIP_VERSION_CHECK=1
-RUN groupadd --system app && useradd --system --gid app --home-dir /app --shell /usr/sbin/nologin app
+# Fixed uid/gid so host-side secret files can be owned by the container user (deploy/install.sh).
+RUN groupadd --system --gid 10001 app && useradd --system --uid 10001 --gid app --home-dir /app --shell /usr/sbin/nologin app
 WORKDIR /app
 
 FROM base AS deps
