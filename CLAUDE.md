@@ -25,10 +25,10 @@ The repository has a code graph built by graphify (AST-based, local, no API cost
 
 | Path | What |
 |---|---|
-| `backend/app/` | FastAPI app: `api/v1` (routes), `services` (auth, users, devices, referrals, settings, audit), `subscriptions`, `payments` (@CryptoBot), `vpn` (locations, connect, node agent API, usage), `games` (blackjack engine, fair shuffle, bonus wallet, tables), `notifications`, `workers` (Celery), `models`, `i18n/locales` (en/ru/uk/de/hu) |
-| `backend/migrations/versions/` | Alembic `0001`–`0009` (a test fails if models and migrations drift) |
+| `backend/app/` | FastAPI app: `api/v1` (routes), `services` (auth, users, devices, referrals, settings, audit), `subscriptions`, `payments` (@CryptoBot), `vpn` (locations, connect, node agent API, usage), `games` (blackjack engine, fair shuffle, bonus wallet, tables, progression: `progress.py`, `boards.py`, `catalogue.py`, `views.py`), `notifications`, `workers` (Celery), `models`, `i18n/locales` (en/ru/uk/de/hu) |
+| `backend/migrations/versions/` | Alembic `0001`–`0010` (a test fails if models and migrations drift) |
 | `backend/tests/` | pytest against real PostgreSQL + Redis |
-| `miniapp/src/` | Telegram Mini App (vanilla JS, esbuild): `app.js`, `games.js`, `fair.js`, `jungle.js`, `charts.js`, `wg.js`, `i18n.js`, `style.css`, `assets/` |
+| `miniapp/src/` | Telegram Mini App (vanilla JS, esbuild): `app.js`, `games.js`, `progress.js` (XP, boards, seasons), `fair.js`, `jungle.js`, `charts.js`, `wg.js`, `i18n.js`, `style.css`, `assets/` |
 | `miniapp/demo/` | Clickable demo with a stand-in Telegram + API (`node demo/build.mjs`) |
 | `miniapp/tools/` | Python scripts that render the artwork (jungle, gorilla, dealer, overgrowth) |
 | `admin-panel/` | Staff console at `/admin/` (vanilla JS, esbuild, commit `dist/`): `src/main.js` (sign-in, 2FA, router), `src/api.js` (tokens in memory), `src/pages/*`; `demo/` = same UI on a fake API |

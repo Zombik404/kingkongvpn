@@ -103,7 +103,7 @@ Stage plan from the owner's brief; ✅ = done and tested, ⏳ = next.
 ## Tests
 | Suite | Result | Command |
 |---|---|---|
-| Backend: 291 tests on real PostgreSQL 16 + Redis 7 | ✅ pass (Python 3.12 and 3.13) | `make up && make test-backend` |
+| Backend: 308 tests on real PostgreSQL 16 + Redis 7 | ✅ pass (Python 3.12 and 3.13) | `make up && make test-backend` |
 | Backend coverage | ✅ 97 % total — auth 96 %, subscriptions 96 %, devices 95 %, payments 94 % (target ≥ 85 %) | same |
 | Migration up → down → up on a fresh DB; models ↔ migration drift; OpenAPI drift | ✅ pass | part of backend suite |
 | Concurrency: 8 parallel device registrations vs limit 3; parallel address allocation; parallel promo redemption vs `max_redemptions` | ✅ pass | part of backend suite |
@@ -159,8 +159,8 @@ None blocking Phase 3/4 code. Full list: `documentation/EXTERNAL_REQUIREMENTS.md
 - CI now also checks the bot (ruff, mypy, pytest) and the Mini App (tests, build, committed `dist/` up to date); actions moved off the deprecated Node 20.
 - 4 new tests (permissions, register → heartbeat → connect → health, drain/rotate/disable, idle release); checked by breaking the code on purpose.
 
-## Blackjack progression (2026-11-13, in progress) — ADR-021, owner's brief "Progression, achievements & leaderboards"
-Stage plan from the brief; ✅ = done and tested, ⏳ = next.
+## Blackjack progression (2026-11-13, done) — ADR-021, owner's brief "Progression, achievements & leaderboards"
+Stage plan from the brief; ✅ = done and tested.
 - ✅ 1-3 Analysis and integration plan: extends the existing game profile, rounds, bonus wallet + ledger, settings, admin API — no second profile or wallet.
 - ✅ 4 XP and levels: XP ledger (`game_xp_events`, unique per key, never negative or lost), level curve from settings (`games.levels.*`, any number of levels), level titles, daily XP cap from rounds (`games.xp.daily_round_cap`, logged once a day).
 - ✅ 5 Achievements: 23 seeded in 4 categories (game, activity, progress, season), progress from the player's counters, XP and optional title, each once.
@@ -169,8 +169,11 @@ Stage plan from the brief; ✅ = done and tested, ⏳ = next.
 - ✅ 8-9 Seasons: weekly (Monday 00:00) and monthly in the game time zone, event seasons by staff; finalised once by the `games.seasons` task: final tables frozen (top 100 per board), prizes by place (XP, title, frame; bonus days only with `games.rewards.bonus_days_enabled`, OFF), season achievements, participation XP, Telegram notice to the top 10.
 - ✅ Anti-cheat: everything from server-settled rounds; rounds the server finished (timeout, leaving, table closed by staff) give no progress; idempotent keys everywhere; read limits; staff exclusion with a reason in the audit log.
 - ✅ Staff API `/admin/games/progress/*`, `/achievements`, `/challenges`, `/seasons` (create event, edit active, finish early, results).
-- ⏳ 10 Mini App screens, 11 admin panel section, 12 browser tests and docs.
-- Verified so far: backend 306 tests (10 new for progression, plus mutation checks of the bonus-off and forced-round guards); migration 0010 up/down/up, no model drift.
+- ✅ 10 Mini App (`miniapp/src/progress.js`): profile card on the games screen; profile (avatar, title, level and XP bar, stats, places, achievements, recent rounds, XP and reward history); boards XP / wins / win % / jackpot × week / month / all time with search, paging, top-3 highlight and your pinned place; achievements by category with progress; daily challenges with timer, day streak and 5-week calendar; seasons with countdown, prizes and archive; after a round: floating XP, achievement / challenge / reward cards, level-up screen. Russian and English; clickable demo has it too.
+- ✅ 11 Admin panel "Прогресс и сезоны": players, player page, exclude / return with reason, seasons (table, results, create event, edit, finish), achievements and challenges (enable, edit, create), XP and reward settings. Demo has it too.
+- ✅ 12 Tests: backend 308 (Python 3.12 and 3.13) incl. 11 for progression and a privacy test for its data; browser runs on the real backend (4 rounds → XP, challenges, achievements, level-up; every screen; admin: exclude hides from the board and return restores, event season create/edit/finish, catalogue edits, settings, audit entries) and in both demos; no console errors.
+- Fixed on the way: season "open if missing" failed after five requests per connection (generic plan vs. partial index; regression test forces the generic plan), blank season countdowns, a stray "null" under the board. Data export now includes XP, achievements, days played, seasons and rewards; account deletion also resets avatar/title and the nickname in past season tables.
+- Open: English admin panel; the legal check before `games.rewards.bonus_days_enabled`.
 
 ## Admin panel and data protection (2026-11-13) — ADR-020
 - **Admin panel** (`admin-panel/`, served at `/admin/` with a strict CSP; guide `documentation/ADMIN_PANEL_RU.md`): password + TOTP (set up on first sign-in), tokens in memory only, auto sign-out after 30 idle minutes, optional network allowlist (`ADMIN_ALLOWED_IPS`). Sections: overview (users, access, servers, revenue, 30-day charts), users (search by email / Telegram ID / referral code / ID; case file; extend or revoke access, block, roles, bonus days; payments, game and audit per user), payments, plans and prices, promo codes, servers and locations (register with a one-time token, drain, disable, rotate token, health), blackjack (switches, suspicious players, tables, events), settings, audit log. Every change asks for a reason and is audited.

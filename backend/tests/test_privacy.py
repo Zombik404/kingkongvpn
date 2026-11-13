@@ -156,3 +156,40 @@ async def test_api_docs_are_not_served_outside_development() -> None:
         async with AsyncClient(transport=ASGITransport(app=app), base_url="http://t") as c:
             assert (await c.get("/api/v1/openapi.json")).status_code == expected, env
             assert (await c.get("/api/docs")).status_code == expected, env
+
+
+async def test_progression_data_is_exported_and_scrubbed_on_deletion(
+    client: AsyncClient, db: Any
+) -> None:
+    from app.models import Season, SeasonResult, XpEvent
+
+    h = await tg_login(client, 5401)
+    uid = await _uid(client, h)
+    db.add(GameProfile(user_id=uid, nickname="Real Name", xp=120, level=2, avatar="🐆"))
+    season = Season(
+        kind="event", name="Past event", starts_at=utcnow() - dt.timedelta(days=9),
+        ends_at=utcnow() - dt.timedelta(days=2), status="closed", board="xp", rewards=[],
+    )  # fmt: skip
+    db.add(season)
+    await db.flush()
+    db.add(XpEvent(user_id=uid, amount=15, kind="round", idem_key="round:x"))
+    db.add(
+        SeasonResult(
+            season_id=season.id, board="xp", rank=1, user_id=uid, nickname="Real Name", value=120
+        )
+    )
+    await db.commit()
+
+    data = (await client.get("/api/v1/users/me/export", headers=h)).json()["games"]
+    assert data["progress"]["xp"] == 120 and data["progress"]["avatar"] == "🐆"
+    assert [e["amount"] for e in data["xp_events"]] == [15]
+    for key in ("achievements", "days_played", "seasons", "rewards"):
+        assert key in data
+
+    body = {"confirm": "DELETE", "telegram_init_data": init_data(5401)}
+    assert (
+        await client.request("DELETE", "/api/v1/users/me", headers=h, json=body)
+    ).status_code == 204
+    row = await db.scalar(select(SeasonResult).where(SeasonResult.season_id == season.id))
+    await db.refresh(row)
+    assert row.nickname == "Deleted player"  # gone from past seasons' tables too

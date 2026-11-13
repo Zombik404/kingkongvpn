@@ -16,7 +16,8 @@ and fixed, and what is left for the owner. Decisions: [ADR-020](adr/0020-admin-p
 | Subscriptions, payments (amount, asset, status) | `subscriptions`, `payments` | Access and accounting | Payments kept (law), unlinked from the user at purge |
 | Sessions: created/last used, user agent, IP shortened to /24 or /48 | `auth_sessions` | "Where am I signed in", theft detection | Cleaned 7 days after expiry |
 | Audit log: action, actor, target, shortened IP, details with secrets stripped | `audit_logs` | Accountability for staff and money actions | Kept |
-| Game nickname, stats, chips, bonus ledger | `game_*`, `bonus_*` | Blackjack | Nickname replaced at deletion; rows purged with the account |
+| Game nickname, avatar (one of 12 emoji), title, stats, chips, bonus ledger | `game_*`, `bonus_*` | Blackjack | Nickname, avatar and title reset at deletion (also in past season tables); rows purged with the account |
+| XP events, achievements, daily challenges, days played, season stats and results, rewards | `game_xp_events`, `game_user_achievements`, `game_daily_challenges`, `game_play_days`, `game_season_*`, `game_rewards` | Progression and boards | Purged with the account; all in the data export |
 
 **Never stored:** sites visited, DNS queries, traffic contents, connection logs, Telegram name,
 username or photo (read from `initData` only to validate it), private WireGuard keys (generated

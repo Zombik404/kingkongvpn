@@ -17,6 +17,7 @@ from app.models import (
     Device,
     DeviceUsageDaily,
     GameProfile,
+    GameReward,
     NotificationPreference,
     Payment,
     ReferralMilestone,
@@ -88,6 +89,29 @@ async def export_data(db: AsyncSession, user: User) -> dict[str, Any]:
     milestones = (
         await db.scalars(select(ReferralMilestone).where(ReferralMilestone.user_id == user.id))
     ).all()
+    from app.models import Achievement, PlayDay, Season, SeasonStat, UserAchievement, XpEvent
+
+    xp_events = (
+        await db.scalars(
+            select(XpEvent).where(XpEvent.user_id == user.id).order_by(XpEvent.created_at)
+        )
+    ).all()
+    unlocked = (
+        await db.execute(
+            select(Achievement.code, UserAchievement.created_at)
+            .join(Achievement, Achievement.id == UserAchievement.achievement_id)
+            .where(UserAchievement.user_id == user.id)
+        )
+    ).all()
+    days = (await db.scalars(select(PlayDay.day).where(PlayDay.user_id == user.id))).all()
+    season_stats = (
+        await db.execute(
+            select(Season.name, Season.kind, SeasonStat)
+            .join(SeasonStat, SeasonStat.season_id == Season.id)
+            .where(SeasonStat.user_id == user.id)
+        )
+    ).all()
+    game_rewards = (await db.scalars(select(GameReward).where(GameReward.user_id == user.id))).all()
     return {
         "exported_at": utcnow().isoformat(),
         "account": {
@@ -196,6 +220,41 @@ async def export_data(db: AsyncSession, user: User) -> dict[str, Any]:
                 if profile
                 else None
             ),
+            "progress": (
+                {
+                    "xp": profile.xp,
+                    "level": profile.level,
+                    "avatar": profile.avatar,
+                    "title": profile.title,
+                    "frame": profile.frame,
+                    "day_streak": profile.day_streak,
+                    "best_day_streak": profile.best_day_streak,
+                    "excluded_from_boards": profile.excluded_at is not None,
+                }
+                if profile
+                else None
+            ),
+            "xp_events": [
+                {"amount": e.amount, "kind": e.kind, "created_at": _iso(e.created_at)}
+                for e in xp_events
+            ],
+            "achievements": [{"code": c, "unlocked_at": _iso(at)} for c, at in unlocked],
+            "days_played": sorted(d.isoformat() for d in days),
+            "seasons": [
+                {"season": name, "kind": kind, "rounds": st.rounds, "wins": st.wins, "xp": st.xp}
+                for name, kind, st in season_stats
+            ],
+            "rewards": [
+                {
+                    "source": r.source,
+                    "xp": r.xp,
+                    "title": r.title,
+                    "frame": r.frame,
+                    "bonus_days": r.bonus_days,
+                    "created_at": _iso(r.created_at),
+                }
+                for r in game_rewards
+            ],
             "bonus_hours": wallet.balance_hours if wallet else 0,
             "bonus_ledger": [
                 {
@@ -280,6 +339,15 @@ async def delete_account(
     profile = await db.get(GameProfile, user.id, with_for_update=True)
     if profile is not None:  # the nickname may be a real name: gone from boards at once
         profile.nickname = "Deleted player"
+        profile.avatar = "🦍"
+        profile.title = None
+    from app.models import SeasonResult
+
+    await db.execute(  # and from the frozen tables of past seasons
+        update(SeasonResult)
+        .where(SeasonResult.user_id == user.id)
+        .values(nickname="Deleted player")
+    )
     audit.record(
         db,
         action="user.deleted",

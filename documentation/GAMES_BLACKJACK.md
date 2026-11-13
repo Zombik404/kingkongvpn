@@ -108,6 +108,29 @@ in chips** with the total stake of that round (including doubles/splits); ties g
 there first. When bonus-day stakes are switched on, rounds use bonus days instead and do not
 touch chips or the board.
 
+## Progression: XP, levels, achievements, challenges, boards, seasons (ADR-021)
+
+Everything below is computed on the server from settled rounds only; rounds the server had to
+finish (timeout, leaving, a table closed by staff) give no progress. All numbers are settings
+(`games.xp.*`, `games.levels.*`, `games.streak.rewards`, `games.seasons.*`,
+`games.leaderboard.min_rounds_winrate`, `games.timezone`) editable in the admin panel.
+
+| Piece | How it works (defaults) |
+|---|---|
+| XP | +5 per finished round, +10 for a win, +10 for a blackjack; at most 600 XP a day from rounds. Challenges, achievements and prizes add their own XP. XP is never lost, traded or cashed out |
+| Levels | Level 1→2 costs 100 XP, each next level 50 more; no upper limit. Titles: 1 Jungle Rookie, 2 Jungle Explorer, 3 Wild Player, 4 Jungle Hunter, 5 Gorilla Fighter, 10 Jungle Master, 20 King of Jungle |
+| Achievements | 23 in four categories (game, activity, progress, season), each with icon, progress bar, XP and sometimes a title; given once |
+| Daily challenges | One easy, one medium, one hard per game day (new at 00:00 in `games.timezone`), progress bar, XP on completion, history |
+| Day streak | A day counts when you finish a round in it. Rewards at 3 / 7 / 14 / 30 days (XP, titles; bonus days only when allowed). Calendar of the last 5 weeks |
+| Boards | XP, wins, win rate (wins ÷ (wins + losses), from 20 decided rounds) for the week, month and all time, plus the jackpot board; top 3 highlighted, your place pinned, search, pages, number of players |
+| Seasons | Weekly and monthly, plus event seasons from staff. Countdown, prizes by place (1st: King of Jungle + gold frame, 2nd: Jungle Champion + silver, 3rd: Jungle Warrior + bronze, top 10 and top 100 XP), at least 10 rounds for a prize, archive with winners |
+| Profile | Nickname, avatar (jungle emoji), chosen title, level and XP bar, statistics, places, latest achievements and rounds, XP and reward history |
+| VPN bonus days | **Off** (`games.rewards.bonus_days_enabled`) until the legal check: prizes are XP, titles and frames; paid days are never touched |
+
+Staff (`/admin/games/*`, admin panel "Прогресс и сезоны"): players and their progress,
+exclude a cheater from every board and prize with a reason, edit achievements and challenges,
+create / edit / finish seasons and see results, change the XP and reward settings.
+
 ## Notices (Telegram / email)
 
 `game_round_away` (a round finished while you weren't looking at the table),
