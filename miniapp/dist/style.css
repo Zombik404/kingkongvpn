@@ -86,10 +86,11 @@ a { color: var(--warm); }
 /* jungle backdrop: leaves & vines (decorative, behind everything) */
 body::before {
   content: ""; position: fixed; inset: 0; z-index: -1; pointer-events: none;
-  background: url("assets/jungle.svg") center top / cover no-repeat;
-  opacity: 0.9;
+  background: url("assets/jungle.jpg") center top / cover no-repeat;
+  opacity: 0.92;
 }
-:root[data-theme]:not([data-theme="default"]) body::before { opacity: 0.35; filter: grayscale(1); }
+:root[data-theme]:not([data-theme="default"]) body::before { opacity: 0.5; filter: grayscale(1) brightness(0.8); }
+:root[data-theme]:not([data-theme="default"]) :is(.jv, .wreath) { filter: grayscale(1) brightness(1.1); }
 
 /* brand */
 .brand { display: flex; align-items: center; justify-content: center; gap: 10px; padding: 6px 0 2px; }
@@ -97,7 +98,7 @@ body::before {
   width: 44px; height: 44px; border-radius: 50%; display: block;
   box-shadow: 0 0 0 2px rgba(var(--a-rgb), 0.55), 0 6px 22px rgba(var(--a-rgb), 0.35);
 }
-.word { font-size: 22px; font-weight: 900; letter-spacing: 0.06em; text-transform: uppercase; color: var(--text); }
+.word { text-shadow: 0 2px 10px rgba(0, 0, 0, 0.8); font-size: 22px; font-weight: 900; letter-spacing: 0.06em; text-transform: uppercase; color: var(--text); }
 .word-accent { background: var(--grad); -webkit-background-clip: text; background-clip: text; color: transparent; }
 
 /* page header */
@@ -115,11 +116,6 @@ body::before {
   box-shadow: 0 10px 30px rgba(0, 0, 0, 0.35);
 }
 .card.glow { position: relative; background: var(--grad-soft), var(--card); border-color: rgba(var(--a-rgb), 0.35); }
-.card.glow::after {
-  content: ""; position: absolute; top: -17px; right: 12px; width: 66px; height: 32px; pointer-events: none;
-  background: url("assets/sprig.svg") center / contain no-repeat;
-  filter: drop-shadow(0 3px 6px rgba(0, 0, 0, 0.5));
-}
 .card.small { padding: 10px 14px; font-size: 14px; }
 .card-title { display: flex; align-items: center; justify-content: space-between; gap: 8px; font-weight: 700; font-size: 16px; margin-bottom: 10px; }
 .card-title .ic { width: 20px; height: 20px; margin-right: auto; }
@@ -155,11 +151,8 @@ label { display: block; margin: 12px 0 0; font-size: 13px; color: var(--muted); 
 
 /* wheel (home) */
 .wheel { position: relative; width: min(92vw, 360px); aspect-ratio: 1; margin: 6px auto 12px; }
-.orbit { position: absolute; inset: 10%; width: 80%; height: 80%; overflow: visible; }
-.wr-stem { fill: none; stroke: var(--c3); stroke-width: 1.6; opacity: 0.8; }
-.wr-leaf { fill: var(--c3); opacity: 0.85; }
-.wr-leaf.hi { fill: var(--c2); }
-.wreath { animation: wreath-turn 120s linear infinite; }
+.orbit { position: absolute; left: 0; top: 0; width: 100%; height: 100%; max-width: none; pointer-events: none; }
+.wreath { animation: wreath-turn 160s linear infinite; filter: drop-shadow(0 4px 10px rgba(0, 0, 0, 0.55)); }
 @keyframes wreath-turn { to { transform: rotate(360deg); } }
 .hub {
   position: absolute; left: 50%; top: 50%; width: 54%; aspect-ratio: 1; transform: translate(-50%, -50%);
@@ -190,7 +183,7 @@ label { display: block; margin: 12px 0 0; font-size: 13px; color: var(--muted); 
   transition: transform 0.15s ease, background 0.15s ease;
 }
 .spoke:active .spoke-ic { transform: scale(0.94); background: var(--grad); color: var(--on-grad); }
-.spoke-label { font-size: 11.5px; font-weight: 600; color: var(--text); white-space: nowrap; }
+.spoke-label { font-size: 11.5px; font-weight: 700; color: var(--text); white-space: nowrap; text-shadow: 0 1px 2px #000, 0 0 10px rgba(0, 0, 0, 0.9); }
 .badge {
   position: absolute; top: -4px; right: 2px; font-size: 10px; font-weight: 800; padding: 2px 6px;
   border-radius: 999px; background: var(--grad); color: var(--on-grad);
@@ -306,13 +299,12 @@ h2 { font-size: 18px; }
 
 /* ---------- jungle dressing (behind the content) ---------- */
 .jungle { position: fixed; inset: 0; z-index: 0; pointer-events: none; overflow: hidden; }
-.jv { position: absolute; top: -6px; width: 24px; transform-origin: 50% 0; animation: sway 7s ease-in-out infinite alternate; }
-.jv-l { left: -3px; height: 620px; }
-.jv-l2 { left: 14px; height: 380px; animation-duration: 9s; animation-delay: -3s; opacity: 0.75; }
-.jv-r { right: -3px; height: 560px; animation-duration: 8s; animation-delay: -2s; }
-.jv-r2 { right: 15px; height: 300px; animation-duration: 10s; animation-delay: -5s; opacity: 0.75; }
-.jv-stem { fill: none; stroke: var(--c3); stroke-width: 2.4; stroke-linecap: round; }
-.jv-leaf { fill: var(--c2); opacity: 0.9; }
+.jv { position: absolute; top: -8px; width: 62px; height: auto; max-width: none; transform-origin: 50% 0; animation: sway 7s ease-in-out infinite alternate; filter: drop-shadow(0 6px 10px rgba(0, 0, 0, 0.55)); }
+.jv-l { left: -30px; }
+.jv-l2 { left: -8px; width: 46px; animation-duration: 9s; animation-delay: -3s; opacity: 0.8; }
+.jv-r { right: -30px; animation-name: sway-r; animation-duration: 8s; animation-delay: -2s; }
+.jv-r2 { right: -8px; width: 44px; animation-name: sway-r; animation-duration: 10s; animation-delay: -5s; opacity: 0.8; }
+@keyframes sway-r { from { transform: scaleX(-1) rotate(-2.2deg); } to { transform: scaleX(-1) rotate(2.2deg); } }
 @keyframes sway { from { transform: rotate(-2.2deg); } to { transform: rotate(2.2deg); } }
 .firefly {
   position: absolute; left: var(--fx); top: var(--fy); width: 4px; height: 4px; border-radius: 50%;
@@ -329,16 +321,22 @@ h2 { font-size: 18px; }
 /* ---------- page change: a monkey swings across on a vine ---------- */
 .swing { position: fixed; inset: 0; z-index: 80; pointer-events: none; overflow: hidden; }
 .swing-arm {
-  position: absolute; left: 50%; top: -14vh; width: 0; height: max(80vh, 62vw);
+  position: absolute; left: 50%; top: -14vh; width: 0; height: max(60vh, 62vw);
   transform-origin: 50% 0; animation: swing-fwd 1.15s cubic-bezier(0.45, 0.05, 0.55, 0.95) both;
 }
 .swing.back .swing-arm { animation-name: swing-back; }
-.swing-vine {
-  position: absolute; left: -2.5px; top: 0; width: 5px; height: 100%; border-radius: 3px;
-  background: repeating-linear-gradient(180deg, var(--c3) 0 14px, var(--c2) 14px 18px);
-  box-shadow: 0 0 10px rgba(var(--a-rgb), 0.35);
+.swing-vine { /* a liana: cylinder shading across, knots along */
+  position: absolute; left: -4px; top: 0; width: 8px; height: 100%; border-radius: 4px;
+  background:
+    repeating-linear-gradient(180deg, rgba(0, 0, 0, 0) 0 46px, rgba(0, 0, 0, 0.35) 46px 50px),
+    linear-gradient(90deg, #1c2a12 0%, #6d8444 42%, #47592b 70%, #18230f 100%);
+  box-shadow: 0 6px 12px rgba(0, 0, 0, 0.5);
 }
-.swing-monkey { position: absolute; left: -65px; bottom: -140px; width: 130px; height: 176px; filter: drop-shadow(0 8px 14px rgba(0, 0, 0, 0.6)); }
+.swing-monkey {
+  /* 320×380 artwork shown at 190px wide; the hand that holds the vine is at 46.9% / 7.9% */
+  position: absolute; width: 190px; height: auto; max-width: none; left: -89px; bottom: -208px;
+  transform-origin: 46.9% 7.9%; filter: drop-shadow(0 10px 16px rgba(0, 0, 0, 0.6));
+}
 .swing.back .swing-monkey { transform: scaleX(-1); }
 @keyframes swing-fwd {
   0% { transform: rotate(72deg); opacity: 0; }
@@ -350,19 +348,12 @@ h2 { font-size: 18px; }
   12% { opacity: 1; } 88% { opacity: 1; }
   100% { transform: rotate(72deg); opacity: 0; }
 }
-.mk-fur { fill: #5b3a1f; }
-.mk-fur-l { fill: none; stroke: #5b3a1f; stroke-width: 8.5; stroke-linecap: round; }
-.mk-tail { fill: none; stroke: #4a2e17; stroke-width: 5; stroke-linecap: round; }
-.mk-skin { fill: #e6bd8f; }
-.mk-eye { fill: #1c110a; }
-.mk-mouth { fill: none; stroke: #7a4a2a; stroke-width: 1.8; stroke-linecap: round; }
 .enter-fwd { animation: enter-fwd 0.55s cubic-bezier(0.2, 0.8, 0.2, 1) 0.3s both; }
 .enter-back { animation: enter-back 0.55s cubic-bezier(0.2, 0.8, 0.2, 1) 0.15s both; }
 @keyframes enter-fwd { from { transform: translateX(46px); opacity: 0; } to { transform: none; opacity: 1; } }
 @keyframes enter-back { from { transform: translateX(-46px); opacity: 0; } to { transform: none; opacity: 1; } }
 
 /* other themes: keep the plants, tint them to the palette */
-:root[data-theme]:not([data-theme="default"]) .card.glow::after { filter: grayscale(1) brightness(1.3) drop-shadow(0 3px 6px rgba(0, 0, 0, 0.5)); }
 @media (prefers-reduced-motion: reduce) {
   .jv, .firefly, .wreath { animation: none; }
   .firefly { opacity: 0.5; }

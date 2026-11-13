@@ -36,7 +36,7 @@ Last updated: 2026-11-13 · Current phase: **Telegram test version built and ver
 
 ## KingKong VPN rebrand (2026-11-13) — ADR-018 §5–6
 - Renamed to **KingKong VPN**: jungle look (black & green, leaves and vines), the owner's gorilla patch as the logo; ranks renamed Monkey/Parrot/Jaguar/Gorilla/King Kong, themes Volcano/Night/Banana/Orchid.
-- Jungle dressing: palms/vines/leaves backdrop, swaying vines, fireflies, leaf wreath; **monkey-on-a-vine page transitions** (forward → right, back → left; off with reduced motion).
+- Jungle dressing, rendered realistically (`miniapp/tools/render_*.py`, no stock photos): misty rainforest backdrop, swaying lianas, fireflies, leaf wreath; **page transitions with a monkey swinging on a liana, banana in hand** (forward → right, back → left; off with reduced motion).
 - **Clickable demo** of the Mini App on sample data in `miniapp/demo/` (published as a private page for the owner).
 - Bot avatar: `branding/bot-avatar-640.png` → @BotFather `/setuserpic`.
 - ⚠️ "King Kong" is a famous trademarked name — clear it before a public launch.
