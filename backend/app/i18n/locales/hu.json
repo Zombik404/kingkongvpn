@@ -41,13 +41,8 @@
       "action": "Előfizetésem"
     },
     "referral_reward": {
-      "subject": "Barátod csatlakozott a(z) {app_name} szolgáltatáshoz – {percent}% kedvezmény neked",
-      "body": "Egy barátod, akit meghívtál, előfizetett. A következő fizetésedből {percent}% kedvezményt kapsz – automatikusan érvényesül.",
-      "action": "{app_name} megnyitása"
-    },
-    "referral_reward_bonus": {
-      "subject": "Barátod csatlakozott a(z) {app_name} szolgáltatáshoz – {days} ingyenes nap és {percent}% kedvezmény neked",
-      "body": "Egy barátod, akit meghívtál, előfizetett. {days} ingyenes napot adtunk a(z) {app_name} hozzáférésedhez ({date}-ig), és a következő fizetésedből {percent}% kedvezményt kapsz – automatikusan érvényesül.",
+      "subject": "Barátod csatlakozott a(z) {app_name} szolgáltatáshoz – {days} ingyenes nap neked",
+      "body": "Egy barátod, akit meghívtál, előfizetett. {days} ingyenes napot adtunk a(z) {app_name} hozzáférésedhez – most {date}-ig érvényes.",
       "action": "{app_name} megnyitása"
     }
   }

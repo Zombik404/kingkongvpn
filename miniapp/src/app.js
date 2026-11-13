@@ -205,7 +205,8 @@ function wheel() {
   ];
   const spokes = items.map(([ic, label, fn], i) => {
     const angle = -90 + i * (360 / items.length);
-    const badge = ic === "friends" && state.ref?.rewards_available ? h("span", { class: "badge" }, `−${state.ref.percent_off}%`) : null;
+    // came via a friend's link and hasn't paid yet → show the first-payment discount on "Pay"
+    const badge = ic === "card" && state.ref?.my_discount ? h("span", { class: "badge" }, `−${state.ref.my_discount}%`) : null;
     return h("button", { class: "spoke", "data-angle": angle, onclick: fn, "aria-label": label },
       h("span", { class: "spoke-ic" }, icon(ic)), h("span", { class: "spoke-label" }, label), badge);
   });
@@ -279,7 +280,7 @@ function monthsOf(p) {
 
 function plansScreen(upgrade) {
   const s = state.sub.subscription;
-  const refPct = state.ref?.rewards_available ? state.ref.percent_off : 0;
+  const refPct = state.ref?.my_discount || 0;
   const rows = [];
   for (const plan of state.plans) {
     const base = plan.prices.find((p) => p.period_unit === "month" && p.period_count === 1);
@@ -354,23 +355,18 @@ function referralScreen() {
     try { await navigator.clipboard.writeText(link); copyBtn.textContent = t("copied"); } catch { toast(link); }
   } }, icon("copy", "ic sm"), t("copyLink"));
   const shareBtn = h("button", { class: "secondary wide", onclick: () => {
-    const url = `https://t.me/share/url?url=${encodeURIComponent(link)}&text=${encodeURIComponent(t("shareText"))}`;
+    const url = `https://t.me/share/url?url=${encodeURIComponent(link)}&text=${encodeURIComponent(t("shareText", { p: r?.percent_off ?? 30 }))}`;
     tg.openTelegramLink ? tg.openTelegramLink(url) : tg.openLink(url);
   } }, icon("share", "ic sm"), t("share"));
   const pct = r?.percent_off ?? 30;
   const days = r?.bonus_days ?? 0;
-  const stat = (n, label, cls = "big") => h("div", {}, h("div", { class: cls }, String(n ?? 0)), h("div", { class: "lbl" }, t(label)));
   page(t("refTitle"),
     h("section", { class: "card glow" },
-      h("div", { class: "promo-row" },
-        days ? h("div", { class: "promo-num" }, t("refBonus", { d: days })) : null,
-        h("div", { class: days ? "promo-num promo-2" : "promo-num" }, `−${pct}%`)),
-      h("p", {}, days ? t("refTextBonus", { p: pct, d: days }) : t("refText", { p: pct }))),
-    h("section", { class: "card stats4" },
-      stat(r?.invited, "refInvited"),
-      stat(r?.paid, "refPaid"),
-      stat(r?.days_earned, "refDays", "big hot"),
-      stat(r?.rewards_available, "refRewards", "big hot")),
+      h("div", { class: "promo-num" }, days ? t("refBonus", { d: days }) : `−${pct}%`),
+      h("p", {}, days ? t("refText", { p: pct, d: days }) : t("refTextNoDays", { p: pct }))),
+    h("section", { class: "card ref-count" },
+      h("div", { class: "lbl" }, t("refCount")),
+      h("div", { class: "big" }, String(r?.invited ?? 0))),
     link
       ? h("section", { class: "card" }, h("div", { class: "linkbox" }, link), copyBtn, shareBtn)
       : h("p", { class: "muted pad-x" }, t("refNoBot")));

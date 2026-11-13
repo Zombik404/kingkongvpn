@@ -1,15 +1,14 @@
 """Referral program.
 
-Each user gets a personal link (`t.me/<bot>?start=ref_<code>`). When someone who signed up via
-that link makes their **first** successful payment, the referrer earns:
+Each user gets a personal link (`t.me/<bot>?start=ref_<code>`).
 
-- a one-time discount (`referrals.percent_off`, default 30 %) applied automatically to their next
-  checkout, and
-- free days (`referrals.bonus_days`, default 14) added to their subscription right away — the
-  live subscription is extended, or a new one is started if they have none.
+- The **invited user** gets `referrals.percent_off` (default 30 %) off their **first** payment,
+  applied automatically at checkout (not combined with a promo code — the promo price wins).
+- The **referrer** gets `referrals.bonus_days` (default 14) free days for every invited user whose
+  first payment succeeds — the live subscription is extended, or a new one started if they have
+  none. No discount for the referrer.
 
-One reward per referred user; rewards don't stack within one payment and don't combine with a
-promo code (the customer gets the promo code's price instead).
+One credit per invited user (unique `referral_rewards.referred_id`).
 """
 
 from __future__ import annotations
@@ -43,9 +42,8 @@ class Granted:
     """What the referrer earned (for the notification after commit)."""
 
     referrer: User
-    percent_off: int
     bonus_days: int
-    subscription: Subscription | None
+    subscription: Subscription
 
 
 class InvalidReferral(AppError):
@@ -110,55 +108,41 @@ async def claim(db: AsyncSession, user_id: uuid.UUID, code: str, ip: str | None)
     await db.commit()
 
 
-async def reserve_reward(db: AsyncSession, user_id: uuid.UUID) -> ReferralReward | None:
-    """Lock one available reward for a checkout (caller commits with the payment)."""
-    reward = await db.scalar(
-        select(ReferralReward)
-        .where(ReferralReward.referrer_id == user_id, ReferralReward.status == "available")
-        .order_by(ReferralReward.created_at)
-        .limit(1)
-        .with_for_update(skip_locked=True)
+async def _has_paid(
+    db: AsyncSession, user_id: uuid.UUID, *, except_id: uuid.UUID | None = None
+) -> bool:
+    q = (
+        select(func.count())
+        .select_from(Payment)
+        .where(Payment.user_id == user_id, Payment.status == PaymentStatus.SUCCEEDED)
     )
-    if reward is not None:
-        reward.status = "reserved"
-    return reward
+    if except_id is not None:
+        q = q.where(Payment.id != except_id)
+    return bool(await db.scalar(q))
 
 
-async def release_reward(db: AsyncSession, payment: Payment) -> None:
-    if payment.referral_reward_id is None:
-        return
-    reward = await db.get(ReferralReward, payment.referral_reward_id, with_for_update=True)
-    if reward is not None and reward.status == "reserved":
-        reward.status = "available"
+async def invitee_discount(db: AsyncSession, user: User) -> int:
+    """Percent off the user's checkout for having come via a referral link (0 = none): only
+    while they have never paid and the program is on."""
+    if user.referred_by_id is None or not await settings_service.get_value(db, "referrals.enabled"):
+        return 0
+    if await _has_paid(db, user.id):
+        return 0
+    return int(await settings_service.get_value(db, "referrals.percent_off"))
 
 
 async def on_payment_succeeded(
     db: AsyncSession, payment: Payment, user: User, paid_plan: Plan
 ) -> Granted | None:
-    """Consume the reward used by this payment; on the referred user's first payment grant the
-    referrer a discount and free days. Caller commits, then notifies `Granted.referrer`."""
-    if payment.referral_reward_id is not None:
-        reward = await db.get(ReferralReward, payment.referral_reward_id, with_for_update=True)
-        if reward is not None:
-            reward.status = "used"
-            reward.used_payment_id = payment.id
+    """On the invited user's first successful payment, credit the referrer with free days.
+    Caller commits, then notifies `Granted.referrer`."""
     if user.referred_by_id is None or not await settings_service.get_value(db, "referrals.enabled"):
         return None
-    earlier = await db.scalar(
-        select(func.count())
-        .select_from(Payment)
-        .where(
-            Payment.user_id == user.id,
-            Payment.status == PaymentStatus.SUCCEEDED,
-            Payment.id != payment.id,
-        )
-    )
-    if earlier:
+    if await _has_paid(db, user.id, except_id=payment.id):
         return None
     referrer = await db.get(User, user.referred_by_id)
     if referrer is None:
         return None
-    percent = int(await settings_service.get_value(db, "referrals.percent_off"))
     days = int(await settings_service.get_value(db, "referrals.bonus_days"))
     if not referrer.is_active:
         days = 0  # suspended/deleted accounts get nothing new
@@ -169,26 +153,24 @@ async def on_payment_succeeded(
             referrer_id=referrer.id,
             referred_id=user.id,
             source_payment_id=payment.id,
-            percent_off=percent,
             bonus_days=days,
-            status="available",
         )
         .on_conflict_do_nothing(index_elements=["referred_id"])
     )
     if not getattr(result, "rowcount", 0):
-        return None  # already rewarded for this invitee (the insert is the idempotency guard)
-    sub: Subscription | None = None
-    if days:
-        sub = await _grant_bonus_days(db, referrer.id, paid_plan, days, invitee=user.id)
+        return None  # already credited for this invitee
     audit.record(
         db,
         action="referral.reward_granted",
         actor_type=ActorType.SYSTEM,
         target_type="user",
         target_id=referrer.id,
-        details={"referred": str(user.id), "percent": percent, "bonus_days": days},
+        details={"referred": str(user.id), "bonus_days": days},
     )
-    return Granted(referrer=referrer, percent_off=percent, bonus_days=days, subscription=sub)
+    if not days:
+        return None
+    sub = await _grant_bonus_days(db, referrer.id, paid_plan, days, invitee=user.id)
+    return Granted(referrer=referrer, bonus_days=days, subscription=sub)
 
 
 async def _grant_bonus_days(
@@ -215,23 +197,15 @@ async def _grant_bonus_days(
     )
 
 
-async def summary(db: AsyncSession, settings: Settings, user_id: uuid.UUID) -> dict[str, Any]:
-    code = await ensure_code(db, user_id)
+async def summary(db: AsyncSession, settings: Settings, user: User) -> dict[str, Any]:
+    code = await ensure_code(db, user.id)
     invited = await db.scalar(
-        select(func.count()).select_from(User).where(User.referred_by_id == user_id)
+        select(func.count()).select_from(User).where(User.referred_by_id == user.id)
     )
-    rewards = (
-        await db.execute(
-            select(ReferralReward.status, func.count())
-            .where(ReferralReward.referrer_id == user_id)
-            .group_by(ReferralReward.status)
-        )
-    ).all()
-    by_status = {s: int(n) for s, n in rewards}
-    days_earned = await db.scalar(
-        select(func.coalesce(func.sum(ReferralReward.bonus_days), 0)).where(
-            ReferralReward.referrer_id == user_id
-        )
+    paid = await db.scalar(
+        select(func.count())
+        .select_from(ReferralReward)
+        .where(ReferralReward.referrer_id == user.id)
     )
     return {
         "enabled": bool(await settings_service.get_value(db, "referrals.enabled")),
@@ -239,9 +213,7 @@ async def summary(db: AsyncSession, settings: Settings, user_id: uuid.UUID) -> d
         "link": link_for(settings, code),
         "percent_off": int(await settings_service.get_value(db, "referrals.percent_off")),
         "bonus_days": int(await settings_service.get_value(db, "referrals.bonus_days")),
-        "days_earned": int(days_earned or 0),
         "invited": int(invited or 0),
-        "paid": sum(by_status.values()),
-        "rewards_available": by_status.get("available", 0),
-        "rewards_used": by_status.get("used", 0),
+        "paid": int(paid or 0),
+        "my_discount": await invitee_discount(db, user),
     }

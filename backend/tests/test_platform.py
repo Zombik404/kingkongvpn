@@ -130,7 +130,6 @@ def test_every_email_renders(lang: str, template: str) -> None:
         "minutes": "30",
         "plan": "<b>Std</b>",
         "date": "1 Dec 2026",
-        "percent": "30",
         "days": "14",
     }
     out = render(

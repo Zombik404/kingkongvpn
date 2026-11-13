@@ -35,7 +35,7 @@ TEXT = {
         "Нажмите «Открыть VPN»: там можно активировать доступ, оплатить и подключить устройство.",
         "hello_invite": "Привет! Ваш инвайт-код {code} уже подставлен — нажмите «Открыть VPN» "
         "и затем «Активировать».",
-        "hello_ref": "Привет! Вас пригласили в {app}. Нажмите «Открыть VPN», чтобы начать.",
+        "hello_ref": "Привет! Вас пригласили в {app} — по приглашению действует скидка на первую подписку. Нажмите «Открыть VPN», чтобы начать.",
         "open": "Открыть VPN",
         "help": "Как подключиться:\n"
         "1. Установите приложение WireGuard (Android, iPhone, Windows, macOS).\n"
@@ -51,7 +51,7 @@ TEXT = {
         "Tap “Open VPN” to activate access, pay and connect your devices.",
         "hello_invite": "Hi! Your invite code {code} is already filled in — tap “Open VPN”, "
         "then “Activate”.",
-        "hello_ref": "Hi! You've been invited to {app}. Tap “Open VPN” to get started.",
+        "hello_ref": "Hi! You've been invited to {app} — your first subscription is discounted. Tap “Open VPN” to get started.",
         "open": "Open VPN",
         "help": "How to connect:\n"
         "1. Install the WireGuard app (Android, iPhone, Windows, macOS).\n"

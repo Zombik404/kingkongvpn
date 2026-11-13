@@ -154,31 +154,58 @@ async def test_referral_link_and_claim_rules(
     r = await client.post(claim, headers=bob.headers, json={"code": c_code})
     assert r.status_code == 422  # already referred by someone else
     stats = (await client.get("/api/v1/referrals", headers=alice.headers)).json()
-    assert stats["invited"] == 1 and stats["paid"] == 0
+    assert stats["invited"] == 1 and stats["paid"] == 0 and stats["my_discount"] == 0
+    bob_info = (await client.get("/api/v1/referrals", headers=bob.headers)).json()
+    assert bob_info["my_discount"] == 30
     bob_row = await db.scalar(select(User).where(User.email == "ref-b@example.com"))
     assert str(bob_row.referred_by_id) == alice.user_id
 
 
-async def test_referral_reward_full_cycle(
+async def _refer(client: AsyncClient, referrer: Any, invitee: Any) -> None:
+    code = (await client.get("/api/v1/referrals", headers=referrer.headers)).json()["code"]
+    r = await client.post("/api/v1/referrals/claim", headers=invitee.headers, json={"code": code})
+    assert r.status_code == 204
+
+
+async def _pay(
+    client: AsyncClient, fake: FakeCryptoPay, ctx: AppContext, who: Any, price: Any
+) -> dict[str, Any]:
+    r = (await checkout(client, who, price)).json()
+    fake.pay(fake._next)
+    async with ctx.sessionmaker() as s:
+        assert await payments.poll_pending(ctx, s) == {"credited": 1}
+    return r
+
+
+async def test_referral_full_cycle(
     client: AsyncClient, outbox: list[Any], db: Any, fake: FakeCryptoPay, ctx: AppContext
 ) -> None:
     prices = await seed(db)
     alice = await new_user(client, outbox, "cyc-a@example.com")
     bob = await new_user(client, outbox, "cyc-b@example.com")
-    code = (await client.get("/api/v1/referrals", headers=alice.headers)).json()["code"]
-    await client.post("/api/v1/referrals/claim", headers=bob.headers, json={"code": code})
+    await _refer(client, alice, bob)
 
-    # Bob pays → Alice earns one reward + 14 free days (she had no subscription → a new one
-    # on the plan Bob bought) and is notified
-    await checkout(client, bob, prices[1])
-    fake.pay(fake._next)
-    outbox.clear()
+    # Bob (invited) gets 30 % off his first checkout; Alice (referrer) gets nothing off
+    r = (await checkout(client, bob, prices[12])).json()
+    assert r["amount_minor"] == 4200 - 1260 and r["discount"] == "referral"
+    a = (await checkout(client, alice, prices[1])).json()
+    assert a["amount_minor"] == 500 and a["discount"] is None
+    # Bob's first invoice expires → his discount is still there (he hasn't paid yet)
+    from app.models import Payment
+
+    first = await db.get(Payment, r["id"])
+    fake.invoices[int(first.provider_payment_id)]["status"] = "expired"
     async with ctx.sessionmaker() as s:
-        assert await payments.poll_pending(ctx, s) == {"credited": 1}
-    assert {m.template for m in outbox} == {"payment_received", "referral_reward_bonus"}
-    notice = next(m for m in outbox if m.template == "referral_reward_bonus")
-    assert notice.to == "cyc-a@example.com"
-    assert "14 free days" in notice.subject and "30% off" in notice.subject
+        await payments.poll_pending(ctx, s)
+
+    # Bob pays a discounted 1-month plan → Alice gets +14 days (no subscription before → a new
+    # one on the plan Bob bought) and a notice
+    outbox.clear()
+    paid = await _pay(client, fake, ctx, bob, prices[1])
+    assert paid["amount_minor"] == 350 and paid["discount"] == "referral"
+    assert {m.template for m in outbox} == {"payment_received", "referral_reward"}
+    notice = next(m for m in outbox if m.template == "referral_reward")
+    assert notice.to == "cyc-a@example.com" and "14 free days" in notice.subject
     async with ctx.sessionmaker() as s:
         live = await subs.get_live(s, alice.user_id)
         assert live is not None and live.provider == "promo"
@@ -186,42 +213,17 @@ async def test_referral_reward_full_cycle(
         assert dt.timedelta(days=13, hours=23) < left <= dt.timedelta(days=14)
         assert (await s.get(Plan, live.plan_id)).code == "standard"
     stats = (await client.get("/api/v1/referrals", headers=alice.headers)).json()
-    assert stats["paid"] == 1 and stats["rewards_available"] == 1
-    assert stats["bonus_days"] == 14 and stats["days_earned"] == 14
-    # a second payment by Bob doesn't earn another reward
-    await checkout(client, bob, prices[3])
-    fake.pay(fake._next)
-    async with ctx.sessionmaker() as s:
-        await payments.poll_pending(ctx, s)
+    assert stats["invited"] == 1 and stats["paid"] == 1 and stats["bonus_days"] == 14
+
+    # Bob's next payment: full price, and no more days for Alice
+    nxt = await _pay(client, fake, ctx, bob, prices[3])
+    assert nxt["amount_minor"] == 1300 and nxt["discount"] is None
+    assert (await client.get("/api/v1/referrals", headers=bob.headers)).json()["my_discount"] == 0
     assert len((await db.scalars(select(ReferralReward))).all()) == 1
-    async with ctx.sessionmaker() as s:  # ...and no more free days either
+    async with ctx.sessionmaker() as s:
         again = await subs.get_live(s, alice.user_id)
-        assert again is not None and again.current_period_end == live.current_period_end
+        assert again.current_period_end == live.current_period_end
 
-    # Alice's checkout gets 30 % off automatically; the reward is reserved for that invoice
-    r = (await checkout(client, alice, prices[12])).json()
-    assert r["amount_minor"] == 4200 - 1260 and r["discount"] == "referral"
-    r2 = (await checkout(client, alice, prices[1])).json()
-    assert r2["amount_minor"] == 500 and r2["discount"] is None  # only one reward, already held
-    # the first invoice expires → reward released → next checkout discounted again
-    from app.models import Payment
-
-    first = await db.get(Payment, r["id"])
-    fake.invoices[int(first.provider_payment_id)]["status"] = "expired"
-    async with ctx.sessionmaker() as s:
-        await payments.poll_pending(ctx, s)
-    reward = await db.scalar(select(ReferralReward))
-    await db.refresh(reward)
-    assert reward.status == "available"
-    r3 = (await checkout(client, alice, prices[6])).json()
-    assert r3["amount_minor"] == 2400 - 720 and r3["discount"] == "referral"
-    fake.pay(fake._next)
-    async with ctx.sessionmaker() as s:
-        await payments.poll_pending(ctx, s)
-    await db.refresh(reward)
-    assert reward.status == "used"
-    stats = (await client.get("/api/v1/referrals", headers=alice.headers)).json()
-    assert stats["rewards_available"] == 0 and stats["rewards_used"] == 1
     # after paying, nobody can attach a referrer to Bob any more
     dave = await new_user(client, outbox, "cyc-d@example.com")
     d_code = (await client.get("/api/v1/referrals", headers=dave.headers)).json()["code"]
@@ -233,20 +235,19 @@ async def test_referral_reward_full_cycle(
     assert r.status_code == 422
 
 
-async def test_promo_code_beats_referral_reward(
+async def test_promo_code_beats_referral_discount(
     client: AsyncClient, outbox: list[Any], db: Any, fake: FakeCryptoPay
 ) -> None:
     from app.models import PromoCode
 
     prices = await seed(db)
     alice = await new_user(client, outbox, "pr-a@example.com")
-    db.add(ReferralReward(referrer_id=alice.user_id, percent_off=30, status="available"))
+    bob = await new_user(client, outbox, "pr-b@example.com")
+    await _refer(client, alice, bob)
     db.add(PromoCode(code="HALF", kind="percent_off", percent_off=50))
     await db.commit()
-    r = (await checkout(client, alice, prices[1], promo="HALF")).json()
+    r = (await checkout(client, bob, prices[1], promo="HALF")).json()
     assert r["amount_minor"] == 250 and r["discount"] == "promo"
-    reward = await db.scalar(select(ReferralReward))
-    assert reward.status == "available"  # untouched, still usable next time
 
 
 async def test_referrals_can_be_disabled(
@@ -255,32 +256,16 @@ async def test_referrals_can_be_disabled(
     from app.services import settings as settings_service
 
     prices = await seed(db)
-    await settings_service.set_value(db, "referrals.enabled", False, actor_id=None)
-    await db.commit()
     alice = await new_user(client, outbox, "dis-a@example.com")
     bob = await new_user(client, outbox, "dis-b@example.com")
-    code = (await client.get("/api/v1/referrals", headers=alice.headers)).json()["code"]
-    await client.post("/api/v1/referrals/claim", headers=bob.headers, json={"code": code})
-    await checkout(client, bob, prices[1])
-    fake.pay(fake._next)
-    async with ctx.sessionmaker() as s:
-        await payments.poll_pending(ctx, s)
+    await _refer(client, alice, bob)
+    await settings_service.set_value(db, "referrals.enabled", False, actor_id=None)
+    await db.commit()
+    paid = await _pay(client, fake, ctx, bob, prices[1])
+    assert paid["amount_minor"] == 500 and paid["discount"] is None
     assert await db.scalar(select(ReferralReward)) is None
-
-
-async def _refer(client: AsyncClient, referrer: Any, invitee: Any) -> None:
-    code = (await client.get("/api/v1/referrals", headers=referrer.headers)).json()["code"]
-    r = await client.post("/api/v1/referrals/claim", headers=invitee.headers, json={"code": code})
-    assert r.status_code == 204
-
-
-async def _pay(
-    client: AsyncClient, fake: FakeCryptoPay, ctx: AppContext, who: Any, price: Any
-) -> None:
-    await checkout(client, who, price)
-    fake.pay(fake._next)
     async with ctx.sessionmaker() as s:
-        assert await payments.poll_pending(ctx, s) == {"credited": 1}
+        assert await subs.get_live(s, alice.user_id) is None
 
 
 async def test_referral_bonus_days_extend_existing_subscription(
@@ -310,7 +295,7 @@ async def test_referral_bonus_days_extend_existing_subscription(
     async with ctx.sessionmaker() as s:
         before = (await subs.get_live(s, alice.user_id)).current_period_end
 
-    # two invitees pay → +14 days each, on top of the existing end date
+    # two invited friends pay → +14 days each, on top of the existing end date
     await _refer(client, alice, bob)
     await _refer(client, alice, carol)
     await _pay(client, fake, ctx, bob, prices[1])
@@ -320,9 +305,9 @@ async def test_referral_bonus_days_extend_existing_subscription(
         assert after.current_period_end - before == dt.timedelta(days=28)
         assert after.plan_id == standard.id
     stats = (await client.get("/api/v1/referrals", headers=alice.headers)).json()
-    assert stats["paid"] == 2 and stats["days_earned"] == 28 and stats["rewards_available"] == 2
+    assert stats["invited"] == 2 and stats["paid"] == 2
 
-    # a referrer on a trial is moved to the paid plan the invitee bought
+    # a referrer on a trial is moved to the paid plan the friend bought
     await _refer(client, trial_user, dave)
     await _pay(client, fake, ctx, dave, prices[1])
     async with ctx.sessionmaker() as s:
@@ -344,22 +329,23 @@ async def test_referral_bonus_days_off_and_suspended_referrer(
     await _refer(client, alice, bob)
     await _refer(client, sus, carol)
 
+    # bonus days off: the friend still gets the discount, the referrer gets no days/no notice
     await settings_service.set_value(db, "referrals.bonus_days", 0, actor_id=None)
     await db.commit()
     outbox.clear()
-    await _pay(client, fake, ctx, bob, prices[1])
-    assert {m.template for m in outbox} == {"payment_received", "referral_reward"}
+    paid = await _pay(client, fake, ctx, bob, prices[1])
+    assert paid["discount"] == "referral"
+    assert {m.template for m in outbox} == {"payment_received"}
     async with ctx.sessionmaker() as s:
-        assert await subs.get_live(s, alice.user_id) is None  # discount only
-    stats = (await client.get("/api/v1/referrals", headers=alice.headers)).json()
-    assert (
-        stats["bonus_days"] == 0 and stats["days_earned"] == 0 and stats["rewards_available"] == 1
-    )
+        assert await subs.get_live(s, alice.user_id) is None
+    assert (await client.get("/api/v1/referrals", headers=alice.headers)).json()["paid"] == 1
 
+    # a suspended referrer gets nothing; the invited friend still gets the discount
     await settings_service.set_value(db, "referrals.bonus_days", 14, actor_id=None)
     await db.execute(update(User).where(User.id == sus.user_id).values(status="suspended"))
     await db.commit()
-    await _pay(client, fake, ctx, carol, prices[1])
+    paid = await _pay(client, fake, ctx, carol, prices[1])
+    assert paid["discount"] == "referral"
     async with ctx.sessionmaker() as s:
         assert await subs.get_live(s, sus.user_id) is None
         reward = await s.scalar(

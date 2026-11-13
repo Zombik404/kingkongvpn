@@ -10,16 +10,19 @@ Status: accepted (2026-11-13).
    produced traffic. The dashboard shows the top 5 *devices*. Per-app usage is planned for the
    native Android app (on-device `NetworkStatsManager`, data stays on the device); iOS offers no
    such API to third-party apps.
-3. **Referral program:** personal link `t.me/<bot>?start=ref_<code>`; the referrer is attached only
-   before the invitee's first payment; on that first payment the referrer earns a one-time
-   discount (`referrals.percent_off`, default 30 %) applied automatically to their next checkout
-   (available → reserved by a pending invoice → used; released if the invoice fails/expires).
-   One reward per invitee; not combined with a promo code. Toggle: `referrals.enabled`.
-   **Plus free days** (`referrals.bonus_days`, default 14, 0 = off): credited to the referrer at
-   the same moment — the live subscription is extended on its current plan; a referrer on a trial
-   or with no subscription gets the plan the invitee bought. Suspended/deleted referrers get no
-   days. The `referral_rewards` insert (unique `referred_id`) is the idempotency guard, so a
-   repeated webhook/poll can't credit the days twice; the days granted are stored on the reward.
+3. **Referral program (v2, migration 0006):** personal link `t.me/<bot>?start=ref_<code>`; the
+   referrer is attached only before the invitee's first payment.
+   - The **invited user** gets `referrals.percent_off` (default 30 %) off their **first** payment,
+     applied automatically at checkout (`payments.referral_percent_off`); not combined with a promo
+     code. If the invoice expires the discount stays available until they actually pay once.
+   - The **referrer** gets `referrals.bonus_days` (default 14, 0 = off) free days per invitee whose
+     first payment succeeds: the live subscription is extended on its current plan; a referrer on
+     a trial or with no subscription gets the plan the invitee bought. Suspended/deleted referrers
+     get nothing. No discount for the referrer.
+   - One credit per invitee (`referral_rewards`, unique `referred_id`) — a repeated webhook/poll
+     can't add days twice. Toggle the whole program with `referrals.enabled`.
+   - Known edge: an invitee with two unpaid discounted invoices open at once could pay both at
+     the discount (bounded by `payment_pending_limit_per_user`).
 4. **Country switch keeps the device key:** the Mini App stores each private key it generated in
    the device's own `localStorage` (never sent anywhere) so a device can be moved to another
    country and its config re-issued; devices created elsewhere get a new connection instead.

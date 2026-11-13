@@ -1820,10 +1820,6 @@
             "title": "Code",
             "type": "string"
           },
-          "days_earned": {
-            "title": "Days Earned",
-            "type": "integer"
-          },
           "enabled": {
             "title": "Enabled",
             "type": "boolean"
@@ -1843,20 +1839,16 @@
             ],
             "title": "Link"
           },
+          "my_discount": {
+            "title": "My Discount",
+            "type": "integer"
+          },
           "paid": {
             "title": "Paid",
             "type": "integer"
           },
           "percent_off": {
             "title": "Percent Off",
-            "type": "integer"
-          },
-          "rewards_available": {
-            "title": "Rewards Available",
-            "type": "integer"
-          },
-          "rewards_used": {
-            "title": "Rewards Used",
             "type": "integer"
           }
         },
@@ -1866,11 +1858,9 @@
           "link",
           "percent_off",
           "bonus_days",
-          "days_earned",
           "invited",
           "paid",
-          "rewards_available",
-          "rewards_used"
+          "my_discount"
         ],
         "title": "ReferralOut",
         "type": "object"
@@ -4545,7 +4535,7 @@
     },
     "/api/v1/referrals": {
       "get": {
-        "description": "Your referral link and stats. Each invitee's first payment gives you a one-time discount\n(applied automatically at your next checkout) and `bonus_days` free days added right away.",
+        "description": "Your referral link and stats. A friend who joins via your link gets `percent_off` off their\nfirst payment; when that payment succeeds you get `bonus_days` free days.",
         "operationId": "my_referrals_api_v1_referrals_get",
         "responses": {
           "200": {

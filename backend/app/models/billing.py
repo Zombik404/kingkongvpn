@@ -149,6 +149,10 @@ class Payment(UUIDPk, Timestamps, Base):
         CheckConstraint(check_in("status", PaymentStatus), name="status"),
         CheckConstraint(check_in("kind", PaymentKind), name="kind"),
         CheckConstraint("currency ~ '^[A-Z]{3}$'", name="currency"),
+        CheckConstraint(
+            "referral_percent_off IS NULL OR referral_percent_off BETWEEN 1 AND 100",
+            name="referral_percent_off",
+        ),
         Index("ix_payments_status_provider", "status", "provider"),
     )
 
@@ -179,11 +183,8 @@ class Payment(UUIDPk, Timestamps, Base):
     paid_asset: Mapped[str | None] = mapped_column(String(16))
     paid_amount: Mapped[str | None] = mapped_column(String(64))
     failure_reason: Mapped[str | None] = mapped_column(String(64))
-    referral_reward_id: Mapped[uuid.UUID | None] = mapped_column(
-        # use_alter: payments ↔ referral_rewards reference each other
-        UUID(as_uuid=True),
-        ForeignKey("referral_rewards.id", ondelete="SET NULL", use_alter=True),
-    )
+    # Discount the buyer got for coming via a friend's referral link (first payment only).
+    referral_percent_off: Mapped[int | None] = mapped_column(Integer)
 
 
 class PaymentEvent(UUIDPk, Base):
@@ -270,18 +271,13 @@ class PromoRedemption(UUIDPk, Base):
 
 
 class ReferralReward(UUIDPk, Timestamps, Base):
-    """One per referred user who paid: a one-time percentage discount for the referrer, plus
-    `bonus_days` of free service credited to the referrer at the moment it was granted.
+    """One per referred user who paid: the referrer was credited `bonus_days` of free service.
 
-    available → reserved (by a pending checkout) → used (payment succeeded);
-    reserved → available again if that invoice fails or expires."""
+    The unique `referred_id` makes the credit idempotent (a repeated webhook/poll can't add the
+    days twice)."""
 
     __tablename__ = "referral_rewards"
-    __table_args__ = (
-        CheckConstraint("status IN ('available', 'reserved', 'used')", name="status"),
-        CheckConstraint("percent_off BETWEEN 1 AND 100", name="percent_off"),
-        CheckConstraint("bonus_days BETWEEN 0 AND 365", name="bonus_days"),
-    )
+    __table_args__ = (CheckConstraint("bonus_days BETWEEN 0 AND 365", name="bonus_days"),)
 
     referrer_id: Mapped[uuid.UUID] = mapped_column(
         UUID(as_uuid=True), ForeignKey("users.id", ondelete="CASCADE"), index=True
@@ -292,7 +288,4 @@ class ReferralReward(UUIDPk, Timestamps, Base):
     source_payment_id: Mapped[uuid.UUID | None] = mapped_column(
         UUID(as_uuid=True), ForeignKey("payments.id", ondelete="SET NULL")
     )
-    percent_off: Mapped[int] = mapped_column(Integer, default=30, server_default="30")
     bonus_days: Mapped[int] = mapped_column(Integer, default=0, server_default="0")
-    status: Mapped[str] = mapped_column(String(16), default="available", server_default="available")
-    used_payment_id: Mapped[uuid.UUID | None] = mapped_column(UUID(as_uuid=True))

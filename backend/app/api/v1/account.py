@@ -273,13 +273,11 @@ class ReferralOut(BaseModel):
     enabled: bool
     code: str
     link: str | None
-    percent_off: int
-    bonus_days: int
-    days_earned: int
-    invited: int
-    paid: int
-    rewards_available: int
-    rewards_used: int
+    percent_off: int  # what a friend gets off their first payment via your link
+    bonus_days: int  # what you get per friend whose first payment succeeds
+    invited: int  # friends who joined via your link
+    paid: int  # ...of them, have paid
+    my_discount: int  # % off your own next checkout because a friend invited you (0 = none)
 
 
 class ReferralClaimIn(BaseModel):
@@ -289,9 +287,9 @@ class ReferralClaimIn(BaseModel):
 
 @referral_router.get("", response_model=ReferralOut)
 async def my_referrals(principal: CurrentPrincipal, ctx: Ctx, db: Db) -> dict[str, Any]:
-    """Your referral link and stats. Each invitee's first payment gives you a one-time discount
-    (applied automatically at your next checkout) and `bonus_days` free days added right away."""
-    return await referrals.summary(db, ctx.settings, principal.user.id)
+    """Your referral link and stats. A friend who joins via your link gets `percent_off` off their
+    first payment; when that payment succeeds you get `bonus_days` free days."""
+    return await referrals.summary(db, ctx.settings, principal.user)
 
 
 @referral_router.post("/claim", status_code=status.HTTP_204_NO_CONTENT)

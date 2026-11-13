@@ -134,15 +134,15 @@ async def checkout(
     if (pending or 0) >= ctx.settings.payment_pending_limit_per_user:
         raise TooManyPendingPayments()
 
-    amount, promo_id, reward = price.amount_minor, None, None
+    amount, promo_id, ref_pct = price.amount_minor, None, 0
     if promo_code:
         promo, amount = await catalog.apply_discount(db, user_id, promo_code, price)
         promo_id = promo.id
     else:
-        # A referral reward applies automatically (one per payment, not with a promo code).
-        reward = await referrals.reserve_reward(db, user_id)
-        if reward is not None:
-            amount = price.amount_minor - (price.amount_minor * reward.percent_off) // 100
+        # Came via a friend's link and never paid → referral discount (not with a promo code).
+        ref_pct = await referrals.invitee_discount(db, user)
+        if ref_pct:
+            amount = price.amount_minor - (price.amount_minor * ref_pct) // 100
     if amount < MIN_AMOUNT_MINOR:
         raise catalog.InvalidPromo("This code can't be used for a paid checkout.")
 
@@ -165,7 +165,7 @@ async def checkout(
         kind=(PaymentKind.RENEWAL if live else PaymentKind.INITIAL).value,
         plan_price_id=price.id,
         promo_code_id=promo_id,
-        referral_reward_id=reward.id if reward else None,
+        referral_percent_off=ref_pct or None,
         checkout_url=invoice.pay_url,
         expires_at=invoice.expires_at
         or now + dt.timedelta(seconds=ctx.settings.cryptobot_invoice_ttl_seconds),
@@ -245,7 +245,6 @@ async def apply_invoice(
         if invoice.amount != expected or (invoice.fiat or "") != payment.currency:
             payment.status = PaymentStatus.FAILED.value
             payment.failure_reason = "amount_mismatch"
-            await referrals.release_reward(db, payment)
             audit.record(
                 db,
                 action="payment.mismatch",
@@ -267,7 +266,6 @@ async def apply_invoice(
     if invoice.status == "expired" and payment.status == PaymentStatus.PENDING:
         payment.status = PaymentStatus.FAILED.value
         payment.failure_reason = "expired"
-        await referrals.release_reward(db, payment)
         await db.commit()
         return "expired"
     return "ignored"
@@ -349,17 +347,18 @@ async def _credit(
     )
     if granted is not None:
         referrer = granted.referrer
-        params = {"percent": str(granted.percent_off)}
-        template = "referral_reward"
-        if granted.bonus_days and granted.subscription is not None:
-            template = "referral_reward_bonus"
-            params |= {
+        await notify(
+            ctx,
+            referrer,
+            "referral_reward",
+            {
                 "days": str(granted.bonus_days),
                 "date": format_date(
                     granted.subscription.current_period_end, format="long", locale=referrer.locale
                 ),
-            }
-        await notify(ctx, referrer, template, params, f"{ctx.settings.public_web_url}/app/")
+            },
+            f"{ctx.settings.public_web_url}/app/",
+        )
     return "credited"
 
 
