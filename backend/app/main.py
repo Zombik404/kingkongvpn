@@ -49,7 +49,9 @@ def create_app(settings: Settings | None = None, ctx: AppContext | None = None) 
             if own:
                 await app.state.ctx.close()
 
-    public_docs = settings.app_env != "production"
+    # Interactive docs and the schema only on a developer's machine: a deployed server
+    # (staging included) doesn't advertise every route to the internet.
+    public_docs = settings.app_env in ("development", "testing")
     app = FastAPI(
         title=f"{settings.app_name} API",
         version="1.0.0",

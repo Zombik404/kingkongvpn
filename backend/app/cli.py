@@ -1,5 +1,6 @@
 """Operator commands: `python -m app.cli <command>`.
 
+create-staff EMAIL ROLE                  admin-panel account with a one-time password (no email)
 grant-role EMAIL ROLE                    give a staff role (bootstraps the first superadmin)
 seed-dev                                 dev-only sample plans/prices/settings
 set-price PLAN UNIT COUNT CURRENCY AMT   e.g. set-price standard month 3 USD 12.99
@@ -39,7 +40,7 @@ async def grant_role(email: str, role: str) -> int:
                 print("no active, verified user with that email", file=sys.stderr)
                 return 1
             if role not in user.roles:
-                user.roles = sorted({*user.roles, role})
+                user.roles = sorted({*(user.roles or []), role})
                 user.token_version += 1
             audit.record(
                 db,
@@ -51,6 +52,63 @@ async def grant_role(email: str, role: str) -> int:
             )
             await db.commit()
             print(f"{email}: roles = {', '.join(user.roles)} (sign in again and enable 2FA)")
+            return 0
+    finally:
+        await ctx.close()
+
+
+async def create_staff(email: str, role: str) -> int:
+    """Create (or reset) a staff account for the admin panel without email delivery.
+
+    Prints a strong one-time password; the person signs in at /admin/, must set up 2FA
+    (TOTP) right away, and should change the password afterwards. Re-running for an existing
+    account sets a new password and signs it out everywhere."""
+    import secrets
+
+    from app.models.base import utcnow
+    from app.models.enums import UserStatus
+
+    if role not in {r.value for r in Role}:
+        print(f"unknown role {role!r}; one of: {', '.join(r.value for r in Role)}", file=sys.stderr)
+        return 1
+    from pydantic import EmailStr, TypeAdapter, ValidationError
+
+    try:  # the same check the login form applies, so the account can actually sign in
+        email = TypeAdapter(EmailStr).validate_python(email.strip()).lower()
+    except ValidationError:
+        print("give a valid email address (the login form must accept it)", file=sys.stderr)
+        return 1
+    password = secrets.token_urlsafe(18)
+    ctx = AppContext.create(get_settings(), null_pool=True)
+    try:
+        async with ctx.sessionmaker() as db:
+            user = await db.scalar(select(User).where(User.email == email).with_for_update())
+            if user is None:
+                user = User(email=email, email_verified_at=utcnow(), locale="ru", roles=[])
+                db.add(user)
+            elif user.status != UserStatus.ACTIVE:
+                print("that account is suspended or deleted", file=sys.stderr)
+                return 1
+            if user.telegram_id is not None:
+                print("that account is a Telegram user account; use another email", file=sys.stderr)
+                return 1
+            user.email_verified_at = user.email_verified_at or utcnow()
+            user.password_hash = await ctx.passwords.hash(password)
+            user.roles = sorted({*(user.roles or []), role})
+            user.token_version = (user.token_version or 0) + 1
+            await db.flush()
+            audit.record(
+                db,
+                action="cli.staff_created",
+                actor_type=ActorType.SYSTEM,
+                target_type="user",
+                target_id=user.id,
+                details={"role": role},
+            )
+            await db.commit()
+            print(f"{email}: roles = {', '.join(user.roles)}")
+            print(f"one-time password: {password}")
+            print("sign in at https://<your domain>/admin/ and set up two-factor authentication")
             return 0
     finally:
         await ctx.close()
@@ -403,6 +461,9 @@ def main(argv: list[str] | None = None) -> int:
     g = sub.add_parser("grant-role")
     g.add_argument("email")
     g.add_argument("role", choices=[r.value for r in Role])
+    cs = sub.add_parser("create-staff", help="e.g. create-staff you@example.com superadmin")
+    cs.add_argument("email")
+    cs.add_argument("role")
     sub.add_parser("seed-dev")
     p = sub.add_parser("set-price", help="e.g. set-price standard month 3 USD 12.99")
     p.add_argument("plan")
@@ -452,6 +513,8 @@ def main(argv: list[str] | None = None) -> int:
         return asyncio.run(set_setting(args.key, args.value))
     if args.command == "grant-role":
         return asyncio.run(grant_role(args.email, args.role))
+    if args.command == "create-staff":
+        return asyncio.run(create_staff(args.email, args.role))
     if args.command == "set-price":
         return asyncio.run(set_price(args.plan, args.unit, args.count, args.currency, args.amount))
     if args.command == "cryptobot-check":

@@ -307,7 +307,7 @@ async def create_server(
     body: ServerIn, db: Db, ctx: Ctx, client: Client, principal: Writer
 ) -> dict[str, Any]:
     """Register a node. The response carries its API token once: put it in the node's
-    `/etc/globalvpn/agent.env` (`GVPN_NODE_TOKEN`) together with the server id."""
+    `/etc/globalvpn/agent.env` (`NODE_TOKEN`, with the server id as `NODE_ID`)."""
     await _get_location(db, body.location_id)
     token = new_node_token()
     srv = Server(

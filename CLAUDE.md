@@ -31,6 +31,7 @@ The repository has a code graph built by graphify (AST-based, local, no API cost
 | `miniapp/src/` | Telegram Mini App (vanilla JS, esbuild): `app.js`, `games.js`, `fair.js`, `jungle.js`, `charts.js`, `wg.js`, `i18n.js`, `style.css`, `assets/` |
 | `miniapp/demo/` | Clickable demo with a stand-in Telegram + API (`node demo/build.mjs`) |
 | `miniapp/tools/` | Python scripts that render the artwork (jungle, gorilla, dealer, overgrowth) |
+| `admin-panel/` | Staff console at `/admin/` (vanilla JS, esbuild, commit `dist/`): `src/main.js` (sign-in, 2FA, router), `src/api.js` (tokens in memory), `src/pages/*`; `demo/` = same UI on a fake API |
 | `telegram-bot/` | aiogram bot (stateless: opens the Mini App, deep links, `/games`) |
 | `node-agent/` | Agent on each VPN server (stdlib): applies peers, heartbeats with counters |
 | `deploy/` | Single-server install (`install.sh`), Caddy, compose, nftables firewall |
@@ -42,12 +43,17 @@ The repository has a code graph built by graphify (AST-based, local, no API cost
   (regenerates `shared/api-contracts/openapi.json`; a test compares it).
 - Mini App: `cd miniapp && npm test && npm run build` (commit `miniapp/dist/`), demo:
   `node demo/build.mjs`.
+- Admin panel: `cd admin-panel && npm test && npm run build` (commit `admin-panel/dist/`), demo:
+  `node demo/build.mjs`.
 - Bot: `cd telegram-bot && pytest -q`. Node agent: `cd node-agent && pytest -q`.
 
 ## Rules that must not break
 
 - Private WireGuard keys are generated on the user's device and never sent anywhere (ADR-003).
-- Mini App puts API data into the page with `textContent` only (no `innerHTML` of user data).
+- Mini App and admin panel put API data into the page as text only (no `innerHTML` of API
+  data); the admin panel's CSP forbids inline styles, so set styles through `el.style`.
+- Admin panel keeps tokens in memory only; staff routes need TOTP. What we store about users:
+  `documentation/SECURITY_PRIVACY.md` — update it when adding personal data.
 - Bot token and Crypto Pay token live only in `.env` on the server; never in git or chat.
 - Paid subscription days can never be staked or lost in a game; only the bonus wallet
   (`games.blackjack.stakes_enabled`, off by default — legal check pending) or fun chips (no

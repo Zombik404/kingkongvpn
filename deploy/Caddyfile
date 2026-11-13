@@ -9,23 +9,45 @@
 		-Server
 	}
 
-	# Never public: node API (agent uses 127.0.0.1:8000), metrics, health, API docs.
-	@private path /internal/* /metrics /health/* /api/docs* /api/v1/openapi.json
-	respond @private 404
+	# One `route` so the rules run top to bottom as written. (Without it Caddy runs `handle`
+	# blocks before `respond`, and the private paths below were served anyway.)
+	route {
+		# Never public: node API (agent uses 127.0.0.1:8000), metrics, health, API docs.
+		@private path /internal/* /metrics /health/* /api/docs* /api/v1/openapi.json
+		respond @private 404
 
-	handle /api/* {
-		reverse_proxy backend:8000
-	}
+		# Admin panel and staff API: optionally only from the owner's networks (ADMIN_ALLOWED_IPS).
+		# They need password + TOTP anyway; this hides them from everyone else.
+		@admin_elsewhere {
+			path /admin /admin/* /api/v1/admin/*
+			not remote_ip {$ADMIN_ALLOWED_IPS}
+		}
+		respond @admin_elsewhere 404
 
-	redir /app /app/ 308
-	handle_path /app/* {
-		root * /srv/miniapp
-		header Content-Security-Policy "default-src 'self'; script-src 'self' https://telegram.org; connect-src 'self'; img-src 'self' data:; style-src 'self'; frame-ancestors https://web.telegram.org https://*.telegram.org; base-uri 'none'; form-action 'none'; object-src 'none'"
-		header Cache-Control "no-cache"
-		file_server
-	}
+		handle /api/* {
+			reverse_proxy backend:8000
+		}
 
-	handle {
-		respond "Not found" 404
+		redir /app /app/ 308
+		handle_path /app/* {
+			root * /srv/miniapp
+			header Content-Security-Policy "default-src 'self'; script-src 'self' https://telegram.org; connect-src 'self'; img-src 'self' data:; style-src 'self'; frame-ancestors https://web.telegram.org https://*.telegram.org; base-uri 'none'; form-action 'none'; object-src 'none'"
+			header Cache-Control "no-cache"
+			file_server
+		}
+
+		redir /admin /admin/ 308
+		handle_path /admin/* {
+			root * /srv/admin
+			header Content-Security-Policy "default-src 'none'; script-src 'self'; style-src 'self'; img-src 'self' data:; connect-src 'self'; frame-ancestors 'none'; base-uri 'none'; form-action 'none'; object-src 'none'"
+			header X-Frame-Options "DENY"
+			header X-Robots-Tag "noindex, nofollow"
+			header Cache-Control "no-cache"
+			file_server
+		}
+
+		handle {
+			respond "Not found" 404
+		}
 	}
 }

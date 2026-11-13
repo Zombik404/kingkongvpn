@@ -144,3 +144,15 @@ async def test_api_security_headers(client: AsyncClient) -> None:
     assert r.headers["cache-control"] == "no-store"
     assert r.headers["x-frame-options"] == "DENY"
     assert "camera=()" in r.headers["permissions-policy"]
+
+
+async def test_api_docs_are_not_served_outside_development() -> None:
+    from httpx import ASGITransport
+
+    from app.main import create_app
+
+    for env, expected in (("staging", 404), ("development", 200)):
+        app = create_app(make_settings(app_env=env, telegram_bot_token=BOT_TOKEN))
+        async with AsyncClient(transport=ASGITransport(app=app), base_url="http://t") as c:
+            assert (await c.get("/api/v1/openapi.json")).status_code == expected, env
+            assert (await c.get("/api/docs")).status_code == expected, env

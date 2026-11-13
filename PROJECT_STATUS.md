@@ -14,9 +14,9 @@ Last updated: 2026-11-13 · Current phase: **Telegram test version built and ver
 | 6 — Mobile apps | ⏳ Pending | Needs Flutter SDK, Android device/emulator, Mac + Xcode, Apple org account |
 | 7 — Desktop apps | ⏳ Pending | Needs Windows machine, Mac, code-signing |
 | 8 — Web app | ⏳ Pending | API contract ready (`shared/api-contracts/openapi.json`) |
-| 9 — Admin panel | ⏳ Pending | Staff API ready |
+| 9 — Admin panel | 🟡 First version done | `admin-panel/` at `/admin/`: sign-in with forced TOTP, overview, users (case file + actions), payments, plans/prices, promo, servers, blackjack, settings, audit; RBAC-aware; clickable demo. Open: English UI, WebAuthn, support tickets |
 | 10 — Payments | 🟡 Started | Crypto (Gram + USDC) via @CryptoBot done (ADR-016, testnet). Telegram Stars / Stripe / stores later |
-| 11 — Security & optimization | ⏳ Pending | |
+| 11 — Security & optimization | 🟡 Started | Data-protection review 2026-11-13 (`documentation/SECURITY_PRIVACY.md`): 8 findings fixed (public API docs via Caddy order, deletion/export for Telegram users, nickname leak, address-pool drain, missing limits, unencrypted backups). Open: external pentest, load tests |
 | 12 — Production launch | ⏳ Pending | |
 
 ## Completed in Phase 2
@@ -103,7 +103,7 @@ Stage plan from the owner's brief; ✅ = done and tested, ⏳ = next.
 ## Tests
 | Suite | Result | Command |
 |---|---|---|
-| Backend: 283 tests on real PostgreSQL 16 + Redis 7 | ✅ pass (Python 3.12 and 3.13) | `make up && make test-backend` |
+| Backend: 291 tests on real PostgreSQL 16 + Redis 7 | ✅ pass (Python 3.12 and 3.13) | `make up && make test-backend` |
 | Backend coverage | ✅ 97 % total — auth 96 %, subscriptions 96 %, devices 95 %, payments 94 % (target ≥ 85 %) | same |
 | Migration up → down → up on a fresh DB; models ↔ migration drift; OpenAPI drift | ✅ pass | part of backend suite |
 | Concurrency: 8 parallel device registrations vs limit 3; parallel address allocation; parallel promo redemption vs `max_redemptions` | ✅ pass | part of backend suite |
@@ -159,9 +159,15 @@ None blocking Phase 3/4 code. Full list: `documentation/EXTERNAL_REQUIREMENTS.md
 - CI now also checks the bot (ruff, mypy, pytest) and the Mini App (tests, build, committed `dist/` up to date); actions moved off the deprecated Node 20.
 - 4 new tests (permissions, register → heartbeat → connect → health, drain/rotate/disable, idle release); checked by breaking the code on purpose.
 
+## Admin panel and data protection (2026-11-13) — ADR-020
+- **Admin panel** (`admin-panel/`, served at `/admin/` with a strict CSP; guide `documentation/ADMIN_PANEL_RU.md`): password + TOTP (set up on first sign-in), tokens in memory only, auto sign-out after 30 idle minutes, optional network allowlist (`ADMIN_ALLOWED_IPS`). Sections: overview (users, access, servers, revenue, 30-day charts), users (search by email / Telegram ID / referral code / ID; case file; extend or revoke access, block, roles, bonus days; payments, game and audit per user), payments, plans and prices, promo codes, servers and locations (register with a one-time token, drain, disable, rotate token, health), blackjack (switches, suspicious players, tables, events), settings, audit log. Every change asks for a reason and is audited.
+- Backend for it: `/admin/me`, `/admin/overview`, `/admin/payments`, better user search, `payments:read`, `python -m app.cli create-staff`; `install.sh` creates the owner's superadmin and prints a one-time password.
+- **Data protection** (`documentation/SECURITY_PRIVACY.md`): Telegram users can delete their account (fresh `initData`) and download all their data from the Mini App ("Your data" in Help); deleted players vanish from the board; device/connect/export limits; old revoked devices free their addresses; encrypted backups; API CSP; **Caddy rule order fixed — API docs and schema were publicly reachable**; docs off outside development.
+- Verified: backend 291 tests (3.12 and 3.13), admin panel unit tests + full browser run on the real backend (2FA setup and code sign-in, search, extend access, register server and token, drain, settings, promo, audit, phone layout, CSP clean, nothing in storage), Mini App privacy flow in the demo, Caddy config with a real Caddy 2.8.4.
+
 ## Next actions
 1. **Deploy the test version to a VPS** (`documentation/TEST_LAUNCH_RU.md`): run `install.sh`, register the first node, real WireGuard handshake, @CryptoBot testnet check, Mini App inside real Telegram clients. Needs the owner's server.
-2. **Phase 9 — admin panel** on top of the staff API (users, subscriptions, plans/prices, promo, settings, audit, servers, games).
+2. Admin panel next steps: English UI, support tickets, WebAuthn for staff.
 3. Phase 4 rest: node-down alerts to staff, auto-scaling policy (needs a cloud provider decision).
 4. Phase 5 rest: Telegram Stars payments, staff commands in the bot.
 5. Legal: trademark check for "KingKong VPN"; gambling rules before switching on bonus-day stakes.

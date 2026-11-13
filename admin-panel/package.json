@@ -1,0 +1,14 @@
+{
+  "name": "kingkong-admin-panel",
+  "private": true,
+  "version": "0.1.0",
+  "description": "Staff console on the /api/v1/admin API. Static files; tokens live in memory only.",
+  "scripts": {
+    "build": "node build.mjs",
+    "test": "node --test test/*.test.mjs"
+  },
+  "devDependencies": {
+    "esbuild": "0.25.10",
+    "qrcode-generator": "1.4.4"
+  }
+}

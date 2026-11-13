@@ -65,6 +65,9 @@ ask TELEGRAM_BOT_USERNAME "Bot username without @"
 ask CRYPTOBOT_API_TOKEN "Crypto Pay token from @CryptoTestnetBot (Enter to skip payments)" "" secret
 ask NODE_COUNTRY "Country code of this server (DE, NL, FI, ...)" "DE"
 ask NODE_CITY "City" "Frankfurt"
+ask ADMIN_EMAIL "Your email for the admin panel /admin/ (no mail is sent, it is your login)"
+[[ $ADMIN_EMAIL =~ ^[^@[:space:]]+@[^@[:space:]]+\.[A-Za-z]{2,}$ ]] || die "email looks wrong: $ADMIN_EMAIL"
+ADMIN_ALLOWED_IPS=$(env_get ADMIN_ALLOWED_IPS)  # optional, e.g. "203.0.113.7/32 2001:db8::/48"
 APP_NAME=$(env_get APP_NAME); [ "$APP_NAME" = "VpnHub" ] && APP_NAME=""  # old working name
 APP_NAME=${APP_NAME:-KingKong VPN}
 TELEGRAM_BOT_USERNAME=${TELEGRAM_BOT_USERNAME#@}
@@ -126,6 +129,9 @@ VPN_CLIENT_DNS=1.1.1.1,2606:4700:4700::1111
 NODE_COUNTRY=$NODE_COUNTRY
 NODE_CITY=$NODE_CITY
 PUBLIC_IPV4=$PUBLIC_IPV4
+ADMIN_EMAIL=$ADMIN_EMAIL
+# Admin panel and staff API only from these networks (space-separated CIDRs); empty = anywhere.
+ADMIN_ALLOWED_IPS=$ADMIN_ALLOWED_IPS
 EOF
 chmod 600 "$ENV_FILE"
 umask 022
@@ -186,6 +192,14 @@ cli() { "${COMPOSE[@]}" exec -T backend python -m app.cli "$@"; }
 cli bootstrap-catalog
 cli set-setting access.invite_only true >/dev/null
 cli set-setting trial.enabled false >/dev/null
+ADMIN_LINE="account $ADMIN_EMAIL exists (new password: cd $DEPLOY && ${COMPOSE[*]} exec backend python -m app.cli create-staff $ADMIN_EMAIL superadmin)"
+if [[ ! -f $ETC/admin-created ]]; then
+  say "Admin panel account"
+  ADMIN_OUT=$(cli create-staff "$ADMIN_EMAIL" superadmin) || die "could not create the admin account"
+  ADMIN_PASSWORD=$(sed -n 's/^one-time password: //p' <<<"$ADMIN_OUT")
+  touch "$ETC/admin-created"
+  ADMIN_LINE="$ADMIN_EMAIL / one-time password: $ADMIN_PASSWORD  (shown once: sign in now and set up 2FA)"
+fi
 
 # --------------------------------------------------------------------------- node agent
 say "Registering this server as a VPN node"
@@ -230,6 +244,8 @@ cat <<EOF
 
 $(printf '\033[1;32m')Done.$(printf '\033[0m')
   Mini App:        https://$DOMAIN/app/
+  Admin panel:     https://$DOMAIN/admin/
+                   $ADMIN_LINE
   Bot:             https://t.me/$TELEGRAM_BOT_USERNAME  (send /start)
   Invites saved:   $ETC/invites.txt   (more: cd $DEPLOY && ${COMPOSE[*]} exec backend python -m app.cli create-invites --count 5)
   Payments webhook (optional, in @CryptoTestnetBot → Crypto Pay → My Apps → Webhooks):

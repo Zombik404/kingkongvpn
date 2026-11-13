@@ -96,10 +96,12 @@ services:
     image: caddy:2.8.4-alpine
     environment:
       DOMAIN: ${DOMAIN}
+      ADMIN_ALLOWED_IPS: ${ADMIN_ALLOWED_IPS:-0.0.0.0/0 ::/0}
     ports: ["80:80", "443:443", "443:443/udp"]
     volumes:
       - ./Caddyfile:/etc/caddy/Caddyfile:ro
       - ../miniapp/dist:/srv/miniapp:ro
+      - ../admin-panel/dist:/srv/admin:ro
       - caddydata:/data
       - caddyconfig:/config
     depends_on: [backend]

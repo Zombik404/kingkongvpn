@@ -106,6 +106,11 @@
             "title": "Email Verified",
             "type": "boolean"
           },
+          "has_telegram": {
+            "default": false,
+            "title": "Has Telegram",
+            "type": "boolean"
+          },
           "id": {
             "format": "uuid",
             "title": "Id",
@@ -1151,6 +1156,16 @@
         ],
         "title": "PaymentOut",
         "type": "object"
+      },
+      "PaymentStatus": {
+        "enum": [
+          "pending",
+          "succeeded",
+          "failed",
+          "refunded"
+        ],
+        "title": "PaymentStatus",
+        "type": "string"
       },
       "PeriodUnit": {
         "enum": [
@@ -2993,6 +3008,15 @@
         "title": "UserOut",
         "type": "object"
       },
+      "UserStatus": {
+        "enum": [
+          "active",
+          "suspended",
+          "deleted"
+        ],
+        "title": "UserStatus",
+        "type": "string"
+      },
       "UserUpdateIn": {
         "additionalProperties": false,
         "properties": {
@@ -3955,6 +3979,165 @@
         ]
       }
     },
+    "/api/v1/admin/me": {
+      "get": {
+        "description": "The signed-in staff member and what they may do (the panel hides the rest).",
+        "operationId": "admin_me_api_v1_admin_me_get",
+        "responses": {
+          "200": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "additionalProperties": true,
+                  "title": "Response Admin Me Api V1 Admin Me Get",
+                  "type": "object"
+                }
+              }
+            },
+            "description": "Successful Response"
+          }
+        },
+        "security": [
+          {
+            "HTTPBearer": []
+          }
+        ],
+        "summary": "Admin Me",
+        "tags": [
+          "admin"
+        ]
+      }
+    },
+    "/api/v1/admin/overview": {
+      "get": {
+        "description": "Headline numbers for the dashboard. Money only for those who may see payments.",
+        "operationId": "overview_api_v1_admin_overview_get",
+        "responses": {
+          "200": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "additionalProperties": true,
+                  "title": "Response Overview Api V1 Admin Overview Get",
+                  "type": "object"
+                }
+              }
+            },
+            "description": "Successful Response"
+          }
+        },
+        "security": [
+          {
+            "HTTPBearer": []
+          }
+        ],
+        "summary": "Overview",
+        "tags": [
+          "admin"
+        ]
+      }
+    },
+    "/api/v1/admin/payments": {
+      "get": {
+        "description": "Payments, newest first. No card or wallet details exist here: @CryptoBot keeps those.",
+        "operationId": "list_payments_api_v1_admin_payments_get",
+        "parameters": [
+          {
+            "in": "query",
+            "name": "status",
+            "required": false,
+            "schema": {
+              "anyOf": [
+                {
+                  "$ref": "#/components/schemas/PaymentStatus"
+                },
+                {
+                  "type": "null"
+                }
+              ],
+              "title": "Status"
+            }
+          },
+          {
+            "in": "query",
+            "name": "user_id",
+            "required": false,
+            "schema": {
+              "anyOf": [
+                {
+                  "format": "uuid",
+                  "type": "string"
+                },
+                {
+                  "type": "null"
+                }
+              ],
+              "title": "User Id"
+            }
+          },
+          {
+            "in": "query",
+            "name": "limit",
+            "required": false,
+            "schema": {
+              "default": 50,
+              "maximum": 100,
+              "minimum": 1,
+              "title": "Limit",
+              "type": "integer"
+            }
+          },
+          {
+            "in": "query",
+            "name": "offset",
+            "required": false,
+            "schema": {
+              "default": 0,
+              "maximum": 100000,
+              "minimum": 0,
+              "title": "Offset",
+              "type": "integer"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "items": {
+                    "additionalProperties": true,
+                    "type": "object"
+                  },
+                  "title": "Response List Payments Api V1 Admin Payments Get",
+                  "type": "array"
+                }
+              }
+            },
+            "description": "Successful Response"
+          },
+          "422": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/HTTPValidationError"
+                }
+              }
+            },
+            "description": "Validation Error"
+          }
+        },
+        "security": [
+          {
+            "HTTPBearer": []
+          }
+        ],
+        "summary": "List Payments",
+        "tags": [
+          "admin"
+        ]
+      }
+    },
     "/api/v1/admin/plans": {
       "get": {
         "operationId": "list_plans_api_v1_admin_plans_get",
@@ -4514,7 +4697,7 @@
     },
     "/api/v1/admin/users": {
       "get": {
-        "description": "Search by exact user ID or email prefix.",
+        "description": "Newest first. `q`: exact user ID, a Telegram ID (digits), a referral code, or an email\nprefix.",
         "operationId": "search_users_api_v1_admin_users_get",
         "parameters": [
           {
@@ -4532,6 +4715,32 @@
                 }
               ],
               "title": "Q"
+            }
+          },
+          {
+            "in": "query",
+            "name": "status",
+            "required": false,
+            "schema": {
+              "anyOf": [
+                {
+                  "$ref": "#/components/schemas/UserStatus"
+                },
+                {
+                  "type": "null"
+                }
+              ],
+              "title": "Status"
+            }
+          },
+          {
+            "in": "query",
+            "name": "staff_only",
+            "required": false,
+            "schema": {
+              "default": false,
+              "title": "Staff Only",
+              "type": "boolean"
             }
           },
           {
@@ -5088,7 +5297,7 @@
         ]
       },
       "post": {
-        "description": "Register a node. The response carries its API token once: put it in the node's\n`/etc/globalvpn/agent.env` (`GVPN_NODE_TOKEN`) together with the server id.",
+        "description": "Register a node. The response carries its API token once: put it in the node's\n`/etc/globalvpn/agent.env` (`NODE_TOKEN`, with the server id as `NODE_ID`).",
         "operationId": "create_server_api_v1_admin_vpn_servers_post",
         "requestBody": {
           "content": {

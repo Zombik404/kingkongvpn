@@ -121,12 +121,26 @@ otherwise). Roles are read from the database on every request. Every mutation is
 | `audit:read` | | ✓ | | ✓ |
 | `roles:write` | | | | ✓ |
 | `games:read` / `games:write` — tables, rounds, bonus ledger / pause, close, adjust | ✓ / | ✓ / ✓ | | ✓ |
+| `payments:read` — payments list, revenue on the overview | ✓ | | ✓ | ✓ |
 | `servers:read` — locations, nodes, health | ✓ | ✓ | | ✓ |
 | `servers:write` — add locations, register/drain/disable nodes, rotate node tokens | | ✓ | | ✓ |
 
 The first superadmin is created from the command line on the server:
 `python -m app.cli grant-role you@example.com superadmin` (the account must exist and be verified),
 then sign in again and enable 2FA.
+
+### Admin panel helpers
+
+| Method | Path | Does |
+|---|---|---|
+| GET | `/admin/me` | The signed-in staff member: email, roles, permissions (any staff role) |
+| GET | `/admin/overview` | Users, live subscriptions, devices, servers, game activity, signups per day; revenue per currency and USD per day only with `payments:read` |
+| GET | `/admin/payments` | Filter `status`, `user_id`; newest first |
+| GET | `/admin/users` | `q`: user ID, Telegram ID (digits; searchable, never returned), referral code or email prefix; filters `status`, `staff_only` |
+
+Staff accounts without email delivery: `python -m app.cli create-staff EMAIL ROLE` prints a
+one-time password (re-running resets it and signs the account out). The panel lives in
+`admin-panel/` (see `documentation/ADMIN_PANEL_RU.md`).
 
 ### Locations and VPN servers (`/admin/vpn/*`)
 

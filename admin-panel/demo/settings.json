@@ -1,0 +1,195 @@
+{
+ "trial.enabled": {
+  "value": false,
+  "default": false,
+  "description": "Offer a free trial to accounts that never had one."
+ },
+ "trial.days": {
+  "value": 3,
+  "default": 3,
+  "description": "Trial length in days."
+ },
+ "trial.plan_code": {
+  "value": "trial",
+  "default": "trial",
+  "description": "Code of the plan whose entitlements a trial grants."
+ },
+ "subscription.grace_days": {
+  "value": 3,
+  "default": 3,
+  "description": "Days of continued access after a period ends without renewal."
+ },
+ "devices.limit_without_subscription": {
+  "value": 1,
+  "default": 1,
+  "description": "Devices an account may register before subscribing."
+ },
+ "reminders.days_before": {
+  "value": [
+   3
+  ],
+  "default": [
+   3
+  ],
+  "description": "Days before a non-renewing period ends to email a reminder."
+ },
+ "access.invite_only": {
+  "value": true,
+  "default": false,
+  "description": "Closed test: paying or a trial requires having redeemed an invite (free-days) code."
+ },
+ "games.enabled": {
+  "value": true,
+  "default": true,
+  "description": "Mini Games section and Jungle Kong Blackjack."
+ },
+ "games.multiplayer_enabled": {
+  "value": false,
+  "default": false,
+  "description": "Tables for 2-4 players (off: the owner chose solo play only)."
+ },
+ "games.chips.enabled": {
+  "value": true,
+  "default": true,
+  "description": "Fun chips: stakes with no value (no purchase, no exchange) while bonus-day stakes are off. They make the biggest-win leaderboard work in fun mode."
+ },
+ "games.chips.daily": {
+  "value": 1000,
+  "default": 1000,
+  "description": "Chips are topped up to this every day."
+ },
+ "games.chips.stake_options": {
+  "value": [
+   10,
+   20,
+   50,
+   100,
+   200,
+   500
+  ],
+  "default": [
+   10,
+   20,
+   50,
+   100,
+   200,
+   500
+  ],
+  "description": "Chip stakes offered (multiples of 10, so 3:2, 6:5 and halves pay whole chips)."
+ },
+ "games.blackjack.stakes_enabled": {
+  "value": false,
+  "default": false,
+  "description": "Staking game bonus days. OFF by default: enable only after the legal check for your target countries. When off the game is for fun: nothing is won or lost."
+ },
+ "games.blackjack.stake_options_days": {
+  "value": [
+   1,
+   2,
+   3,
+   5
+  ],
+  "default": [
+   1,
+   2,
+   3,
+   5
+  ],
+  "description": "Stakes a player can choose, in bonus days."
+ },
+ "games.blackjack.daily_win_cap_days": {
+  "value": 10,
+  "default": 10,
+  "description": "A player who is this many bonus days up today can only play for fun until tomorrow."
+ },
+ "games.blackjack.welcome_bonus_days": {
+  "value": 0,
+  "default": 0,
+  "description": "One-time game bonus for a new game profile while stakes are enabled (0 = none)."
+ },
+ "games.bonus_redeem_enabled": {
+  "value": true,
+  "default": true,
+  "description": "Players may turn whole game bonus days into VPN subscription days."
+ },
+ "games.blackjack.decks": {
+  "value": 6,
+  "default": 6,
+  "description": "Decks in the shoe."
+ },
+ "games.blackjack.dealer_hits_soft_17": {
+  "value": false,
+  "default": false,
+  "description": "Dealer draws on a soft 17."
+ },
+ "games.blackjack.blackjack_pays": {
+  "value": "3:2",
+  "default": "3:2",
+  "description": "Blackjack payout: 3:2 or 6:5."
+ },
+ "games.blackjack.allow_double": {
+  "value": true,
+  "default": true,
+  "description": "Double Down."
+ },
+ "games.blackjack.allow_double_after_split": {
+  "value": true,
+  "default": true,
+  "description": "Double Down after a split."
+ },
+ "games.blackjack.allow_split": {
+  "value": true,
+  "default": true,
+  "description": "Split pairs."
+ },
+ "games.blackjack.max_hands": {
+  "value": 4,
+  "default": 4,
+  "description": "Hands after splits."
+ },
+ "games.blackjack.allow_surrender": {
+  "value": true,
+  "default": true,
+  "description": "Late surrender (half the stake back)."
+ },
+ "games.blackjack.allow_insurance": {
+  "value": true,
+  "default": true,
+  "description": "Insurance against a dealer blackjack."
+ },
+ "games.blackjack.turn_seconds": {
+  "value": 30,
+  "default": 30,
+  "description": "Time for a move at a shared table."
+ },
+ "games.blackjack.bet_seconds": {
+  "value": 20,
+  "default": 20,
+  "description": "Time to join the next round at a shared table."
+ },
+ "referrals.enabled": {
+  "value": true,
+  "default": true,
+  "description": "Referral program: discount for invited users, free days for referrers."
+ },
+ "referrals.percent_off": {
+  "value": 30,
+  "default": 30,
+  "description": "Discount an invited user gets on their first payment."
+ },
+ "referrals.milestones": {
+  "value": true,
+  "default": true,
+  "description": "Referral ranks (3/5/10/25 paying friends) with free days and app themes."
+ },
+ "referrals.bonus_days": {
+  "value": 14,
+  "default": 14,
+  "description": "Free days for the referrer per invited user's first payment (0 = off)."
+ },
+ "peers.idle_ttl_hours": {
+  "value": 0,
+  "default": 0,
+  "description": "Take a peer off its node after this many hours without a handshake (0 = never). Keep 0 while users import a fixed config into the WireGuard app (Telegram version): that app doesn't ask us before connecting, so a removed peer would just stop working until the user taps Connect in the Mini App again."
+ }
+}

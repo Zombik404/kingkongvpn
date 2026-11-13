@@ -325,6 +325,7 @@ class AdminUserOut(_Out):
     status: str
     roles: list[str]
     mfa_enabled: bool
+    has_telegram: bool = False  # the Telegram ID itself is never shown, only searchable
     created_at: dt.datetime
     last_login_at: dt.datetime | None
     active_devices: int

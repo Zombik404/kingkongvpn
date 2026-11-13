@@ -82,6 +82,7 @@ async def _admin_user_out(db: Db, user: User) -> AdminUserOut:
         status=user.status,
         roles=list(user.roles),
         mfa_enabled=user.mfa_enabled,
+        has_telegram=user.telegram_id is not None,
         created_at=user.created_at,
         last_login_at=user.last_login_at,
         active_devices=int(count or 0),
@@ -94,17 +95,30 @@ async def search_users(
     db: Db,
     _: Annotated[Principal, Depends(require(Perm.USERS_READ))],
     q: Annotated[str | None, Query(max_length=254)] = None,
+    status: Annotated[UserStatus | None, Query()] = None,
+    staff_only: bool = False,
     limit: Limit = 25,
     offset: Offset = 0,
 ) -> list[AdminUserOut]:
-    """Search by exact user ID or email prefix."""
+    """Newest first. `q`: exact user ID, a Telegram ID (digits), a referral code, or an email
+    prefix."""
     stmt = select(User).order_by(User.created_at.desc()).limit(limit).offset(offset)
+    if status is not None:
+        stmt = stmt.where(User.status == status)
+    if staff_only:
+        stmt = stmt.where(func.cardinality(User.roles) > 0)
+    q = (q or "").strip()
     if q:
         try:
             stmt = stmt.where(User.id == uuid.UUID(q))
         except ValueError:
-            escaped = q.replace("\\", "\\\\").replace("%", r"\%").replace("_", r"\_")
-            stmt = stmt.where(User.email.ilike(f"{escaped}%"))
+            if q.isdigit() and len(q) <= 15:
+                stmt = stmt.where(User.telegram_id == int(q))
+            elif len(q) == 8 and q.isalnum() and q.upper() == q:
+                stmt = stmt.where(User.referral_code == q)
+            else:
+                escaped = q.replace("\\", "\\\\").replace("%", r"\%").replace("_", r"\_")
+                stmt = stmt.where(User.email.ilike(f"{escaped}%"))
     return [await _admin_user_out(db, u) for u in (await db.scalars(stmt)).all()]
 
 
