@@ -322,7 +322,7 @@ h2 { font-size: 18px; }
 .swing { position: fixed; inset: 0; z-index: 80; pointer-events: none; overflow: hidden; }
 .swing-arm {
   position: absolute; left: 50%; top: -14vh; width: 0; height: max(60vh, 62vw);
-  transform-origin: 50% 0; animation: swing-fwd 2s cubic-bezier(0.4, 0.1, 0.6, 0.9) both;
+  transform-origin: 50% 0; animation: swing-fwd 1.55s cubic-bezier(0.4, 0.1, 0.6, 0.9) both;
 }
 .swing.back .swing-arm { animation-name: swing-back; }
 .swing-vine { /* a liana: cylinder shading across, knots along */
@@ -350,10 +350,10 @@ h2 { font-size: 18px; }
   100% { transform: rotate(60deg); opacity: 0; }
 }
 /* dim the page a little while the king flies past, so he stands out */
-.swing::before { content: ""; position: absolute; inset: 0; background: rgba(0, 0, 0, 0.35); animation: swing-dim 2s ease-in-out both; }
+.swing::before { content: ""; position: absolute; inset: 0; background: rgba(0, 0, 0, 0.35); animation: swing-dim 1.55s ease-in-out both; }
 @keyframes swing-dim { 0%, 100% { opacity: 0; } 20%, 80% { opacity: 1; } }
-.enter-fwd { animation: enter-fwd 0.7s cubic-bezier(0.2, 0.8, 0.2, 1) 0.5s both; }
-.enter-back { animation: enter-back 0.7s cubic-bezier(0.2, 0.8, 0.2, 1) 0.3s both; }
+.enter-fwd { animation: enter-fwd 0.5s cubic-bezier(0.2, 0.8, 0.2, 1) var(--enter-delay, 1.05s) both; }
+.enter-back { animation: enter-back 0.5s cubic-bezier(0.2, 0.8, 0.2, 1) var(--enter-delay, 1.05s) both; }
 @keyframes enter-fwd { from { transform: translateX(46px); opacity: 0; } to { transform: none; opacity: 1; } }
 @keyframes enter-back { from { transform: translateX(-46px); opacity: 0; } to { transform: none; opacity: 1; } }
 

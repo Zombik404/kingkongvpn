@@ -41,8 +41,12 @@ export function wreath() {
  * The jungle king (a gorilla in a crown, banana in hand) swings across on a liana: "fwd" = left → right (opening a page),
  * "back" = right → left (going back). The new screen slides in the same direction.
  */
+const ENTER_AT = 1050; // ms after the swing starts: the king is near the screen edge
+let swingStart = 0;
+
 export function swing(dir, root) {
   if (reduced()) return;
+  swingStart = performance.now();
   document.querySelector(".swing")?.remove();
   const layer = document.createElement("div");
   layer.className = `swing ${dir}`;
@@ -56,7 +60,7 @@ export function swing(dir, root) {
   document.body.append(layer);
   const done = () => layer.remove();
   arm.addEventListener("animationend", done, { once: true });
-  setTimeout(done, 2600); // safety net if the event never fires
+  setTimeout(done, 2200); // safety net if the event never fires
   enter(dir, root);
 }
 
@@ -64,6 +68,9 @@ export function swing(dir, root) {
 export function enter(dir, root) {
   if (reduced() || !root) return;
   root.classList.remove("enter-fwd", "enter-back");
+  // count the delay from the start of the swing, so slow data loading doesn't push it later
+  const wait = Math.max(0, ENTER_AT - (performance.now() - swingStart));
+  root.style.setProperty("--enter-delay", `${Math.round(wait)}ms`);
   void root.offsetWidth; // restart the animation
   root.classList.add(dir === "back" ? "enter-back" : "enter-fwd");
   root.addEventListener("animationend", () => root.classList.remove("enter-fwd", "enter-back"), { once: true });
