@@ -478,14 +478,33 @@
             "type": "string"
           },
           "password": {
-            "maxLength": 256,
-            "minLength": 1,
-            "title": "Password",
-            "type": "string"
+            "anyOf": [
+              {
+                "maxLength": 256,
+                "minLength": 1,
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Password"
+          },
+          "telegram_init_data": {
+            "anyOf": [
+              {
+                "maxLength": 8192,
+                "minLength": 1,
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Telegram Init Data"
           }
         },
         "required": [
-          "password",
           "confirm"
         ],
         "title": "DeleteAccountIn",

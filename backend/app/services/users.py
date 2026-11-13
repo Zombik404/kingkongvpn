@@ -2,18 +2,34 @@
 
 from __future__ import annotations
 
+import datetime as dt
 from typing import Any
 
-from sqlalchemy import select, update
+from sqlalchemy import func, select, update
 from sqlalchemy.ext.asyncio import AsyncSession
 
-from app.core.errors import InvalidCredentials
-from app.models import AuthSession, Device, Payment, Subscription, User
+from app.core.context import AppContext
+from app.core.errors import InvalidCredentials, NotAuthenticated
+from app.models import (
+    AuthSession,
+    BonusLedger,
+    BonusWallet,
+    Device,
+    DeviceUsageDaily,
+    GameProfile,
+    NotificationPreference,
+    Payment,
+    ReferralMilestone,
+    ReferralReward,
+    Subscription,
+    User,
+)
 from app.models.base import utcnow
 from app.models.enums import ActorType, DeviceStatus, UserStatus
 from app.schemas.domain import UserOut
-from app.security.passwords import PasswordService
+from app.security import rate_limit as rl
 from app.security.principal import ClientInfo
+from app.security.telegram import validate_init_data
 from app.services import audit
 from app.subscriptions import service as subs
 
@@ -45,6 +61,33 @@ async def export_data(db: AsyncSession, user: User) -> dict[str, Any]:
     ).all()
     payments = (await db.scalars(select(Payment).where(Payment.user_id == user.id))).all()
     sessions = (await db.scalars(select(AuthSession).where(AuthSession.user_id == user.id))).all()
+    usage = (
+        await db.scalars(
+            select(DeviceUsageDaily)
+            .join(Device, Device.id == DeviceUsageDaily.device_id)
+            .where(Device.user_id == user.id)
+            .order_by(DeviceUsageDaily.day)
+        )
+    ).all()
+    prefs = await db.get(NotificationPreference, user.id)
+    profile = await db.get(GameProfile, user.id)
+    wallet = await db.get(BonusWallet, user.id)
+    ledger = (
+        await db.scalars(
+            select(BonusLedger)
+            .where(BonusLedger.user_id == user.id)
+            .order_by(BonusLedger.created_at)
+        )
+    ).all()
+    invited = await db.scalar(
+        select(func.count()).select_from(User).where(User.referred_by_id == user.id)
+    )
+    rewards = (
+        await db.scalars(select(ReferralReward).where(ReferralReward.referrer_id == user.id))
+    ).all()
+    milestones = (
+        await db.scalars(select(ReferralMilestone).where(ReferralMilestone.user_id == user.id))
+    ).all()
     return {
         "exported_at": utcnow().isoformat(),
         "account": {
@@ -105,22 +148,103 @@ async def export_data(db: AsyncSession, user: User) -> dict[str, Any]:
             }
             for s in sessions
         ],
+        # Traffic totals per device per day (no destinations or contents are ever recorded).
+        "traffic_daily": [
+            {
+                "device_id": str(u.device_id),
+                "day": _iso(u.day),
+                "download_bytes": u.download_bytes,
+                "upload_bytes": u.upload_bytes,
+            }
+            for u in usage
+        ],
+        "notification_preferences": (
+            {
+                "email_service": prefs.email_service,
+                "email_marketing": prefs.email_marketing,
+                "telegram": prefs.telegram,
+                "push": prefs.push,
+            }
+            if prefs
+            else None
+        ),
+        "referrals": {
+            "code": user.referral_code,
+            "invited_by_someone": user.referred_by_id is not None,
+            "invited_users": int(invited or 0),
+            "rewards": [
+                {"bonus_days": r.bonus_days, "created_at": _iso(r.created_at)} for r in rewards
+            ],
+            "ranks": [
+                {"level": m.level, "bonus_days": m.bonus_days, "created_at": _iso(m.created_at)}
+                for m in milestones
+            ],
+        },
+        "games": {
+            "profile": (
+                {
+                    "nickname": profile.nickname,
+                    "rounds": profile.rounds,
+                    "wins": profile.wins,
+                    "losses": profile.losses,
+                    "pushes": profile.pushes,
+                    "blackjacks": profile.blackjacks,
+                    "chips": profile.chips,
+                    "best_win": profile.best_win,
+                    "best_win_stake": profile.best_win_stake,
+                }
+                if profile
+                else None
+            ),
+            "bonus_hours": wallet.balance_hours if wallet else 0,
+            "bonus_ledger": [
+                {
+                    "delta_hours": e.delta_hours,
+                    "balance_after": e.balance_after,
+                    "kind": e.kind,
+                    "created_at": _iso(e.created_at),
+                }
+                for e in ledger
+            ],
+        },
     }
 
 
 async def delete_account(
-    db: AsyncSession, passwords: PasswordService, user_id: Any, password: str, client: ClientInfo
+    ctx: AppContext,
+    db: AsyncSession,
+    user_id: Any,
+    client: ClientInfo,
+    *,
+    password: str | None = None,
+    telegram_init_data: str | None = None,
 ) -> None:
     """Anonymise immediately; the row itself is purged after the retention window.
 
-    Personal identifiers (email, password hash, Telegram ID, TOTP seed) are cleared now so
-    the address can be reused and nothing personal lingers. Payment rows are kept (accounting
-    law) but lose their link to the user at purge time (FK SET NULL).
+    The owner proves it's them again: with the password, or — for an account made in Telegram,
+    which has none — with fresh `initData` from the Mini App for the same Telegram user.
+    Personal identifiers (email, password hash, Telegram ID, TOTP seed, game nickname, referral
+    code) are cleared now so nothing personal lingers. Payment rows are kept (accounting law)
+    but lose their link to the user at purge time (FK SET NULL).
     """
+    await ctx.limiter.hit(rl.LOGIN_PER_ACCOUNT, f"delete:{user_id}")
     user = await db.get(User, user_id, with_for_update=True)
     assert user is not None
-    if not (await passwords.verify(user.password_hash, password)).ok:
-        raise InvalidCredentials("Password is incorrect.")
+    if user.password_hash is not None:
+        if not password or not (await ctx.passwords.verify(user.password_hash, password)).ok:
+            raise InvalidCredentials("Password is incorrect.")
+    else:
+        try:
+            tg = validate_init_data(
+                telegram_init_data or "",
+                ctx.settings.telegram_bot_token.get_secret_value(),
+                max_age=dt.timedelta(seconds=ctx.settings.telegram_webapp_max_age_seconds),
+                now=utcnow(),
+            )
+        except NotAuthenticated as exc:
+            raise InvalidCredentials("Confirm the deletion from Telegram.") from exc
+        if user.telegram_id is None or tg.id != user.telegram_id:
+            raise InvalidCredentials("Confirm the deletion from Telegram.")
     now = utcnow()
     live = await subs.get_live(db, user.id, lock=True)
     if live is not None:
@@ -151,7 +275,11 @@ async def delete_account(
     user.totp_secret_encrypted = None
     user.totp_enabled_at = None
     user.roles = []
+    user.referral_code = None
     user.token_version += 1
+    profile = await db.get(GameProfile, user.id, with_for_update=True)
+    if profile is not None:  # the nickname may be a real name: gone from boards at once
+        profile.nickname = "Deleted player"
     audit.record(
         db,
         action="user.deleted",

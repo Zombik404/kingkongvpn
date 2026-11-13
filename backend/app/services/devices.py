@@ -15,6 +15,7 @@ from app.models import Device, PeerAssignment, Server, User
 from app.models.base import utcnow
 from app.models.enums import AssignmentState, DeviceStatus
 from app.schemas.domain import DeviceOut
+from app.security import rate_limit as rl
 from app.security.principal import ClientInfo
 from app.services import audit
 from app.services import settings as settings_service
@@ -83,6 +84,7 @@ async def register(
     public_key: str,
     client: ClientInfo,
 ) -> Device:
+    await ctx.limiter.hit(rl.DEVICE_REGISTER_PER_ACCOUNT, str(user_id))
     # Lock the user row: serialises concurrent registrations so the limit check can't race.
     await db.get(User, user_id, with_for_update=True)
     if await db.scalar(select(Device.id).where(Device.public_key == public_key)) is not None:

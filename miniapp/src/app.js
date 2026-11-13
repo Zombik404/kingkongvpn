@@ -657,7 +657,47 @@ function helpScreen() {
       h("ol", { class: "steps" }, h("li", {}, t("help1")), h("li", {}, t("help2")), h("li", {}, t("help3")))),
     h("section", { class: "card" }, h("div", { class: "card-sub" }, t("getApp")),
       h("ul", { class: "links" }, APPS.map(([label, url]) =>
-        h("li", {}, h("a", { href: url, onclick: (e) => { e.preventDefault(); tg.openLink(url); } }, label))))));
+        h("li", {}, h("a", { href: url, onclick: (e) => { e.preventDefault(); tg.openLink(url); } }, label))))),
+    h("section", { class: "card privacy" },
+      h("div", { class: "card-sub" }, t("privacyTitle")),
+      h("p", { class: "muted" }, t("privacyStored")),
+      h("p", { class: "muted" }, t("privacyNot")),
+      h("button", { class: "secondary wide", onclick: exportMyData }, t("privacyExport")),
+      h("button", { class: "ghost wide danger", onclick: deleteAccount }, t("privacyDelete"))));
+}
+
+async function exportMyData() {
+  try {
+    const data = await api("/users/me/export");
+    download(JSON.stringify(data, null, 2), `${APP_NAME.replace(/\W+/g, "-").toLowerCase()}-my-data.json`);
+  } catch (e) {
+    toast(t("error", { msg: e.message }));
+  }
+}
+
+function ask(msg) {
+  return new Promise((resolve) => {
+    if (tg.showConfirm) tg.showConfirm(msg, (ok) => resolve(Boolean(ok)));
+    else resolve(confirm(msg)); // eslint-disable-line no-alert
+  });
+}
+
+async function deleteAccount() {
+  if (!(await ask(t("deleteConfirm1"))) || !(await ask(t("deleteConfirm2")))) return;
+  try {
+    // A Telegram account has no password: fresh signed initData proves it's really you.
+    await api("/users/me", { method: "DELETE", body: { confirm: "DELETE", telegram_init_data: tg.initData } }, false);
+  } catch (e) {
+    toast(e.code === "invalid_credentials" ? t("deleteReopen") : t("error", { msg: e.message }));
+    return;
+  }
+  try {
+    for (const k of Object.keys(localStorage)) if (k.startsWith("vpnhub.")) localStorage.removeItem(k);
+  } catch { /* storage unavailable */ }
+  token = null;
+  setBack(null);
+  root.replaceChildren(h("section", { class: "card pad" }, h("p", {}, t("deletedBye"))));
+  if (tg.close) setTimeout(() => tg.close(), 4000);
 }
 
 // ------------------------------------------------------------------ mini games

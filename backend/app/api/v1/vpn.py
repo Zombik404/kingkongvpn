@@ -11,6 +11,7 @@ from pydantic import BaseModel, ConfigDict, Field
 from app.api.deps import Client, Ctx, CurrentPrincipal, Db
 from app.i18n import negotiate
 from app.models import Server
+from app.security.rate_limit import CONNECT_PER_ACCOUNT
 from app.vpn import service as vpn
 
 router = APIRouter(prefix="/vpn", tags=["vpn"])
@@ -71,6 +72,7 @@ async def list_locations(
 async def connect(body: ConnectIn, principal: CurrentPrincipal, ctx: Ctx, db: Db) -> ConnectOut:
     """Assign the device to a node (least loaded in the location) and return its parameters.
     The node installs the peer within a couple of seconds."""
+    await ctx.limiter.hit(CONNECT_PER_ACCOUNT, str(principal.user.id))
     info = await vpn.connect(
         ctx, db, user_id=principal.user.id, device_id=body.device_id, location_id=body.location_id
     )

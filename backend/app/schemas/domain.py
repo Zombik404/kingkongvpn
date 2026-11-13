@@ -75,7 +75,10 @@ class UserUpdateIn(_In):
 
 
 class DeleteAccountIn(_In):
-    password: str = Field(min_length=1, max_length=256)
+    # Accounts with a password confirm with it; accounts made in Telegram (no password)
+    # confirm with fresh `initData` from the Mini App.
+    password: str | None = Field(default=None, min_length=1, max_length=256)
+    telegram_init_data: str | None = Field(default=None, min_length=1, max_length=8192)
     confirm: Literal["DELETE"]
 
 

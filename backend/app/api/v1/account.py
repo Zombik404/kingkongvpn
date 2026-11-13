@@ -30,6 +30,7 @@ from app.schemas.domain import (
     UserOut,
     UserUpdateIn,
 )
+from app.security.rate_limit import EXPORT_PER_ACCOUNT
 from app.services import catalog, devices, referrals, users
 from app.services import settings as settings_service
 from app.subscriptions import service as subs
@@ -59,8 +60,9 @@ async def update_me(body: UserUpdateIn, principal: CurrentPrincipal, db: Db) -> 
 
 
 @users_router.get("/export")
-async def export_me(principal: CurrentPrincipal, db: Db) -> dict[str, Any]:
+async def export_me(principal: CurrentPrincipal, ctx: Ctx, db: Db) -> dict[str, Any]:
     """All personal data we hold, as JSON."""
+    await ctx.limiter.hit(EXPORT_PER_ACCOUNT, str(principal.user.id))
     return await users.export_data(db, principal.user)
 
 
@@ -69,7 +71,14 @@ async def delete_me(
     body: DeleteAccountIn, principal: CurrentPrincipal, ctx: Ctx, db: Db, client: Client
 ) -> Response:
     """Irreversible: anonymises the account, revokes devices, ends access."""
-    await users.delete_account(db, ctx.passwords, principal.user.id, body.password, client)
+    await users.delete_account(
+        ctx,
+        db,
+        principal.user.id,
+        client,
+        password=body.password,
+        telegram_init_data=body.telegram_init_data,
+    )
     return Response(status_code=status.HTTP_204_NO_CONTENT)
 
 

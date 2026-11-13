@@ -166,6 +166,16 @@ async function backend(method, path, body) {
     if (d) { d.status = "revoked"; d.revoked_at = iso(Date.now()); }
     return json(null, 204);
   }
+  if (p === "/users/me/export") {
+    return json({ exported_at: iso(Date.now()), demo: true,
+      account: { id: "demo-user", email: null, telegram_linked: true, locale: LANG, mfa_enabled: false },
+      devices: S.devices.map(({ id: did, name, platform, public_key, ipv4, ipv6, status }) => ({ id: did, name, platform, public_key, ipv4, ipv6, status })),
+      subscriptions: S.sub ? [{ status: "active", period_end: iso(S.sub.end) }] : [], payments: Object.values(S.payments),
+      traffic_daily: [], referrals: { invited_users: referralsOut().invited }, games: { profile: null, bonus_hours: 0, bonus_ledger: [] } });
+  }
+  if (p === "/users/me" && method === "DELETE") {
+    return json(null, 204); // the demo keeps nothing anyway; reload to start again
+  }
   if (p === "/vpn/connect") {
     const d = S.devices.find((x) => x.id === body.device_id);
     const loc = LOCATIONS.find((l) => l.id === body.location_id) || LOCATIONS[0];
@@ -301,6 +311,10 @@ resetLocal();
 // Downloads are blocked inside the demo frame; say so instead of doing nothing.
 const nativeClick = HTMLAnchorElement.prototype.click;
 HTMLAnchorElement.prototype.click = function click() {
+  if (this.hasAttribute("download") && this.getAttribute("download").endsWith(".json")) {
+    toast(T("В демо браузер не даёт скачать файл. В Telegram здесь сохранится JSON со всеми данными, которые сервис хранит о вас.", "The demo frame blocks downloads. In Telegram this saves a JSON file with everything the service keeps about you."));
+    return;
+  }
   if (this.hasAttribute("download")) {
     toast(T("В демо браузер не даёт скачать файл. В Telegram здесь сохранится .conf — пока используйте QR-код или «Скопировать текст».", "The demo frame blocks downloads. In Telegram this saves the .conf file — use the QR code or “Copy text” here."));
     return;

@@ -49,7 +49,7 @@ say "Installing packages (Docker, WireGuard, nftables)"
 export DEBIAN_FRONTEND=noninteractive
 apt-get update -q
 apt-get install -y -q docker.io docker-compose-v2 wireguard-tools nftables iptables python3 \
-  curl openssl ca-certificates
+  curl openssl ca-certificates age
 systemctl enable --now docker
 
 # --------------------------------------------------------------------------- questions
@@ -236,7 +236,7 @@ $(printf '\033[1;32m')Done.$(printf '\033[0m')
                    https://$DOMAIN/api/v1/webhooks/cryptobot
   Logs:            cd $DEPLOY && docker compose -f docker-compose.prod.yml logs -f backend bot
                    journalctl -u globalvpn-agent -f
-  Backups:         /var/backups/globalvpn (daily, 14 days) — copy them off the server too
+  Backups:         /var/backups/globalvpn (daily, 14 days) — encrypt them: put an age public key in /etc/globalvpn/backup-recipients
   Update later:    copy the new project files to $REPO and run this script again
   Firewall in your VPS panel (recommended): allow only TCP 22, 80, 443 and UDP 51820, 443.
 EOF

@@ -48,6 +48,12 @@ EMAIL_PER_IP = Limit("email-ip", 20, 60 * 60)
 REFRESH_PER_IP = Limit("refresh-ip", 60, 60)
 MFA_PER_ACCOUNT = Limit("mfa-acct", 10, 15 * 60)
 PROMO_PER_ACCOUNT = Limit("promo-acct", 10, 60 * 60)
+# Each new device takes a tunnel address until it is revoked and released, so a register/revoke
+# loop could otherwise drain the pool.
+DEVICE_REGISTER_PER_ACCOUNT = Limit("device-reg", 10, 24 * 60 * 60)
+# Every connect may move the peer between nodes (revision bumps on both).
+CONNECT_PER_ACCOUNT = Limit("vpn-connect", 30, 10 * 60)
+EXPORT_PER_ACCOUNT = Limit("export", 5, 60 * 60)
 
 
 class RateLimiter:

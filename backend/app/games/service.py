@@ -36,7 +36,7 @@ from app.models import (
     User,
 )
 from app.models.base import utcnow
-from app.models.enums import ActorType
+from app.models.enums import ActorType, UserStatus
 from app.notifications.notify import miniapp_url, notify
 from app.services import audit
 from app.services import settings as settings_service
@@ -1017,7 +1017,11 @@ async def leaderboard(db: AsyncSession, user_id: uuid.UUID, limit: int = 20) -> 
     order = (GameProfile.best_win.desc(), GameProfile.best_win_at.asc(), GameProfile.user_id)
     rows = (
         await db.scalars(
-            select(GameProfile).where(GameProfile.best_win > 0).order_by(*order).limit(limit)
+            select(GameProfile)
+            .join(User, User.id == GameProfile.user_id)
+            .where(GameProfile.best_win > 0, User.status == UserStatus.ACTIVE)
+            .order_by(*order)
+            .limit(limit)
         )
     ).all()
     top = [
@@ -1040,12 +1044,14 @@ async def leaderboard(db: AsyncSession, user_id: uuid.UUID, limit: int = 20) -> 
         better = await db.scalar(
             select(func.count())
             .select_from(GameProfile)
+            .join(User, User.id == GameProfile.user_id)
             .where(
+                User.status == UserStatus.ACTIVE,
                 (GameProfile.best_win > mine.best_win)
                 | (
                     (GameProfile.best_win == mine.best_win)
                     & (GameProfile.best_win_at < mine.best_win_at)
-                )
+                ),
             )
         )
         my_rank = int(better or 0) + 1

@@ -29,6 +29,7 @@ _SECURITY_HEADERS = {
     "Referrer-Policy": "no-referrer",
     "X-Frame-Options": "DENY",
     "Cross-Origin-Resource-Policy": "same-site",
+    "Permissions-Policy": "camera=(), microphone=(), geolocation=(), payment=()",
 }
 
 
@@ -83,6 +84,11 @@ def create_app(settings: Settings | None = None, ctx: AppContext | None = None) 
             response.headers.setdefault(key, value)
         if request.url.path.startswith("/api/"):
             response.headers.setdefault("Cache-Control", "no-store")
+            if not request.url.path.startswith("/api/docs"):
+                # JSON only: nothing in an API response may load or run anything.
+                response.headers.setdefault(
+                    "Content-Security-Policy", "default-src 'none'; frame-ancestors 'none'"
+                )
         return response
 
     @app.exception_handler(AppError)

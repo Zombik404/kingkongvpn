@@ -247,6 +247,17 @@ const ru = {
   never: "ещё не подключался",
   // help
   helpTitle: "Как подключиться",
+  privacyTitle: "Ваши данные",
+  privacyStored:
+    "Храним: ваш Telegram ID, устройства (только публичные ключи), подписку и платежи, сумму трафика по дням за 90 дней, сокращённый IP входа и игровую статистику.",
+  privacyNot:
+    "Не храним: какие сайты вы открываете, содержимое трафика, имя и фото из Telegram. Секретные ключи устройств остаются только на этом телефоне.",
+  privacyExport: "Скачать мои данные",
+  privacyDelete: "Удалить аккаунт",
+  deleteConfirm1: "Удалить аккаунт? Подписка и оставшиеся дни пропадут, все устройства отключатся.",
+  deleteConfirm2: "Точно удалить? Это нельзя отменить.",
+  deletedBye: "Аккаунт удалён. Мы стёрли ваш Telegram ID, ник и ключи на этом телефоне. 🦍",
+  deleteReopen: "Закройте и снова откройте приложение, затем повторите удаление.",
   help1: "Установите приложение WireGuard.",
   help2: "«Устройства» → «Добавить устройство».",
   help3: "Сохраните конфигурацию (файл или QR-код) и включите туннель в WireGuard.",
@@ -492,6 +503,17 @@ const en = {
   lastSeen: "online {date}",
   never: "never connected",
   helpTitle: "How to connect",
+  privacyTitle: "Your data",
+  privacyStored:
+    "We keep: your Telegram ID, devices (public keys only), subscription and payments, daily traffic totals for 90 days, a shortened sign-in IP and game stats.",
+  privacyNot:
+    "We don't keep: which sites you open, what you send, your Telegram name or photo. Device secret keys stay on this phone only.",
+  privacyExport: "Download my data",
+  privacyDelete: "Delete account",
+  deleteConfirm1: "Delete your account? Your subscription and remaining days will be lost and all devices disconnected.",
+  deleteConfirm2: "Are you sure? This can't be undone.",
+  deletedBye: "Account deleted. We erased your Telegram ID, nickname and the keys on this phone. 🦍",
+  deleteReopen: "Close and reopen the app, then try deleting again.",
   help1: "Install the WireGuard app.",
   help2: "“Devices” → “Add device”.",
   help3: "Save the configuration (file or QR code) and turn the tunnel on in WireGuard.",

@@ -299,6 +299,24 @@ async def release_idle_assignments(db: AsyncSession, idle: dt.timedelta) -> int:
     return len(servers)
 
 
+async def release_revoked_addresses(db: AsyncSession, older_than: dt.timedelta) -> int:
+    """Give the tunnel addresses of devices revoked more than `older_than` ago back to the pool.
+
+    By then their peers are long gone from every node (removal is picked up within one poll),
+    so reusing an address can't route someone else's traffic to an old key."""
+    result = await db.execute(
+        update(Device)
+        .where(
+            Device.status == DeviceStatus.REVOKED,
+            Device.revoked_at < utcnow() - older_than,
+            Device.address_index.is_not(None),
+        )
+        .values(address_index=None, ipv4=None, ipv6=None)
+    )
+    await db.commit()
+    return int(getattr(result, "rowcount", 0) or 0)
+
+
 async def purge_removed_assignments(db: AsyncSession, older_than: dt.timedelta) -> int:
     result = await db.execute(
         delete(PeerAssignment).where(
