@@ -15,4 +15,6 @@ await build({
   sourcemap: false,
 });
 for (const f of ["index.html", "conf.html", "style.css"]) copyFileSync(`src/${f}`, `dist/${f}`);
+mkdirSync("dist/assets");
+for (const f of ["logo.png", "jungle.svg"]) copyFileSync(`src/assets/${f}`, `dist/assets/${f}`);
 console.log("built dist/");

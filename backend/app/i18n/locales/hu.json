@@ -53,17 +53,17 @@
   },
   "referral": {
     "ranks": {
-      "chick": "Csibe",
-      "fox": "Ravasz róka",
-      "hacker": "Hacker",
-      "ambassador": "Nagykövet",
-      "legend": "Legenda"
+      "chick": "Majmocska",
+      "fox": "Papagáj",
+      "hacker": "Jaguár",
+      "ambassador": "Gorilla",
+      "legend": "King Kong"
     },
     "themes": {
-      "lava": "Láva",
-      "matrix": "Mátrix",
-      "gold": "Arany",
-      "cosmos": "Kozmosz"
+      "lava": "Vulkán",
+      "matrix": "Éjszaka",
+      "gold": "Banán",
+      "cosmos": "Orchidea"
     }
   }
 }

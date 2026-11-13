@@ -53,17 +53,17 @@
   },
   "referral": {
     "ranks": {
-      "chick": "Птенец",
-      "fox": "Хитрый лис",
-      "hacker": "Хакер",
-      "ambassador": "Амбассадор",
-      "legend": "Легенда"
+      "chick": "Мартышка",
+      "fox": "Попугай",
+      "hacker": "Ягуар",
+      "ambassador": "Горилла",
+      "legend": "Король Конг"
     },
     "themes": {
-      "lava": "Лава",
-      "matrix": "Матрица",
-      "gold": "Золото",
-      "cosmos": "Космос"
+      "lava": "Вулкан",
+      "matrix": "Ночь",
+      "gold": "Банан",
+      "cosmos": "Орхидея"
     }
   }
 }

@@ -1,11 +1,11 @@
-// VpnHub — Telegram Mini App. User data is inserted with textContent only.
+// KingKong VPN — Telegram Mini App. User data is inserted with textContent only.
 import qrcode from "qrcode-generator";
 import { areaChart, formatBytes, progressRing, ringsChart, RING_COLORS } from "./charts.js";
 import { makeT, pickLang } from "./i18n.js";
 import { buildConfig, generateKeyPair, toFragment, tunnelName } from "./wg.js";
 
 const API = "/api/v1";
-const APP_NAME = document.documentElement.dataset.appName || "VpnHub"; // brand: one place (index.html)
+const APP_NAME = document.documentElement.dataset.appName || "KingKong VPN"; // brand: one place (index.html)
 const tg = window.Telegram && window.Telegram.WebApp;
 const lang = pickLang(tg?.initDataUnsafe?.user?.language_code);
 const t = makeT(lang);
@@ -67,15 +67,14 @@ function icon(name, cls = "ic") {
 }
 
 function logo() {
-  const svg = document.createElementNS(NS, "svg");
-  svg.setAttribute("viewBox", "0 0 32 32");
-  svg.setAttribute("class", "logo-mark");
-  svg.innerHTML = // static markup, no user data
-    '<defs><linearGradient id="lg" x1="0" y1="0" x2="1" y2="1"><stop offset="0" class="s-c1"/><stop offset="1" class="s-c3"/></linearGradient></defs>' +
-    '<path d="M16 2.5 28 9.3v13.4L16 29.5 4 22.7V9.3Z" fill="url(#lg)"/>' +
-    '<path d="M10.5 11.5 16 21l5.5-9.5" fill="none" stroke="#120c08" stroke-width="2.6" stroke-linecap="round" stroke-linejoin="round"/>' +
-    '<circle cx="16" cy="21" r="1.9" fill="#120c08"/>';
-  return svg;
+  return h("img", { class: "logo-mark", src: "assets/logo.png", alt: "", width: 44, height: 44 });
+}
+
+function brand() {
+  // "KingKong VPN" → "KINGKONG" + accent "VPN"
+  const [first, ...rest] = APP_NAME.split(" ");
+  return h("header", { class: "brand" }, logo(),
+    h("span", { class: "word" }, first, rest.length ? h("span", { class: "word-accent" }, ` ${rest.join(" ")}`) : null));
 }
 
 const locale = lang === "ru" ? "ru-RU" : "en-GB";
@@ -104,8 +103,8 @@ const keyStore = {
 };
 
 // ------------------------------------------------------------------ themes & ranks
-const THEME_BG = { default: "#0b0a09", lava: "#0d0504", matrix: "#020604", gold: "#0a0904", cosmos: "#07051a" };
-const RANK_EMOJI = { chick: "🐣", fox: "🦊", hacker: "🕶️", ambassador: "👑", legend: "🚀" };
+const THEME_BG = { default: "#040805", lava: "#0d0504", matrix: "#000000", gold: "#0a0904", cosmos: "#07051a" };
+const RANK_EMOJI = { chick: "🐒", fox: "🦜", hacker: "🐆", ambassador: "🦍", legend: "👑" };
 
 function applyTheme(name) {
   const theme = THEME_BG[name] ? name : "default";
@@ -222,7 +221,7 @@ async function goHome() {
   root.replaceChildren(h("p", { class: "muted center pad" }, t("loading")));
   await loadAll();
   root.replaceChildren(...[
-    h("header", { class: "brand" }, logo(), h("span", { class: "word" }, APP_NAME)),
+    brand(),
     wheel(),
     state.sub.entitled ? null : inviteCard(),
     dashboard(),
@@ -414,7 +413,7 @@ function referralScreen() {
     try { await navigator.clipboard.writeText(link); copyBtn.textContent = t("copied"); } catch { toast(link); }
   } }, icon("copy", "ic sm"), t("copyLink"));
   const shareBtn = h("button", { class: "secondary wide", onclick: () => {
-    const url = `https://t.me/share/url?url=${encodeURIComponent(link)}&text=${encodeURIComponent(t("shareText", { p: r?.percent_off ?? 30 }))}`;
+    const url = `https://t.me/share/url?url=${encodeURIComponent(link)}&text=${encodeURIComponent(t("shareText", { p: r?.percent_off ?? 30, app: APP_NAME }))}`;
     tg.openTelegramLink ? tg.openTelegramLink(url) : tg.openLink(url);
   } }, icon("share", "ic sm"), t("share"));
   const pct = r?.percent_off ?? 30;
@@ -439,7 +438,7 @@ function rankCard(r) {
   const prevNeed = [...r.levels].reverse().find((lv) => lv.reached)?.need || 0;
   const pct = nxt ? Math.round((100 * (r.paid - prevNeed)) / Math.max(1, nxt.need - prevNeed)) : 100;
   const card = h("section", { class: "card glow rank-card" },
-    h("span", { class: "rank-emoji" }, RANK_EMOJI[r.rank] || "🐣"),
+    h("span", { class: "rank-emoji" }, RANK_EMOJI[r.rank] || "🐒"),
     h("div", { class: "lbl" }, t("rankTitle")),
     h("div", { class: "rank-name" }, t("ranks")[r.rank] || r.rank),
     h("div", { class: "rank-next" },
@@ -447,7 +446,7 @@ function rankCard(r) {
       h("div", { class: "bar-track" }, h("div", { class: "bar-fill", "data-w": Math.max(0, Math.min(100, pct)) })),
       h("p", { class: "small" }, nxt
         ? t("rankNext", { left: t("friendsN")(nxt.need - r.paid), rank: t("ranks")[nxt.code], d: nxt.days, theme: t("themes")[nxt.theme] })
-        : t("rankMax"))));
+        : t("rankMax", { app: APP_NAME }))));
   card.querySelectorAll(".bar-fill").forEach((b) => b.style.setProperty("--w", `${b.dataset.w}%`));
   return card;
 }
@@ -637,6 +636,7 @@ function helpScreen() {
   tg.expand();
   applyTheme(store.get("vpnhub.theme") || "default"); // validated against unlocked themes after load
   tg.BackButton?.onClick(() => backHandler && backHandler());
+  window.addEventListener("app:refresh", () => goHome()); // used by the clickable demo
   try {
     await login();
     const ref = new URLSearchParams(location.search).get("ref");

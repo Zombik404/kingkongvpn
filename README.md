@@ -1,7 +1,7 @@
 # global-vpn
 
 Commercial WireGuard VPN platform: control-plane API, VPN node agent and infrastructure, Telegram bot,
-Android/iOS/Windows/macOS apps, website and admin panel. Working brand: **VpnHub** (needs a trademark check before public launch — see ADR-018).
+Android/iOS/Windows/macOS apps, website and admin panel. Brand: **KingKong VPN** (jungle, black & green; logo in `branding/`; trademark check before public launch — see ADR-018).
 
 - **Architecture and decisions:** [`documentation/PROJECT_ARCHITECTURE.md`](documentation/PROJECT_ARCHITECTURE.md)
 - **Roadmap:** [`documentation/ROADMAP.md`](documentation/ROADMAP.md)
@@ -18,7 +18,8 @@ Android/iOS/Windows/macOS apps, website and admin panel. Working brand: **VpnHub
 | `node-agent/` | Agent on each VPN server; reconciles WireGuard peers with the backend | Test slice ✅ — reconciler, control-plane client, systemd unit |
 | `vpn-infrastructure/` | Ansible roles, Terraform, nftables, unbound, exporters | Phase 3 |
 | `telegram-bot/` | aiogram 3 bot (entry point to the Mini App) | Test slice ✅ |
-| `miniapp/` | Telegram Mini App "VpnHub": radial menu, traffic dashboard, referrals, country switch (keys generated on the device) | Test slice ✅ |
+| `miniapp/demo/` | Clickable demo of the Mini App on sample data (`node demo/build.mjs`, no backend needed) | ✅ |
+| `miniapp/` | Telegram Mini App "KingKong VPN": radial menu, traffic dashboard, referrals, country switch (keys generated on the device) | Test slice ✅ |
 | `deploy/` | One-server test deployment (`install.sh`) | Ready — guide: `documentation/TEST_LAUNCH_RU.md` |
 | `mobile-app/` | Flutter app with native Android VpnService / iOS Network Extension | Phase 6 |
 | `desktop-app/` | Flutter desktop with native Windows / macOS tunnel integration | Phase 7 |

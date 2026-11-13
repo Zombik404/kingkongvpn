@@ -53,17 +53,17 @@
   },
   "referral": {
     "ranks": {
-      "chick": "Chick",
-      "fox": "Sly Fox",
-      "hacker": "Hacker",
-      "ambassador": "Ambassador",
-      "legend": "Legend"
+      "chick": "Monkey",
+      "fox": "Parrot",
+      "hacker": "Jaguar",
+      "ambassador": "Gorilla",
+      "legend": "King Kong"
     },
     "themes": {
-      "lava": "Lava",
-      "matrix": "Matrix",
-      "gold": "Gold",
-      "cosmos": "Cosmos"
+      "lava": "Volcano",
+      "matrix": "Night",
+      "gold": "Banana",
+      "cosmos": "Orchid"
     }
   }
 }

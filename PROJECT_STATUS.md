@@ -34,14 +34,19 @@ Last updated: 2026-11-13 · Current phase: **Telegram test version built and ver
 - **Contract & docs**: `shared/api-contracts/openapi.json` (49 operations), `documentation/BACKEND_API.md`, `documentation/DATABASE_SCHEMA.md`, `documentation/adr/0015-backend-core-decisions.md`.
 - **Tooling**: hash-pinned `requirements.lock` / `requirements-dev.lock`; Dockerfile installs from them; Compose `migrate` service runs before API/worker; CI workflow (`.github/workflows/ci.yml`); `app.cli grant-role` / `seed-dev`; new Makefile targets.
 
-## VpnHub redesign (2026-11-13) — ADR-018
+## KingKong VPN rebrand (2026-11-13) — ADR-018 §5–6
+- Renamed to **KingKong VPN**: jungle look (black & green, leaves and vines), the owner's gorilla patch as the logo; ranks renamed Monkey/Parrot/Jaguar/Gorilla/King Kong, themes Volcano/Night/Banana/Orchid.
+- **Clickable demo** of the Mini App on sample data in `miniapp/demo/` (published as a private page for the owner).
+- Bot avatar: `branding/bot-avatar-640.png` → @BotFather `/setuserpic`.
+- ⚠️ "King Kong" is a famous trademarked name — clear it before a public launch.
+
+## Mini App redesign (2026-11-13) — ADR-018
 - Mini App rebuilt in black & orange: radial menu (country, payment, upgrade, friends, devices, help) around a ring showing days left; traffic dashboard (7/30/90 days, download/upload, smooth area chart, top-5 devices as concentric rings).
 - **Traffic accounting** from per-peer WireGuard counters (agent 0.3.0) → `device_usage_daily`, `GET /vpn/usage`.
 - **Referrals (v2):** `GET /referrals`, `POST /referrals/claim`, bot `ref_` deep links; the **invited user gets 30 % off their first payment**, the **referrer gets +14 free days** per invited user who pays (`referrals.percent_off`, `referrals.bonus_days`; migrations 0005–0006); referral count shown in the Mini App; Telegram/email notice to the referrer.
 - **Referral ranks:** 3/5/10/25 paying friends → 🦊/🕶/👑/🚀 with +7/+30/+90/+365 days and Mini App themes Lava/Matrix/Gold/Cosmos (migration 0007, `referrals.milestones`); confetti on a new rank; theme picker on the Friends screen.
 - **Country switch** for devices created on the same phone (key kept in the device's local storage only).
 - Not possible in the Telegram Mini App: per-app traffic (see ADR-018 §2) — shown as top devices; planned for the Android app.
-- ⚠️ Name "VpnHub": an existing VPN "VPNhub" with a similar look exists (trademark filings) — clear the name before public launch.
 - Verified: 220 backend tests (Python 3.12/3.13), Mini App flows in Chromium (invite → device → config → move to another country → remove; QR = file), screenshots reviewed.
 
 ## Telegram test version (2026-11-13) — ADR-017

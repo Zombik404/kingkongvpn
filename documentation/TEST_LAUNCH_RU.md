@@ -24,6 +24,10 @@
 
 ---
 
+## Шаг 0. Оформление бота
+
+В @BotFather: `/setuserpic` → выберите бота → отправьте картинку `branding/bot-avatar-640.png` (значок KingKong). Там же `/setname` → «KingKong VPN».
+
 ## Шаг 1. Сервер
 
 1. Создайте SSH-ключ на компьютере. В PowerShell выполните `ssh-keygen` и нажимайте Enter. Публичный ключ появится в `C:\Users\<вы>\.ssh\id_ed25519.pub`.

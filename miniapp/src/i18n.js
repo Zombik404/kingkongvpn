@@ -26,7 +26,7 @@ const ru = {
   topDevices: "Топ-5 устройств",
   noTraffic: "Пока нет трафика за этот период.",
   appsNote:
-    "Расход по приложениям покажет Android-приложение VpnHub: Telegram и сервер VPN не видят, какое приложение использует трафик, — и мы это не записываем.",
+    "Расход по приложениям покажет Android-приложение {app}: Telegram и сервер VPN не видят, какое приложение использует трафик, — и мы это не записываем.",
   // invite
   invite: "Инвайт-код",
   invitePlaceholder: "INV-XXXX-XXXX",
@@ -54,8 +54,8 @@ const ru = {
   refBonus: "+{d} дней",
   refCount: "Рефералов",
   // ranks & themes
-  ranks: { chick: "Птенец", fox: "Хитрый лис", hacker: "Хакер", ambassador: "Амбассадор", legend: "Легенда" },
-  themes: { default: "Стандарт", lava: "Лава", matrix: "Матрица", gold: "Золото", cosmos: "Космос" },
+  ranks: { chick: "Мартышка", fox: "Попугай", hacker: "Ягуар", ambassador: "Горилла", legend: "Король Конг" },
+  themes: { default: "Джунгли", lava: "Вулкан", matrix: "Ночь", gold: "Банан", cosmos: "Орхидея" },
   friendsN: (n) => {
     const m10 = n % 10, m100 = n % 100;
     const w = m10 === 1 && m100 !== 11 ? "друг" : m10 >= 2 && m10 <= 4 && (m100 < 12 || m100 > 14) ? "друга" : "друзей";
@@ -64,7 +64,7 @@ const ru = {
   rankTitle: "Ваш ранг",
   rankPaid: "Друзей с подпиской: {n}",
   rankNext: "Ещё {left} с подпиской — и вы «{rank}»: +{d} дней VPN и тема «{theme}».",
-  rankMax: "Максимальный ранг. Вы — легенда VpnHub!",
+  rankMax: "Максимальный ранг. Вы — король этих джунглей!",
   ladderTitle: "Ранги и подарки",
   ladderRow: "{n} с подпиской · +{d} дней · тема «{theme}»",
   themesTitle: "Тема оформления",
@@ -75,7 +75,7 @@ const ru = {
   cool: "Круто!",
   copyLink: "Скопировать ссылку",
   share: "Поделиться",
-  shareText: "Подключайся к VpnHub по моей ссылке — скидка {p}% на первую подписку",
+  shareText: "Залетай в {app} по моей ссылке — скидка {p}% на первую подписку",
   copied: "Скопировано",
   refNoBot: "Ссылка появится, когда бот будет настроен.",
   // country
@@ -145,7 +145,7 @@ const en = {
   topDevices: "Top 5 devices",
   noTraffic: "No traffic in this period yet.",
   appsNote:
-    "Per-app usage will come with the VpnHub Android app: neither Telegram nor the VPN server can see which app uses traffic — and we don't record it.",
+    "Per-app usage will come with the {app} Android app: neither Telegram nor the VPN server can see which app uses traffic — and we don't record it.",
   invite: "Invite code",
   invitePlaceholder: "INV-XXXX-XXXX",
   inviteHelp: "This is a closed test. Enter the code you were given.",
@@ -169,13 +169,13 @@ const en = {
   refTextNoDays: "A friend who joins via your link gets {p}% off their first subscription.",
   refBonus: "+{d} days",
   refCount: "Referrals",
-  ranks: { chick: "Chick", fox: "Sly Fox", hacker: "Hacker", ambassador: "Ambassador", legend: "Legend" },
-  themes: { default: "Standard", lava: "Lava", matrix: "Matrix", gold: "Gold", cosmos: "Cosmos" },
+  ranks: { chick: "Monkey", fox: "Parrot", hacker: "Jaguar", ambassador: "Gorilla", legend: "King Kong" },
+  themes: { default: "Jungle", lava: "Volcano", matrix: "Night", gold: "Banana", cosmos: "Orchid" },
   friendsN: (n) => `${n} ${n === 1 ? "friend" : "friends"}`,
   rankTitle: "Your rank",
   rankPaid: "Friends with a subscription: {n}",
   rankNext: "{left} more with a subscription and you're “{rank}”: +{d} VPN days and the “{theme}” theme.",
-  rankMax: "Top rank reached. You're a VpnHub legend!",
+  rankMax: "Top rank reached. You rule this jungle!",
   ladderTitle: "Ranks & gifts",
   ladderRow: "{n} subscribed · +{d} days · “{theme}” theme",
   themesTitle: "App theme",
@@ -186,7 +186,7 @@ const en = {
   cool: "Awesome!",
   copyLink: "Copy link",
   share: "Share",
-  shareText: "Join VpnHub with my link — {p}% off your first subscription",
+  shareText: "Join {app} with my link — {p}% off your first subscription",
   copied: "Copied",
   refNoBot: "The link appears once the bot is configured.",
   countryTitle: "Choose a country",

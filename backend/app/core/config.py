@@ -40,7 +40,7 @@ class Settings(BaseSettings):
 
     # --- General -------------------------------------------------------------
     app_env: Environment = "development"
-    app_name: str = "VpnHub"
+    app_name: str = "KingKong VPN"
     log_level: str = "INFO"
     public_web_url: str = "http://localhost:3000"
     public_api_url: str = "http://localhost:8000"

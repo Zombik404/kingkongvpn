@@ -1,4 +1,4 @@
-# ADR-018 — VpnHub UI: traffic dashboard, referrals, country switch
+# ADR-018 — KingKong VPN Mini App: traffic dashboard, referrals, ranks, country switch
 
 Status: accepted (2026-11-13).
 
@@ -35,8 +35,14 @@ Status: accepted (2026-11-13).
    the device's own `localStorage` (never sent anywhere) so a device can be moved to another
    country and its config re-issued; devices created elsewhere get a new connection instead.
    Removing a device wipes its stored key.
-5. **Brand "VpnHub" is a working name.** An existing VPN product "VPNhub" (com.appatomic.vpnhub)
-   uses the same name with a black/orange scheme and there are "VPNHUB"/"VPN HUB" trademark
-   filings. Before public launch the owner should clear the name with a trademark lawyer; the name
-   is set in one place per component (`APP_NAME` env, `miniapp/src/index.html` data-app-name) and
-   the logo is an original mark, not derived from any existing brand.
+5. **Brand: "KingKong VPN"** (renamed from the working name "VpnHub", 2026-11-13). Jungle look:
+   black & green palette, leaves/vines backdrop (`miniapp/src/assets/jungle.svg`), the owner's
+   gorilla patch as the logo (`miniapp/src/assets/logo.png`; bot avatar and 512 px icon in
+   `branding/`). Rank display names follow the jungle (Monkey → Parrot → Jaguar → Gorilla →
+   King Kong; themes Volcano, Night, Banana, Orchid); the stored codes (`fox`, `hacker`, …) stay.
+   "King Kong" is a well-known film franchise name with trademark registrations, so the name
+   should be cleared by a trademark lawyer before a public launch; it is set in one place per
+   component (`APP_NAME`, `miniapp/src/index.html` data-app-name).
+6. **Clickable demo** (`miniapp/demo/`): the real Mini App bundled with a stand-in for Telegram
+   and the API (sample data, scenarios, "+1 friend paid"), for showing the UI without a server.
+   It never ships to production.

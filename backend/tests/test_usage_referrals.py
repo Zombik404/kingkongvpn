@@ -390,7 +390,9 @@ async def test_referral_ranks_gifts_and_themes(
     notice = next(m for m in outbox if m.template == "referral_milestone")
     assert notice.to == "rank-boss@example.com"
     assert (
-        "Sly Fox" in notice.subject and "+7 free VPN days" in notice.text and "Lava" in notice.text
+        "Parrot" in notice.subject
+        and "+7 free VPN days" in notice.text
+        and "Volcano" in notice.text
     )
     async with ctx.sessionmaker() as s:
         after = (await subs.get_live(s, boss.user_id)).current_period_end

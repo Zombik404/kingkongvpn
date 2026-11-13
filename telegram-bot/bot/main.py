@@ -44,7 +44,7 @@ TEXT = {
         "Ключ создаётся на вашем устройстве и не хранится у нас, поэтому сохраните "
         "конфигурацию сразу. Потеряли — просто создайте новое подключение.",
         "other": "Всё управление — в приложении:",
-        "menu": "VpnHub",
+        "menu": "KingKong VPN",
     },
     "en": {
         "hello": "Hi! This is {app} — a VPN right inside Telegram.\n\n"
@@ -60,7 +60,7 @@ TEXT = {
         "The key is created on your device and isn't stored by us, so save the configuration "
         "right away. Lost it? Just create a new connection.",
         "other": "Everything is managed in the app:",
-        "menu": "VpnHub",
+        "menu": "KingKong VPN",
     },
 }
 
@@ -77,7 +77,7 @@ class BotConfig:
         if not url.startswith("https://"):
             raise ValueError("MINIAPP_URL must be https:// (Telegram requires it)")
         return cls(
-            os.environ["TELEGRAM_BOT_TOKEN"].strip(), url, os.environ.get("APP_NAME", "VpnHub")
+            os.environ["TELEGRAM_BOT_TOKEN"].strip(), url, os.environ.get("APP_NAME", "KingKong VPN")
         )
 
 

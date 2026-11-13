@@ -49,6 +49,8 @@ class Level:
     theme: str  # Mini App theme unlocked
 
 
+# Codes are stable ids stored in referral_milestones; display names (jungle: Monkey → Parrot →
+# Jaguar → Gorilla → King Kong) come from the locales and the Mini App.
 BASE_RANK = "chick"
 LEVELS: tuple[Level, ...] = (
     Level("fox", 3, 7, "lava"),
