@@ -17,6 +17,6 @@ const html = `<title>KingKong VPN</title>
 <script>${js}</script>
 `;
 writeFileSync(`${out}/index.html`, html);
-for (const f of ["logo.png", "jungle.svg"]) copyFileSync(`src/assets/${f}`, `${out}/assets/${f}`);
+for (const f of ["logo.png", "jungle.svg", "sprig.svg"]) copyFileSync(`src/assets/${f}`, `${out}/assets/${f}`);
 for (const f of ["conf.html", "conf.js", "style.css"]) copyFileSync(`dist/${f}`, `${out}/${f}`);
 console.log("built demo/dist/", Math.round(html.length / 1024), "KB");

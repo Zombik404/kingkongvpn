@@ -1,6 +1,7 @@
 // KingKong VPN — Telegram Mini App. User data is inserted with textContent only.
 import qrcode from "qrcode-generator";
 import { areaChart, formatBytes, progressRing, ringsChart, RING_COLORS } from "./charts.js";
+import { enter, mountJungle, swing, wreath } from "./jungle.js";
 import { makeT, pickLang } from "./i18n.js";
 import { buildConfig, generateKeyPair, toFragment, tunnelName } from "./wg.js";
 
@@ -195,8 +196,12 @@ function setBack(fn) {
   else tg.BackButton.hide();
 }
 
+let screen = null; // "home" | "page" — decides which way the monkey swings
+
 function page(title, ...content) {
   window.scrollTo(0, 0);
+  swing("fwd", root);
+  screen = "page";
   root.replaceChildren(
     h("header", { class: "bar" },
       h("button", { class: "ghost back", onclick: () => goHome(), "aria-label": t("back") }, "‹"),
@@ -218,14 +223,19 @@ async function loadAll() {
 // ------------------------------------------------------------------ home
 async function goHome() {
   setBack(null);
-  root.replaceChildren(h("p", { class: "muted center pad" }, t("loading")));
+  const back = screen === "page"; // coming back from a page: the monkey flies the other way
+  if (back) swing("back", null);
+  screen = "home";
+  if (!root.children.length) root.replaceChildren(h("p", { class: "muted center pad" }, t("loading")));
   await loadAll();
+  window.scrollTo(0, 0);
   root.replaceChildren(...[
     brand(),
     wheel(),
     state.sub.entitled ? null : inviteCard(),
     dashboard(),
   ].filter(Boolean));
+  if (back) enter("back", root);
   maybeCelebrate();
 }
 
@@ -268,7 +278,7 @@ function wheel() {
     return h("button", { class: "spoke", "data-angle": angle, onclick: fn, "aria-label": label },
       h("span", { class: "spoke-ic" }, icon(ic)), h("span", { class: "spoke-label" }, label), badge);
   });
-  const w = h("section", { class: "wheel" }, h("div", { class: "orbit" }), center, ...spokes);
+  const w = h("section", { class: "wheel" }, wreath(), center, ...spokes);
   // place spokes on the circle (CSSOM custom properties — allowed by our strict CSP)
   for (const b of spokes) {
     const a = (Number(b.dataset.angle) * Math.PI) / 180;
@@ -634,6 +644,7 @@ function helpScreen() {
   }
   tg.ready();
   tg.expand();
+  mountJungle();
   applyTheme(store.get("vpnhub.theme") || "default"); // validated against unlocked themes after load
   tg.BackButton?.onClick(() => backHandler && backHandler());
   window.addEventListener("app:refresh", () => goHome()); // used by the clickable demo
