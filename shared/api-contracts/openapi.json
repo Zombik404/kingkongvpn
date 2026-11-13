@@ -1812,9 +1812,17 @@
       },
       "ReferralOut": {
         "properties": {
+          "bonus_days": {
+            "title": "Bonus Days",
+            "type": "integer"
+          },
           "code": {
             "title": "Code",
             "type": "string"
+          },
+          "days_earned": {
+            "title": "Days Earned",
+            "type": "integer"
           },
           "enabled": {
             "title": "Enabled",
@@ -1857,6 +1865,8 @@
           "code",
           "link",
           "percent_off",
+          "bonus_days",
+          "days_earned",
           "invited",
           "paid",
           "rewards_available",
@@ -4535,7 +4545,7 @@
     },
     "/api/v1/referrals": {
       "get": {
-        "description": "Your referral link and stats. Each invitee's first payment gives you a one-time discount\n(applied automatically at your next checkout).",
+        "description": "Your referral link and stats. Each invitee's first payment gives you a one-time discount\n(applied automatically at your next checkout) and `bonus_days` free days added right away.",
         "operationId": "my_referrals_api_v1_referrals_get",
         "responses": {
           "200": {

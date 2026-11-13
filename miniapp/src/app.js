@@ -357,14 +357,20 @@ function referralScreen() {
     const url = `https://t.me/share/url?url=${encodeURIComponent(link)}&text=${encodeURIComponent(t("shareText"))}`;
     tg.openTelegramLink ? tg.openTelegramLink(url) : tg.openLink(url);
   } }, icon("share", "ic sm"), t("share"));
+  const pct = r?.percent_off ?? 30;
+  const days = r?.bonus_days ?? 0;
+  const stat = (n, label, cls = "big") => h("div", {}, h("div", { class: cls }, String(n ?? 0)), h("div", { class: "lbl" }, t(label)));
   page(t("refTitle"),
     h("section", { class: "card glow" },
-      h("div", { class: "promo-num" }, `−${r?.percent_off ?? 30}%`),
-      h("p", {}, t("refText", { p: r?.percent_off ?? 30 }))),
-    h("section", { class: "card stats3" },
-      h("div", {}, h("div", { class: "big" }, String(r?.invited ?? 0)), h("div", { class: "lbl" }, t("refInvited"))),
-      h("div", {}, h("div", { class: "big" }, String(r?.paid ?? 0)), h("div", { class: "lbl" }, t("refPaid"))),
-      h("div", {}, h("div", { class: "big hot" }, String(r?.rewards_available ?? 0)), h("div", { class: "lbl" }, t("refRewards")))),
+      h("div", { class: "promo-row" },
+        days ? h("div", { class: "promo-num" }, t("refBonus", { d: days })) : null,
+        h("div", { class: days ? "promo-num promo-2" : "promo-num" }, `−${pct}%`)),
+      h("p", {}, days ? t("refTextBonus", { p: pct, d: days }) : t("refText", { p: pct }))),
+    h("section", { class: "card stats4" },
+      stat(r?.invited, "refInvited"),
+      stat(r?.paid, "refPaid"),
+      stat(r?.days_earned, "refDays", "big hot"),
+      stat(r?.rewards_available, "refRewards", "big hot")),
     link
       ? h("section", { class: "card" }, h("div", { class: "linkbox" }, link), copyBtn, shareBtn)
       : h("p", { class: "muted pad-x" }, t("refNoBot")));

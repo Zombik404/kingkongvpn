@@ -44,6 +44,11 @@
       "subject": "Your friend joined {app_name} — {percent}% off for you",
       "body": "A friend you invited has bought a subscription. You get {percent}% off your next payment — it's applied automatically.",
       "action": "Open {app_name}"
+    },
+    "referral_reward_bonus": {
+      "subject": "Your friend joined {app_name} — {days} free days and {percent}% off for you",
+      "body": "A friend you invited has bought a subscription. We've added {days} free days to your {app_name} access (now until {date}), and you get {percent}% off your next payment — it's applied automatically.",
+      "action": "Open {app_name}"
     }
   }
 }

@@ -15,6 +15,11 @@ Status: accepted (2026-11-13).
    discount (`referrals.percent_off`, default 30 %) applied automatically to their next checkout
    (available → reserved by a pending invoice → used; released if the invoice fails/expires).
    One reward per invitee; not combined with a promo code. Toggle: `referrals.enabled`.
+   **Plus free days** (`referrals.bonus_days`, default 14, 0 = off): credited to the referrer at
+   the same moment — the live subscription is extended on its current plan; a referrer on a trial
+   or with no subscription gets the plan the invitee bought. Suspended/deleted referrers get no
+   days. The `referral_rewards` insert (unique `referred_id`) is the idempotency guard, so a
+   repeated webhook/poll can't credit the days twice; the days granted are stored on the reward.
 4. **Country switch keeps the device key:** the Mini App stores each private key it generated in
    the device's own `localStorage` (never sent anywhere) so a device can be moved to another
    country and its config re-issued; devices created elsewhere get a new connection instead.

@@ -36,7 +36,6 @@ from app.models.enums import (
 from app.notifications.notify import notify
 from app.payments.cryptobot import CryptoBotClient, Invoice
 from app.services import audit, catalog, referrals
-from app.services import settings as settings_service
 from app.subscriptions import service as subs
 
 log = logging.getLogger(__name__)
@@ -320,7 +319,7 @@ async def _credit(
     payment.paid_amount = invoice.paid_amount
     if payment.promo_code_id is not None:
         await catalog.record_redemption(db, payment.promo_code_id, user.id, sub.id)
-    referrer = await referrals.on_payment_succeeded(db, payment, user)
+    granted = await referrals.on_payment_succeeded(db, payment, user, plan)
     audit.record(
         db,
         action="payment.succeeded",
@@ -348,15 +347,19 @@ async def _credit(
         },
         f"{ctx.settings.public_web_url}/account/subscription",
     )
-    if referrer is not None:
-        percent = int(await settings_service.get_value(db, "referrals.percent_off"))
-        await notify(
-            ctx,
-            referrer,
-            "referral_reward",
-            {"percent": str(percent)},
-            f"{ctx.settings.public_web_url}/app/",
-        )
+    if granted is not None:
+        referrer = granted.referrer
+        params = {"percent": str(granted.percent_off)}
+        template = "referral_reward"
+        if granted.bonus_days and granted.subscription is not None:
+            template = "referral_reward_bonus"
+            params |= {
+                "days": str(granted.bonus_days),
+                "date": format_date(
+                    granted.subscription.current_period_end, format="long", locale=referrer.locale
+                ),
+            }
+        await notify(ctx, referrer, template, params, f"{ctx.settings.public_web_url}/app/")
     return "credited"
 
 

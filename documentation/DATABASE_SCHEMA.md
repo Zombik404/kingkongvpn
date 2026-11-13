@@ -1,7 +1,7 @@
 # Database schema
 
 PostgreSQL 16. Defined by SQLAlchemy models in `backend/app/models/` and the Alembic migration
-`backend/migrations/versions/` (`0001`–`0004`) (a test fails if the two drift apart, and the
+`backend/migrations/versions/` (`0001`–`0005`) (a test fails if the two drift apart, and the
 migration is tested up → down → up on a fresh database).
 
 **Conventions:** UUIDv7 primary keys (time-ordered), `created_at`/`updated_at` in UTC
@@ -45,7 +45,7 @@ guarantees no two devices ever share an address, even under concurrency (tested)
 | `family_members` | Shared plans (future) | unique (subscription, user) |
 | `payments` | Charges/refunds — no card data | unique (provider, provider_payment_id) = (cryptobot, invoice_id); `status ∈ pending/succeeded/failed/refunded`; `plan_price_id` (what was bought — the granted period comes from here), `promo_code_id`, `checkout_url`, `expires_at`, `paid_at`, `paid_asset`/`paid_amount` (crypto actually received), `failure_reason` (`expired`, `amount_mismatch`, `needs_manual_review`); `user_id ON DELETE SET NULL` (accounting records outlive accounts) |
 | `payment_events` | Provider events (webhook or poll), minimal fields only | unique (provider, event_id); for @CryptoBot `event_id = invoice:<id>:<status>` because its `update_id` is not unique |
-| `referral_rewards` | Referral discounts | one per referred user (unique `referred_id`); `status ∈ available/reserved/used`; `payments.referral_reward_id` links the payment that used it. `users.referral_code` (unique), `users.referred_by_id` |
+| `referral_rewards` | Referral discounts | one per referred user (unique `referred_id`); `status ∈ available/reserved/used`; `bonus_days` 0–365 (free days credited to the referrer); `payments.referral_reward_id` links the payment that used it. `users.referral_code` (unique), `users.referred_by_id` |
 | `campaigns`, `promo_codes`, `promo_redemptions` | Promotions | code citext unique; `CHECK` that fields match the kind (percent 1–100 / amount + currency / free days + plan); one redemption per user per code; `redemption_count` updated under a row lock so `max_redemptions` holds under concurrency |
 
 Subscription transitions are implemented once, in `app/subscriptions/state_machine.py`

@@ -63,7 +63,10 @@ Discount codes: `POST /promo/validate` previews the price (applied at checkout, 
 
 - `GET /vpn/usage?days=7|30|90` (1–90) → `{series: [{date, download, upload}], total_download,
   total_upload, top_devices: [≤5]}` — aggregate bytes per device per day; no destinations.
-- `GET /referrals` → `{code, link, percent_off, invited, paid, rewards_available, rewards_used}`.
+- `GET /referrals` → `{code, link, percent_off, bonus_days, days_earned, invited, paid,
+  rewards_available, rewards_used}`. On an invitee's first payment the referrer gets the discount
+  below **and** `bonus_days` (setting `referrals.bonus_days`, default 14) added to their
+  subscription immediately.
 - `POST /referrals/claim {code}` — attach the referrer (only before the first payment; idempotent).
   A checkout without a promo code automatically uses one available reward
   (`PaymentOut.discount = "referral"`).

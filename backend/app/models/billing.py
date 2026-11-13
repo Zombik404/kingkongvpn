@@ -270,7 +270,8 @@ class PromoRedemption(UUIDPk, Base):
 
 
 class ReferralReward(UUIDPk, Timestamps, Base):
-    """One per referred user who paid: a one-time percentage discount for the referrer.
+    """One per referred user who paid: a one-time percentage discount for the referrer, plus
+    `bonus_days` of free service credited to the referrer at the moment it was granted.
 
     available → reserved (by a pending checkout) → used (payment succeeded);
     reserved → available again if that invoice fails or expires."""
@@ -279,6 +280,7 @@ class ReferralReward(UUIDPk, Timestamps, Base):
     __table_args__ = (
         CheckConstraint("status IN ('available', 'reserved', 'used')", name="status"),
         CheckConstraint("percent_off BETWEEN 1 AND 100", name="percent_off"),
+        CheckConstraint("bonus_days BETWEEN 0 AND 365", name="bonus_days"),
     )
 
     referrer_id: Mapped[uuid.UUID] = mapped_column(
@@ -291,5 +293,6 @@ class ReferralReward(UUIDPk, Timestamps, Base):
         UUID(as_uuid=True), ForeignKey("payments.id", ondelete="SET NULL")
     )
     percent_off: Mapped[int] = mapped_column(Integer, default=30, server_default="30")
+    bonus_days: Mapped[int] = mapped_column(Integer, default=0, server_default="0")
     status: Mapped[str] = mapped_column(String(16), default="available", server_default="available")
     used_payment_id: Mapped[uuid.UUID | None] = mapped_column(UUID(as_uuid=True))

@@ -62,6 +62,11 @@ REGISTRY: dict[str, SettingDef] = {
         30,
         "One-time discount the referrer gets per invitee's first payment.",
     ),
+    "referrals.bonus_days": _def(
+        Annotated[int, Field(ge=0, le=365)],
+        14,
+        "Free days added to the referrer's subscription per invitee's first payment (0 = off).",
+    ),
     "peers.idle_ttl_hours": _def(
         Annotated[int, Field(ge=1, le=24 * 30)],
         24,

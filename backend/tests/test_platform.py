@@ -131,6 +131,7 @@ def test_every_email_renders(lang: str, template: str) -> None:
         "plan": "<b>Std</b>",
         "date": "1 Dec 2026",
         "percent": "30",
+        "days": "14",
     }
     out = render(
         EmailJob(template, "a@example.com", lang, params, "https://w.test/x?token=a&b=1"), s
