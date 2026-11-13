@@ -15,6 +15,7 @@ from sqlalchemy.ext.asyncio import AsyncSession
 
 from app.core.config import get_settings
 from app.core.context import AppContext
+from app.games import service as games_service
 from app.models import AuthSession, User, UserActionToken
 from app.models.base import utcnow
 from app.models.enums import UserStatus
@@ -102,6 +103,12 @@ def purge_deleted_task() -> int:
 @celery_app.task(name="auth.cleanup_tokens")
 def cleanup_tokens_task() -> int:
     return asyncio.run(_with_db(cleanup_tokens))
+
+
+@celery_app.task(name="games.run_timers")
+def game_timers_task() -> int:
+    """Expired turn/bet timers at game tables, and closing tables nobody uses."""
+    return asyncio.run(_with_db(lambda c, s: games_service.run_timers(c, s)))
 
 
 @celery_app.task(name="payments.poll_pending")

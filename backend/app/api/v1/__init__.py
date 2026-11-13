@@ -1,6 +1,7 @@
 from fastapi import APIRouter
 
-from app.api.v1 import account, auth, payments, vpn
+from app.api.v1 import account, auth, games, payments, vpn
+from app.api.v1.admin import games as admin_games
 from app.api.v1.admin import routes as admin
 
 router = APIRouter(prefix="/api/v1")
@@ -14,4 +15,6 @@ router.include_router(account.referral_router)
 router.include_router(vpn.router)
 router.include_router(payments.router)
 router.include_router(payments.webhooks)
+router.include_router(games.router)
 router.include_router(admin.router)
+router.include_router(admin_games.router)

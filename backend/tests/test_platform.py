@@ -361,7 +361,7 @@ async def test_migrations_up_down_up_on_fresh_database() -> None:
                 )
             ).scalar_one()
         await check.dispose()
-        assert tables == 27  # 26 app tables + alembic_version
+        assert tables == 34  # 33 app tables + alembic_version
     finally:
         async with engine.connect() as conn:
             await conn.execute(text(f'DROP DATABASE IF EXISTS "{name}" WITH (FORCE)'))

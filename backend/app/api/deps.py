@@ -50,14 +50,9 @@ def get_client(request: Request) -> ClientInfo:
 Client = Annotated[ClientInfo, Depends(get_client)]
 
 
-async def get_principal(
-    ctx: Ctx,
-    db: Db,
-    creds: Annotated[HTTPAuthorizationCredentials | None, Depends(_bearer)],
-) -> Principal:
-    if creds is None or creds.scheme.lower() != "bearer":
-        raise NotAuthenticated(headers={"WWW-Authenticate": "Bearer"})
-    claims = ctx.tokens.decode_access(creds.credentials)
+async def principal_from_token(ctx: AppContext, db: AsyncSession, token: str) -> Principal:
+    """Validate an access token against the live user and session (also used by WebSockets)."""
+    claims = ctx.tokens.decode_access(token)
     row = (
         await db.execute(
             select(User, AuthSession)
@@ -76,6 +71,16 @@ async def get_principal(
     ):
         raise NotAuthenticated("Invalid or expired token.", headers={"WWW-Authenticate": "Bearer"})
     return Principal(user=user, session=session, claims=claims)
+
+
+async def get_principal(
+    ctx: Ctx,
+    db: Db,
+    creds: Annotated[HTTPAuthorizationCredentials | None, Depends(_bearer)],
+) -> Principal:
+    if creds is None or creds.scheme.lower() != "bearer":
+        raise NotAuthenticated(headers={"WWW-Authenticate": "Bearer"})
+    return await principal_from_token(ctx, db, creds.credentials)
 
 
 CurrentPrincipal = Annotated[Principal, Depends(get_principal)]

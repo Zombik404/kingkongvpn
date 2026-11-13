@@ -14,6 +14,15 @@ from app.models.billing import (
     ReferralReward,
     Subscription,
 )
+from app.models.games import (
+    BonusLedger,
+    BonusWallet,
+    GameProfile,
+    GameRoom,
+    GameRoomPlayer,
+    GameRound,
+    GameRoundPlayer,
+)
 from app.models.ops import (
     AuditLog,
     Notification,
@@ -29,10 +38,17 @@ __all__ = [
     "AuditLog",
     "AuthSession",
     "Base",
+    "BonusLedger",
+    "BonusWallet",
     "Campaign",
     "Device",
     "DeviceUsageDaily",
     "FamilyMember",
+    "GameProfile",
+    "GameRoom",
+    "GameRoomPlayer",
+    "GameRound",
+    "GameRoundPlayer",
     "Location",
     "Notification",
     "NotificationPreference",

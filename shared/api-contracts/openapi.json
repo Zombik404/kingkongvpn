@@ -20,6 +20,42 @@
         "title": "AcceptedOut",
         "type": "object"
       },
+      "ActionIn": {
+        "properties": {
+          "action": {
+            "enum": [
+              "hit",
+              "stand",
+              "double",
+              "split",
+              "surrender",
+              "insurance",
+              "no_insurance"
+            ],
+            "title": "Action",
+            "type": "string"
+          },
+          "action_id": {
+            "anyOf": [
+              {
+                "maxLength": 64,
+                "minLength": 8,
+                "pattern": "^[A-Za-z0-9_-]+$",
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Action Id"
+          }
+        },
+        "required": [
+          "action"
+        ],
+        "title": "ActionIn",
+        "type": "object"
+      },
       "AdminRolesIn": {
         "additionalProperties": false,
         "properties": {
@@ -241,6 +277,67 @@
           "details"
         ],
         "title": "AuditLogOut",
+        "type": "object"
+      },
+      "BetIn": {
+        "properties": {
+          "action_id": {
+            "anyOf": [
+              {
+                "maxLength": 64,
+                "minLength": 8,
+                "pattern": "^[A-Za-z0-9_-]+$",
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Action Id"
+          },
+          "client_seed": {
+            "anyOf": [
+              {
+                "maxLength": 64,
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Client Seed"
+          },
+          "stake_days": {
+            "default": 0,
+            "maximum": 30.0,
+            "minimum": 0.0,
+            "title": "Stake Days",
+            "type": "integer"
+          }
+        },
+        "title": "BetIn",
+        "type": "object"
+      },
+      "BonusAdjustIn": {
+        "properties": {
+          "delta_days": {
+            "maximum": 365.0,
+            "minimum": -365.0,
+            "title": "Delta Days",
+            "type": "integer"
+          },
+          "reason": {
+            "maxLength": 200,
+            "minLength": 3,
+            "title": "Reason",
+            "type": "string"
+          }
+        },
+        "required": [
+          "delta_days",
+          "reason"
+        ],
+        "title": "BonusAdjustIn",
         "type": "object"
       },
       "CheckoutIn": {
@@ -607,6 +704,37 @@
           }
         },
         "title": "HTTPValidationError",
+        "type": "object"
+      },
+      "JoinIn": {
+        "properties": {
+          "code": {
+            "anyOf": [
+              {
+                "maxLength": 8,
+                "minLength": 4,
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Code"
+          },
+          "room_id": {
+            "anyOf": [
+              {
+                "format": "uuid",
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Room Id"
+          }
+        },
+        "title": "JoinIn",
         "type": "object"
       },
       "LocationOut": {
@@ -1413,6 +1541,21 @@
         "title": "PriceUpdateIn",
         "type": "object"
       },
+      "ProfileIn": {
+        "properties": {
+          "nickname": {
+            "maxLength": 64,
+            "minLength": 1,
+            "title": "Nickname",
+            "type": "string"
+          }
+        },
+        "required": [
+          "nickname"
+        ],
+        "title": "ProfileIn",
+        "type": "object"
+      },
       "PromoAdminOut": {
         "properties": {
           "active": {
@@ -1793,6 +1936,29 @@
         "title": "PromoValidateIn",
         "type": "object"
       },
+      "RedeemIn": {
+        "properties": {
+          "action_id": {
+            "maxLength": 64,
+            "minLength": 8,
+            "pattern": "^[A-Za-z0-9_-]+$",
+            "title": "Action Id",
+            "type": "string"
+          },
+          "days": {
+            "maximum": 365.0,
+            "minimum": 1.0,
+            "title": "Days",
+            "type": "integer"
+          }
+        },
+        "required": [
+          "days",
+          "action_id"
+        ],
+        "title": "RedeemIn",
+        "type": "object"
+      },
       "ReferralClaimIn": {
         "additionalProperties": false,
         "properties": {
@@ -2000,6 +2166,45 @@
           "reason"
         ],
         "title": "RevokeIn",
+        "type": "object"
+      },
+      "RoomActionIn": {
+        "properties": {
+          "reason": {
+            "maxLength": 200,
+            "minLength": 3,
+            "title": "Reason",
+            "type": "string"
+          }
+        },
+        "required": [
+          "reason"
+        ],
+        "title": "RoomActionIn",
+        "type": "object"
+      },
+      "RoomCreateIn": {
+        "properties": {
+          "max_players": {
+            "maximum": 4.0,
+            "minimum": 1.0,
+            "title": "Max Players",
+            "type": "integer"
+          },
+          "visibility": {
+            "default": "private",
+            "enum": [
+              "public",
+              "private"
+            ],
+            "title": "Visibility",
+            "type": "string"
+          }
+        },
+        "required": [
+          "max_players"
+        ],
+        "title": "RoomCreateIn",
         "type": "object"
       },
       "SessionOut": {
@@ -2684,6 +2889,778 @@
         "summary": "Audit Logs",
         "tags": [
           "admin"
+        ]
+      }
+    },
+    "/api/v1/admin/games/events": {
+      "get": {
+        "description": "Game-related audit events: staff actions, bonus adjustments and exchanges.",
+        "operationId": "events_api_v1_admin_games_events_get",
+        "parameters": [
+          {
+            "in": "query",
+            "name": "limit",
+            "required": false,
+            "schema": {
+              "default": 50,
+              "maximum": 100,
+              "minimum": 1,
+              "title": "Limit",
+              "type": "integer"
+            }
+          },
+          {
+            "in": "query",
+            "name": "offset",
+            "required": false,
+            "schema": {
+              "default": 0,
+              "maximum": 100000,
+              "minimum": 0,
+              "title": "Offset",
+              "type": "integer"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "items": {
+                    "additionalProperties": true,
+                    "type": "object"
+                  },
+                  "title": "Response Events Api V1 Admin Games Events Get",
+                  "type": "array"
+                }
+              }
+            },
+            "description": "Successful Response"
+          },
+          "422": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/HTTPValidationError"
+                }
+              }
+            },
+            "description": "Validation Error"
+          }
+        },
+        "security": [
+          {
+            "HTTPBearer": []
+          }
+        ],
+        "summary": "Events",
+        "tags": [
+          "admin",
+          "games"
+        ]
+      }
+    },
+    "/api/v1/admin/games/ledger": {
+      "get": {
+        "operationId": "ledger_api_v1_admin_games_ledger_get",
+        "parameters": [
+          {
+            "in": "query",
+            "name": "user_id",
+            "required": false,
+            "schema": {
+              "anyOf": [
+                {
+                  "format": "uuid",
+                  "type": "string"
+                },
+                {
+                  "type": "null"
+                }
+              ],
+              "title": "User Id"
+            }
+          },
+          {
+            "in": "query",
+            "name": "limit",
+            "required": false,
+            "schema": {
+              "default": 50,
+              "maximum": 100,
+              "minimum": 1,
+              "title": "Limit",
+              "type": "integer"
+            }
+          },
+          {
+            "in": "query",
+            "name": "offset",
+            "required": false,
+            "schema": {
+              "default": 0,
+              "maximum": 100000,
+              "minimum": 0,
+              "title": "Offset",
+              "type": "integer"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "items": {
+                    "additionalProperties": true,
+                    "type": "object"
+                  },
+                  "title": "Response Ledger Api V1 Admin Games Ledger Get",
+                  "type": "array"
+                }
+              }
+            },
+            "description": "Successful Response"
+          },
+          "422": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/HTTPValidationError"
+                }
+              }
+            },
+            "description": "Validation Error"
+          }
+        },
+        "security": [
+          {
+            "HTTPBearer": []
+          }
+        ],
+        "summary": "Ledger",
+        "tags": [
+          "admin",
+          "games"
+        ]
+      }
+    },
+    "/api/v1/admin/games/overview": {
+      "get": {
+        "description": "Live numbers and today's bonus movements.",
+        "operationId": "overview_api_v1_admin_games_overview_get",
+        "responses": {
+          "200": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "additionalProperties": true,
+                  "title": "Response Overview Api V1 Admin Games Overview Get",
+                  "type": "object"
+                }
+              }
+            },
+            "description": "Successful Response"
+          }
+        },
+        "security": [
+          {
+            "HTTPBearer": []
+          }
+        ],
+        "summary": "Overview",
+        "tags": [
+          "admin",
+          "games"
+        ]
+      }
+    },
+    "/api/v1/admin/games/players": {
+      "get": {
+        "description": "Player statistics and balances; without `user_id` - the leaderboard (most wins first).",
+        "operationId": "players_api_v1_admin_games_players_get",
+        "parameters": [
+          {
+            "in": "query",
+            "name": "user_id",
+            "required": false,
+            "schema": {
+              "anyOf": [
+                {
+                  "format": "uuid",
+                  "type": "string"
+                },
+                {
+                  "type": "null"
+                }
+              ],
+              "title": "User Id"
+            }
+          },
+          {
+            "in": "query",
+            "name": "limit",
+            "required": false,
+            "schema": {
+              "default": 50,
+              "maximum": 100,
+              "minimum": 1,
+              "title": "Limit",
+              "type": "integer"
+            }
+          },
+          {
+            "in": "query",
+            "name": "offset",
+            "required": false,
+            "schema": {
+              "default": 0,
+              "maximum": 100000,
+              "minimum": 0,
+              "title": "Offset",
+              "type": "integer"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "items": {
+                    "additionalProperties": true,
+                    "type": "object"
+                  },
+                  "title": "Response Players Api V1 Admin Games Players Get",
+                  "type": "array"
+                }
+              }
+            },
+            "description": "Successful Response"
+          },
+          "422": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/HTTPValidationError"
+                }
+              }
+            },
+            "description": "Validation Error"
+          }
+        },
+        "security": [
+          {
+            "HTTPBearer": []
+          }
+        ],
+        "summary": "Players",
+        "tags": [
+          "admin",
+          "games"
+        ]
+      }
+    },
+    "/api/v1/admin/games/players/{user_id}/bonus": {
+      "post": {
+        "description": "Add or remove game bonus days by hand (never below zero); always audited.",
+        "operationId": "adjust_bonus_api_v1_admin_games_players__user_id__bonus_post",
+        "parameters": [
+          {
+            "in": "path",
+            "name": "user_id",
+            "required": true,
+            "schema": {
+              "format": "uuid",
+              "title": "User Id",
+              "type": "string"
+            }
+          }
+        ],
+        "requestBody": {
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/BonusAdjustIn"
+              }
+            }
+          },
+          "required": true
+        },
+        "responses": {
+          "200": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "additionalProperties": true,
+                  "title": "Response Adjust Bonus Api V1 Admin Games Players  User Id  Bonus Post",
+                  "type": "object"
+                }
+              }
+            },
+            "description": "Successful Response"
+          },
+          "422": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/HTTPValidationError"
+                }
+              }
+            },
+            "description": "Validation Error"
+          }
+        },
+        "security": [
+          {
+            "HTTPBearer": []
+          }
+        ],
+        "summary": "Adjust Bonus",
+        "tags": [
+          "admin",
+          "games"
+        ]
+      }
+    },
+    "/api/v1/admin/games/rooms": {
+      "get": {
+        "operationId": "rooms_api_v1_admin_games_rooms_get",
+        "parameters": [
+          {
+            "in": "query",
+            "name": "status",
+            "required": false,
+            "schema": {
+              "anyOf": [
+                {
+                  "pattern": "^(open|paused|closed)$",
+                  "type": "string"
+                },
+                {
+                  "type": "null"
+                }
+              ],
+              "title": "Status"
+            }
+          },
+          {
+            "in": "query",
+            "name": "limit",
+            "required": false,
+            "schema": {
+              "default": 50,
+              "maximum": 100,
+              "minimum": 1,
+              "title": "Limit",
+              "type": "integer"
+            }
+          },
+          {
+            "in": "query",
+            "name": "offset",
+            "required": false,
+            "schema": {
+              "default": 0,
+              "maximum": 100000,
+              "minimum": 0,
+              "title": "Offset",
+              "type": "integer"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "items": {
+                    "additionalProperties": true,
+                    "type": "object"
+                  },
+                  "title": "Response Rooms Api V1 Admin Games Rooms Get",
+                  "type": "array"
+                }
+              }
+            },
+            "description": "Successful Response"
+          },
+          "422": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/HTTPValidationError"
+                }
+              }
+            },
+            "description": "Validation Error"
+          }
+        },
+        "security": [
+          {
+            "HTTPBearer": []
+          }
+        ],
+        "summary": "Rooms",
+        "tags": [
+          "admin",
+          "games"
+        ]
+      }
+    },
+    "/api/v1/admin/games/rooms/{room_id}/close": {
+      "post": {
+        "description": "Finish the running round (everyone stands), refund unplayed stakes, close the table.",
+        "operationId": "close_room_api_v1_admin_games_rooms__room_id__close_post",
+        "parameters": [
+          {
+            "in": "path",
+            "name": "room_id",
+            "required": true,
+            "schema": {
+              "format": "uuid",
+              "title": "Room Id",
+              "type": "string"
+            }
+          }
+        ],
+        "requestBody": {
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/RoomActionIn"
+              }
+            }
+          },
+          "required": true
+        },
+        "responses": {
+          "200": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "additionalProperties": true,
+                  "title": "Response Close Room Api V1 Admin Games Rooms  Room Id  Close Post",
+                  "type": "object"
+                }
+              }
+            },
+            "description": "Successful Response"
+          },
+          "422": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/HTTPValidationError"
+                }
+              }
+            },
+            "description": "Validation Error"
+          }
+        },
+        "security": [
+          {
+            "HTTPBearer": []
+          }
+        ],
+        "summary": "Close Room",
+        "tags": [
+          "admin",
+          "games"
+        ]
+      }
+    },
+    "/api/v1/admin/games/rooms/{room_id}/pause": {
+      "post": {
+        "operationId": "pause_room_api_v1_admin_games_rooms__room_id__pause_post",
+        "parameters": [
+          {
+            "in": "path",
+            "name": "room_id",
+            "required": true,
+            "schema": {
+              "format": "uuid",
+              "title": "Room Id",
+              "type": "string"
+            }
+          }
+        ],
+        "requestBody": {
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/RoomActionIn"
+              }
+            }
+          },
+          "required": true
+        },
+        "responses": {
+          "200": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "additionalProperties": true,
+                  "title": "Response Pause Room Api V1 Admin Games Rooms  Room Id  Pause Post",
+                  "type": "object"
+                }
+              }
+            },
+            "description": "Successful Response"
+          },
+          "422": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/HTTPValidationError"
+                }
+              }
+            },
+            "description": "Validation Error"
+          }
+        },
+        "security": [
+          {
+            "HTTPBearer": []
+          }
+        ],
+        "summary": "Pause Room",
+        "tags": [
+          "admin",
+          "games"
+        ]
+      }
+    },
+    "/api/v1/admin/games/rooms/{room_id}/resume": {
+      "post": {
+        "operationId": "resume_room_api_v1_admin_games_rooms__room_id__resume_post",
+        "parameters": [
+          {
+            "in": "path",
+            "name": "room_id",
+            "required": true,
+            "schema": {
+              "format": "uuid",
+              "title": "Room Id",
+              "type": "string"
+            }
+          }
+        ],
+        "requestBody": {
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/RoomActionIn"
+              }
+            }
+          },
+          "required": true
+        },
+        "responses": {
+          "200": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "additionalProperties": true,
+                  "title": "Response Resume Room Api V1 Admin Games Rooms  Room Id  Resume Post",
+                  "type": "object"
+                }
+              }
+            },
+            "description": "Successful Response"
+          },
+          "422": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/HTTPValidationError"
+                }
+              }
+            },
+            "description": "Validation Error"
+          }
+        },
+        "security": [
+          {
+            "HTTPBearer": []
+          }
+        ],
+        "summary": "Resume Room",
+        "tags": [
+          "admin",
+          "games"
+        ]
+      }
+    },
+    "/api/v1/admin/games/rounds": {
+      "get": {
+        "operationId": "rounds_api_v1_admin_games_rounds_get",
+        "parameters": [
+          {
+            "in": "query",
+            "name": "user_id",
+            "required": false,
+            "schema": {
+              "anyOf": [
+                {
+                  "format": "uuid",
+                  "type": "string"
+                },
+                {
+                  "type": "null"
+                }
+              ],
+              "title": "User Id"
+            }
+          },
+          {
+            "in": "query",
+            "name": "room_id",
+            "required": false,
+            "schema": {
+              "anyOf": [
+                {
+                  "format": "uuid",
+                  "type": "string"
+                },
+                {
+                  "type": "null"
+                }
+              ],
+              "title": "Room Id"
+            }
+          },
+          {
+            "in": "query",
+            "name": "limit",
+            "required": false,
+            "schema": {
+              "default": 50,
+              "maximum": 100,
+              "minimum": 1,
+              "title": "Limit",
+              "type": "integer"
+            }
+          },
+          {
+            "in": "query",
+            "name": "offset",
+            "required": false,
+            "schema": {
+              "default": 0,
+              "maximum": 100000,
+              "minimum": 0,
+              "title": "Offset",
+              "type": "integer"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "items": {
+                    "additionalProperties": true,
+                    "type": "object"
+                  },
+                  "title": "Response Rounds Api V1 Admin Games Rounds Get",
+                  "type": "array"
+                }
+              }
+            },
+            "description": "Successful Response"
+          },
+          "422": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/HTTPValidationError"
+                }
+              }
+            },
+            "description": "Validation Error"
+          }
+        },
+        "security": [
+          {
+            "HTTPBearer": []
+          }
+        ],
+        "summary": "Rounds",
+        "tags": [
+          "admin",
+          "games"
+        ]
+      }
+    },
+    "/api/v1/admin/games/suspicious": {
+      "get": {
+        "description": "Players whose recent results are far from what blackjack allows: a win rate above 60 %\nover many rounds, or a large net bonus gain. A starting point for a manual look, not proof.",
+        "operationId": "suspicious_api_v1_admin_games_suspicious_get",
+        "parameters": [
+          {
+            "in": "query",
+            "name": "days",
+            "required": false,
+            "schema": {
+              "default": 7,
+              "maximum": 30,
+              "minimum": 1,
+              "title": "Days",
+              "type": "integer"
+            }
+          },
+          {
+            "in": "query",
+            "name": "min_rounds",
+            "required": false,
+            "schema": {
+              "default": 30,
+              "maximum": 1000,
+              "minimum": 10,
+              "title": "Min Rounds",
+              "type": "integer"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "items": {
+                    "additionalProperties": true,
+                    "type": "object"
+                  },
+                  "title": "Response Suspicious Api V1 Admin Games Suspicious Get",
+                  "type": "array"
+                }
+              }
+            },
+            "description": "Successful Response"
+          },
+          "422": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/HTTPValidationError"
+                }
+              }
+            },
+            "description": "Validation Error"
+          }
+        },
+        "security": [
+          {
+            "HTTPBearer": []
+          }
+        ],
+        "summary": "Suspicious",
+        "tags": [
+          "admin",
+          "games"
         ]
       }
     },
@@ -4341,6 +5318,700 @@
         "summary": "Rename Device",
         "tags": [
           "devices"
+        ]
+      }
+    },
+    "/api/v1/games": {
+      "get": {
+        "description": "Everything the Mini Games screen needs: switches, profile and statistics, bonus balance,\nand the table the player is sitting at (if any).",
+        "operationId": "hub_api_v1_games_get",
+        "responses": {
+          "200": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "additionalProperties": true,
+                  "title": "Response Hub Api V1 Games Get",
+                  "type": "object"
+                }
+              }
+            },
+            "description": "Successful Response"
+          }
+        },
+        "security": [
+          {
+            "HTTPBearer": []
+          }
+        ],
+        "summary": "Hub",
+        "tags": [
+          "games"
+        ]
+      }
+    },
+    "/api/v1/games/history": {
+      "get": {
+        "operationId": "history_api_v1_games_history_get",
+        "parameters": [
+          {
+            "in": "query",
+            "name": "limit",
+            "required": false,
+            "schema": {
+              "default": 20,
+              "maximum": 50,
+              "minimum": 1,
+              "title": "Limit",
+              "type": "integer"
+            }
+          },
+          {
+            "in": "query",
+            "name": "offset",
+            "required": false,
+            "schema": {
+              "default": 0,
+              "maximum": 5000,
+              "minimum": 0,
+              "title": "Offset",
+              "type": "integer"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "items": {
+                    "additionalProperties": true,
+                    "type": "object"
+                  },
+                  "title": "Response History Api V1 Games History Get",
+                  "type": "array"
+                }
+              }
+            },
+            "description": "Successful Response"
+          },
+          "422": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/HTTPValidationError"
+                }
+              }
+            },
+            "description": "Validation Error"
+          }
+        },
+        "security": [
+          {
+            "HTTPBearer": []
+          }
+        ],
+        "summary": "History",
+        "tags": [
+          "games"
+        ]
+      }
+    },
+    "/api/v1/games/leaderboard": {
+      "get": {
+        "operationId": "leaderboard_api_v1_games_leaderboard_get",
+        "responses": {
+          "200": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "additionalProperties": true,
+                  "title": "Response Leaderboard Api V1 Games Leaderboard Get",
+                  "type": "object"
+                }
+              }
+            },
+            "description": "Successful Response"
+          }
+        },
+        "security": [
+          {
+            "HTTPBearer": []
+          }
+        ],
+        "summary": "Leaderboard",
+        "tags": [
+          "games"
+        ]
+      }
+    },
+    "/api/v1/games/profile": {
+      "put": {
+        "operationId": "set_profile_api_v1_games_profile_put",
+        "requestBody": {
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/ProfileIn"
+              }
+            }
+          },
+          "required": true
+        },
+        "responses": {
+          "200": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "additionalProperties": true,
+                  "title": "Response Set Profile Api V1 Games Profile Put",
+                  "type": "object"
+                }
+              }
+            },
+            "description": "Successful Response"
+          },
+          "422": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/HTTPValidationError"
+                }
+              }
+            },
+            "description": "Validation Error"
+          }
+        },
+        "security": [
+          {
+            "HTTPBearer": []
+          }
+        ],
+        "summary": "Set Profile",
+        "tags": [
+          "games"
+        ]
+      }
+    },
+    "/api/v1/games/rooms": {
+      "get": {
+        "description": "Open public tables with a free seat.",
+        "operationId": "list_rooms_api_v1_games_rooms_get",
+        "responses": {
+          "200": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "items": {
+                    "additionalProperties": true,
+                    "type": "object"
+                  },
+                  "title": "Response List Rooms Api V1 Games Rooms Get",
+                  "type": "array"
+                }
+              }
+            },
+            "description": "Successful Response"
+          }
+        },
+        "security": [
+          {
+            "HTTPBearer": []
+          }
+        ],
+        "summary": "List Rooms",
+        "tags": [
+          "games"
+        ]
+      },
+      "post": {
+        "operationId": "create_room_api_v1_games_rooms_post",
+        "requestBody": {
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/RoomCreateIn"
+              }
+            }
+          },
+          "required": true
+        },
+        "responses": {
+          "201": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "additionalProperties": true,
+                  "title": "Response Create Room Api V1 Games Rooms Post",
+                  "type": "object"
+                }
+              }
+            },
+            "description": "Successful Response"
+          },
+          "422": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/HTTPValidationError"
+                }
+              }
+            },
+            "description": "Validation Error"
+          }
+        },
+        "security": [
+          {
+            "HTTPBearer": []
+          }
+        ],
+        "summary": "Create Room",
+        "tags": [
+          "games"
+        ]
+      }
+    },
+    "/api/v1/games/rooms/join": {
+      "post": {
+        "description": "Sit down at a table: public by id, private only with its code.",
+        "operationId": "join_api_v1_games_rooms_join_post",
+        "requestBody": {
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/JoinIn"
+              }
+            }
+          },
+          "required": true
+        },
+        "responses": {
+          "200": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "additionalProperties": true,
+                  "title": "Response Join Api V1 Games Rooms Join Post",
+                  "type": "object"
+                }
+              }
+            },
+            "description": "Successful Response"
+          },
+          "422": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/HTTPValidationError"
+                }
+              }
+            },
+            "description": "Validation Error"
+          }
+        },
+        "security": [
+          {
+            "HTTPBearer": []
+          }
+        ],
+        "summary": "Join",
+        "tags": [
+          "games"
+        ]
+      }
+    },
+    "/api/v1/games/rooms/solo": {
+      "post": {
+        "description": "The player's own table against the dealer (created on first use).",
+        "operationId": "solo_api_v1_games_rooms_solo_post",
+        "responses": {
+          "200": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "additionalProperties": true,
+                  "title": "Response Solo Api V1 Games Rooms Solo Post",
+                  "type": "object"
+                }
+              }
+            },
+            "description": "Successful Response"
+          }
+        },
+        "security": [
+          {
+            "HTTPBearer": []
+          }
+        ],
+        "summary": "Solo",
+        "tags": [
+          "games"
+        ]
+      }
+    },
+    "/api/v1/games/rooms/{room_id}": {
+      "get": {
+        "description": "The table as this player may see it. Also applies an expired turn timer.",
+        "operationId": "get_room_api_v1_games_rooms__room_id__get",
+        "parameters": [
+          {
+            "in": "path",
+            "name": "room_id",
+            "required": true,
+            "schema": {
+              "format": "uuid",
+              "title": "Room Id",
+              "type": "string"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "additionalProperties": true,
+                  "title": "Response Get Room Api V1 Games Rooms  Room Id  Get",
+                  "type": "object"
+                }
+              }
+            },
+            "description": "Successful Response"
+          },
+          "422": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/HTTPValidationError"
+                }
+              }
+            },
+            "description": "Validation Error"
+          }
+        },
+        "security": [
+          {
+            "HTTPBearer": []
+          }
+        ],
+        "summary": "Get Room",
+        "tags": [
+          "games"
+        ]
+      }
+    },
+    "/api/v1/games/rooms/{room_id}/actions": {
+      "post": {
+        "operationId": "action_api_v1_games_rooms__room_id__actions_post",
+        "parameters": [
+          {
+            "in": "path",
+            "name": "room_id",
+            "required": true,
+            "schema": {
+              "format": "uuid",
+              "title": "Room Id",
+              "type": "string"
+            }
+          }
+        ],
+        "requestBody": {
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/ActionIn"
+              }
+            }
+          },
+          "required": true
+        },
+        "responses": {
+          "200": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "additionalProperties": true,
+                  "title": "Response Action Api V1 Games Rooms  Room Id  Actions Post",
+                  "type": "object"
+                }
+              }
+            },
+            "description": "Successful Response"
+          },
+          "422": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/HTTPValidationError"
+                }
+              }
+            },
+            "description": "Validation Error"
+          }
+        },
+        "security": [
+          {
+            "HTTPBearer": []
+          }
+        ],
+        "summary": "Action",
+        "tags": [
+          "games"
+        ]
+      }
+    },
+    "/api/v1/games/rooms/{room_id}/bet": {
+      "post": {
+        "description": "Confirm taking part in the next round (and the stake, when stakes are enabled).",
+        "operationId": "bet_api_v1_games_rooms__room_id__bet_post",
+        "parameters": [
+          {
+            "in": "path",
+            "name": "room_id",
+            "required": true,
+            "schema": {
+              "format": "uuid",
+              "title": "Room Id",
+              "type": "string"
+            }
+          }
+        ],
+        "requestBody": {
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/BetIn"
+              }
+            }
+          },
+          "required": true
+        },
+        "responses": {
+          "200": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "additionalProperties": true,
+                  "title": "Response Bet Api V1 Games Rooms  Room Id  Bet Post",
+                  "type": "object"
+                }
+              }
+            },
+            "description": "Successful Response"
+          },
+          "422": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/HTTPValidationError"
+                }
+              }
+            },
+            "description": "Validation Error"
+          }
+        },
+        "security": [
+          {
+            "HTTPBearer": []
+          }
+        ],
+        "summary": "Bet",
+        "tags": [
+          "games"
+        ]
+      }
+    },
+    "/api/v1/games/rooms/{room_id}/leave": {
+      "post": {
+        "operationId": "leave_api_v1_games_rooms__room_id__leave_post",
+        "parameters": [
+          {
+            "in": "path",
+            "name": "room_id",
+            "required": true,
+            "schema": {
+              "format": "uuid",
+              "title": "Room Id",
+              "type": "string"
+            }
+          }
+        ],
+        "responses": {
+          "204": {
+            "description": "Successful Response"
+          },
+          "422": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/HTTPValidationError"
+                }
+              }
+            },
+            "description": "Validation Error"
+          }
+        },
+        "security": [
+          {
+            "HTTPBearer": []
+          }
+        ],
+        "summary": "Leave",
+        "tags": [
+          "games"
+        ]
+      }
+    },
+    "/api/v1/games/rounds/{round_id}/fairness": {
+      "get": {
+        "description": "Seeds for checking a finished round (see documentation/GAMES_BLACKJACK.md).",
+        "operationId": "fairness_api_v1_games_rounds__round_id__fairness_get",
+        "parameters": [
+          {
+            "in": "path",
+            "name": "round_id",
+            "required": true,
+            "schema": {
+              "format": "uuid",
+              "title": "Round Id",
+              "type": "string"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "additionalProperties": true,
+                  "title": "Response Fairness Api V1 Games Rounds  Round Id  Fairness Get",
+                  "type": "object"
+                }
+              }
+            },
+            "description": "Successful Response"
+          },
+          "422": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/HTTPValidationError"
+                }
+              }
+            },
+            "description": "Validation Error"
+          }
+        },
+        "security": [
+          {
+            "HTTPBearer": []
+          }
+        ],
+        "summary": "Fairness",
+        "tags": [
+          "games"
+        ]
+      }
+    },
+    "/api/v1/games/wallet": {
+      "get": {
+        "description": "Bonus balance and the history of every change to it.",
+        "operationId": "get_wallet_api_v1_games_wallet_get",
+        "parameters": [
+          {
+            "in": "query",
+            "name": "limit",
+            "required": false,
+            "schema": {
+              "default": 30,
+              "maximum": 100,
+              "minimum": 1,
+              "title": "Limit",
+              "type": "integer"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "additionalProperties": true,
+                  "title": "Response Get Wallet Api V1 Games Wallet Get",
+                  "type": "object"
+                }
+              }
+            },
+            "description": "Successful Response"
+          },
+          "422": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/HTTPValidationError"
+                }
+              }
+            },
+            "description": "Validation Error"
+          }
+        },
+        "security": [
+          {
+            "HTTPBearer": []
+          }
+        ],
+        "summary": "Get Wallet",
+        "tags": [
+          "games"
+        ]
+      }
+    },
+    "/api/v1/games/wallet/redeem": {
+      "post": {
+        "description": "Turn whole bonus days into VPN days (one way: they can't come back to the game).",
+        "operationId": "redeem_api_v1_games_wallet_redeem_post",
+        "requestBody": {
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/RedeemIn"
+              }
+            }
+          },
+          "required": true
+        },
+        "responses": {
+          "200": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "additionalProperties": true,
+                  "title": "Response Redeem Api V1 Games Wallet Redeem Post",
+                  "type": "object"
+                }
+              }
+            },
+            "description": "Successful Response"
+          },
+          "422": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/HTTPValidationError"
+                }
+              }
+            },
+            "description": "Validation Error"
+          }
+        },
+        "security": [
+          {
+            "HTTPBearer": []
+          }
+        ],
+        "summary": "Redeem",
+        "tags": [
+          "games"
         ]
       }
     },

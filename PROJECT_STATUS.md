@@ -34,6 +34,21 @@ Last updated: 2026-11-13 · Current phase: **Telegram test version built and ver
 - **Contract & docs**: `shared/api-contracts/openapi.json` (49 operations), `documentation/BACKEND_API.md`, `documentation/DATABASE_SCHEMA.md`, `documentation/adr/0015-backend-core-decisions.md`.
 - **Tooling**: hash-pinned `requirements.lock` / `requirements-dev.lock`; Dockerfile installs from them; Compose `migrate` service runs before API/worker; CI workflow (`.github/workflows/ci.yml`); `app.cli grant-role` / `seed-dev`; new Makefile targets.
 
+## Jungle Kong Blackjack (2026-11-13) — ADR-019, documentation/GAMES_BLACKJACK.md
+Stage plan from the owner's brief; ✅ = done and tested, ⏳ = next.
+- ✅ 1-3 Project analysis and integration plan.
+- ✅ 4 Blackjack engine (`app/games/blackjack.py`): blackjack, bust, push, double, split, surrender, insurance, dealer rules; 17 unit tests.
+- ✅ 5 Tables and multiplayer (`app/games/service.py`): 1-4 seats, public/private, codes, turn order, bet/turn timers, reconnect, leaving, idle cleanup; real-time push over WebSocket with polling fallback.
+- ✅ 6 Bonus wallet + ledger (`app/games/wallet.py`): hours, row locks, no negative balance, idempotent, one-way exchange into VPN days. Paid days can never be staked (tested).
+- ✅ 7 Uses the existing accounts (one profile, one wallet per user), settings, RBAC, audit.
+- ✅ 10 Staff API `/admin/games/*` (overview, rooms pause/resume/close, rounds, ledger, players, suspicious, events, bonus adjust) with permissions `games:read`/`games:write`.
+- ✅ Provably fair shuffle (commit-reveal), CSPRNG.
+- ⚠️ **Stakes are OFF by default** (`games.blackjack.stakes_enabled`): legal check for target countries is the owner's decision. Fun mode works fully.
+- ⏳ 8-9 Game screens in the Mini App, dealer animations, sounds, bot commands, clickable demo.
+- ⏳ 11-12 End-to-end tests in a browser, launch notes.
+- Not in the repo (so not built): native mobile app screens, visual admin panel — the API is ready for both.
+- Verified: 254 backend tests (33 new), migration 0008 generated on a clean database.
+
 ## KingKong VPN rebrand (2026-11-13) — ADR-018 §5–6
 - Renamed to **KingKong VPN**: jungle look (black & green, leaves and vines), the owner's gorilla patch as the logo; ranks renamed Monkey/Parrot/Jaguar/Gorilla/King Kong, themes Volcano/Night/Banana/Orchid.
 - Jungle dressing, rendered realistically (`miniapp/tools/render_*.py`, no stock photos): misty rainforest backdrop, swaying lianas, fireflies, leaf wreath; **page transitions with the crowned jungle-king gorilla swinging on a liana, banana in hand** (forward → right, back → left; off with reduced motion).

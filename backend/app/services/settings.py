@@ -56,6 +56,50 @@ REGISTRY: dict[str, SettingDef] = {
         False,
         "Closed test: paying or a trial requires having redeemed an invite (free-days) code.",
     ),
+    # --- mini-games (ADR-019) ---
+    "games.enabled": _def(bool, True, "Mini Games section and Jungle Kong Blackjack."),
+    "games.multiplayer_enabled": _def(bool, True, "Tables for 2-4 players."),
+    "games.blackjack.stakes_enabled": _def(
+        bool,
+        False,
+        "Staking game bonus days. OFF by default: enable only after the legal check for your "
+        "target countries. When off the game is for fun: nothing is won or lost.",
+    ),
+    "games.blackjack.stake_options_days": _def(
+        Annotated[list[Annotated[int, Field(ge=1, le=30)]], Field(min_length=1, max_length=6)],
+        [1, 2, 3, 5],
+        "Stakes a player can choose, in bonus days.",
+    ),
+    "games.blackjack.daily_win_cap_days": _def(
+        Annotated[int, Field(ge=1, le=365)],
+        10,
+        "A player who is this many bonus days up today can only play for fun until tomorrow.",
+    ),
+    "games.blackjack.welcome_bonus_days": _def(
+        Annotated[int, Field(ge=0, le=30)],
+        0,
+        "One-time game bonus for a new game profile while stakes are enabled (0 = none).",
+    ),
+    "games.bonus_redeem_enabled": _def(
+        bool, True, "Players may turn whole game bonus days into VPN subscription days."
+    ),
+    "games.blackjack.decks": _def(Annotated[int, Field(ge=1, le=8)], 6, "Decks in the shoe."),
+    "games.blackjack.dealer_hits_soft_17": _def(bool, False, "Dealer draws on a soft 17."),
+    "games.blackjack.blackjack_pays": _def(
+        Annotated[str, Field(pattern=r"^(3:2|6:5)$")], "3:2", "Blackjack payout: 3:2 or 6:5."
+    ),
+    "games.blackjack.allow_double": _def(bool, True, "Double Down."),
+    "games.blackjack.allow_double_after_split": _def(bool, True, "Double Down after a split."),
+    "games.blackjack.allow_split": _def(bool, True, "Split pairs."),
+    "games.blackjack.max_hands": _def(Annotated[int, Field(ge=2, le=4)], 4, "Hands after splits."),
+    "games.blackjack.allow_surrender": _def(bool, True, "Late surrender (half the stake back)."),
+    "games.blackjack.allow_insurance": _def(bool, True, "Insurance against a dealer blackjack."),
+    "games.blackjack.turn_seconds": _def(
+        Annotated[int, Field(ge=10, le=120)], 30, "Time for a move at a shared table."
+    ),
+    "games.blackjack.bet_seconds": _def(
+        Annotated[int, Field(ge=5, le=60)], 20, "Time to join the next round at a shared table."
+    ),
     "referrals.enabled": _def(
         bool, True, "Referral program: discount for invited users, free days for referrers."
     ),

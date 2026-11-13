@@ -18,6 +18,8 @@ class Perm(StrEnum):
     SETTINGS_READ = "settings:read"
     SETTINGS_WRITE = "settings:write"
     AUDIT_READ = "audit:read"
+    GAMES_READ = "games:read"  # rooms, rounds, ledger, stats
+    GAMES_WRITE = "games:write"  # pause/close rooms, adjust bonus balances
 
 
 ROLE_PERMISSIONS: dict[str, frozenset[Perm]] = {
@@ -28,10 +30,19 @@ ROLE_PERMISSIONS: dict[str, frozenset[Perm]] = {
             Perm.SUBSCRIPTIONS_GRANT,
             Perm.PLANS_READ,
             Perm.SETTINGS_READ,
+            Perm.GAMES_READ,
         }
     ),
     Role.OPS: frozenset(
-        {Perm.USERS_READ, Perm.PLANS_READ, Perm.SETTINGS_READ, Perm.SETTINGS_WRITE, Perm.AUDIT_READ}
+        {
+            Perm.USERS_READ,
+            Perm.PLANS_READ,
+            Perm.SETTINGS_READ,
+            Perm.SETTINGS_WRITE,
+            Perm.AUDIT_READ,
+            Perm.GAMES_READ,
+            Perm.GAMES_WRITE,
+        }
     ),
     Role.FINANCE: frozenset(
         {Perm.USERS_READ, Perm.PLANS_READ, Perm.PLANS_WRITE, Perm.PROMO_WRITE, Perm.SETTINGS_READ}

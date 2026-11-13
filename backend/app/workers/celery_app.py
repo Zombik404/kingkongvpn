@@ -37,6 +37,10 @@ celery_app.conf.update(
             "task": "subscriptions.send_reminders",
             "schedule": crontab(minute=17),
         },
+        "games-run-timers": {
+            "task": "games.run_timers",
+            "schedule": 5.0,
+        },
         "payments-poll-pending": {
             "task": "payments.poll_pending",
             "schedule": 60.0,
