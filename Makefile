@@ -61,4 +61,8 @@ secret-scan: ## Fail if anything that looks like a secret is tracked
 	  | grep -v 'Makefile' || (echo "possible secret found" && exit 1)
 	@echo "secret scan OK"
 
-.PHONY: help check-env env keys up up-app down logs test test-backend test-all lint backend-install lock migrate seed openapi compose-check secret-scan
+graph: ## Rebuild the code graph in graphify-out/ (pip install graphifyy; local, no API cost)
+	@command -v graphify >/dev/null || (echo "install it: pip install graphifyy" && exit 1)
+	@graphify update .
+
+.PHONY: help check-env env keys up up-app down logs test test-backend test-all lint backend-install lock migrate seed openapi compose-check secret-scan graph

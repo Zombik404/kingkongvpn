@@ -59,3 +59,7 @@ deploy/secrets/
 
 # The Mini App bundle is committed so servers need no Node.js
 !miniapp/dist/
+
+# Code graph (graphify): rebuilt with `make graph`; only the report is kept in git
+graphify-out/*
+!graphify-out/GRAPH_REPORT.md
