@@ -38,29 +38,92 @@ export function wreath() {
 }
 
 /**
- * The jungle king (a gorilla in a crown, banana in hand) swings across on a liana: "fwd" = left → right (opening a page),
+ "fwd" = left → right (opening a page),
  * "back" = right → left (going back). The new screen slides in the same direction.
  */
 const ENTER_AT = 1050; // ms after the swing starts: the king is near the screen edge
 let swingStart = 0;
 
+const SWING_MS = 1550;
+const NS = "http://www.w3.org/2000/svg";
+// gorilla.png is 390×430; the hand that holds the liana sits at 46.2% / 7.2% of the image
+const KING_W = 300, KING_H = (300 * 430) / 390, HAND_X = 0.462 * KING_W, HAND_Y = 0.072 * KING_H;
+
+function el(tag, attrs) {
+  const e = document.createElementNS(NS, tag);
+  for (const [k, v] of Object.entries(attrs)) e.setAttribute(k, v);
+  return e;
+}
+
+/**
+ * The jungle king swings across on a liana like a pendulum: slow at the ends, fastest at the
+ * bottom. The liana is a cubic curve whose upper points follow the swing with a delay, so it
+ * bends and trails behind him; his body follows the liana's end and sways with the speed.
+ * "fwd" = left → right (opening a section), "back" = right → left.
+ */
 export function swing(dir, root) {
   if (reduced()) return;
   swingStart = performance.now();
   document.querySelector(".swing")?.remove();
+  const W = window.innerWidth, H = window.innerHeight;
   const layer = document.createElement("div");
   layer.className = `swing ${dir}`;
   layer.setAttribute("aria-hidden", "true");
-  const arm = document.createElement("div");
-  arm.className = "swing-arm";
-  const rope = document.createElement("div");
-  rope.className = "swing-vine";
-  arm.append(rope, img("assets/gorilla.png", "swing-monkey"));
-  layer.append(arm);
+  const svgEl = el("svg", { class: "swing-svg", viewBox: `0 0 ${W} ${H}`, width: W, height: H });
+  const shade = el("path", { class: "lv-shade" }), body = el("path", { class: "lv-body" });
+  const knots = el("path", { class: "lv-knots" }), shine = el("path", { class: "lv-shine" });
+  const leaves = [0.28, 0.5, 0.72].map((_, i) => el("path", { class: "lv-leaf", d: i % 2 ? "M0,0 C6,-9 18,-9 26,0 C18,7 6,7 0,0Z" : "M0,0 C6,9 18,9 26,0 C18,-7 6,-7 0,0Z" }));
+  svgEl.append(shade, body, knots, shine, ...leaves);
+  const king = img("assets/gorilla.png", "swing-king");
+  layer.append(svgEl, king);
   document.body.append(layer);
-  const done = () => layer.remove();
-  arm.addEventListener("animationend", done, { once: true });
-  setTimeout(done, 2200); // safety net if the event never fires
+
+  const sign = dir === "back" ? -1 : 1;
+  const P = { x: W / 2, y: -0.16 * H };            // pivot above the screen
+  const L = Math.max(0.62 * H, 0.66 * W);            // liana length
+  // swing just far enough that he starts and ends right behind the screen edges
+  const AMP = Math.min(62, Math.max(32, (Math.asin(Math.min(0.95, (W / 2 + 175) / L)) * 180) / Math.PI));
+  const theta = (u) => sign * AMP * Math.cos(Math.PI * Math.min(1, Math.max(0, u))); // degrees
+  const at = (deg, len) => {
+    const r = (deg * Math.PI) / 180;
+    return { x: P.x - len * Math.sin(r), y: P.y + len * Math.cos(r) };
+  };
+  const bez = (a, b, c, d, t) => {
+    const m = 1 - t;
+    return {
+      x: m * m * m * a.x + 3 * m * m * t * b.x + 3 * m * t * t * c.x + t * t * t * d.x,
+      y: m * m * m * a.y + 3 * m * m * t * b.y + 3 * m * t * t * c.y + t * t * t * d.y,
+    };
+  };
+
+  let raf = 0;
+  const frame = (now) => {
+    const u = (now - swingStart) / SWING_MS;
+    if (u >= 1) { layer.remove(); return; }
+    const stretch = 1 + 0.04 * Math.sin(Math.PI * u);           // the liana stretches under his weight
+    const E = at(theta(u), L * stretch);
+    const c1 = at(theta(u - 0.24), L * 0.36);                    // upper part lags the most
+    const c2 = at(theta(u - 0.11), L * 0.72);
+    const d = `M${P.x},${P.y} C${c1.x},${c1.y} ${c2.x},${c2.y} ${E.x},${E.y}`;
+    for (const p of [shade, body, knots, shine]) p.setAttribute("d", d);
+    [0.28, 0.5, 0.72].forEach((t, i) => {
+      const q = bez(P, c1, c2, E, t), q2 = bez(P, c1, c2, E, t + 0.01);
+      const a = (Math.atan2(q2.y - q.y, q2.x - q.x) * 180) / Math.PI;
+      leaves[i].setAttribute("transform", `translate(${q.x.toFixed(1)},${q.y.toFixed(1)}) rotate(${(a + (i % 2 ? -50 : 50)).toFixed(1)})`);
+    });
+    // body hangs along the end of the liana, and swings a little behind it with the speed
+    const tx = E.x - c2.x, ty = E.y - c2.y;
+    const along = (Math.atan2(-tx, ty) * 180) / Math.PI;
+    const speed = Math.sin(Math.PI * u);                          // 0 at the ends, 1 at the bottom
+    const lag = sign * 14 * speed;
+    const fade = Math.min(1, u / 0.08, (1 - u) / 0.08);
+    king.style.setProperty("transform",
+      `translate(${(E.x - HAND_X).toFixed(1)}px,${(E.y - HAND_Y).toFixed(1)}px) rotate(${(along + lag).toFixed(2)}deg)${dir === "back" ? " scaleX(-1)" : ""}`);
+    layer.style.setProperty("--swing-fade", fade.toFixed(3));
+    raf = requestAnimationFrame(frame);
+  };
+  raf = requestAnimationFrame(frame);
+  setTimeout(() => { cancelAnimationFrame(raf); layer.remove(); }, SWING_MS + 600); // safety net
   enter(dir, root);
 }
 

@@ -318,36 +318,18 @@ h2 { font-size: 18px; }
   100% { transform: translate(-14px, -48px); opacity: 0.8; }
 }
 
-/* ---------- page change: a monkey swings across on a vine ---------- */
+/* ---------- page change: the jungle king swings across on a liana (driven by jungle.js) ---------- */
 .swing { position: fixed; inset: 0; z-index: 80; pointer-events: none; overflow: hidden; }
-.swing-arm {
-  position: absolute; left: 50%; top: -14vh; width: 0; height: max(60vh, 62vw);
-  transform-origin: 50% 0; animation: swing-fwd 1.55s cubic-bezier(0.4, 0.1, 0.6, 0.9) both;
-}
-.swing.back .swing-arm { animation-name: swing-back; }
-.swing-vine { /* a liana: cylinder shading across, knots along */
-  position: absolute; left: -4px; top: 0; width: 8px; height: 100%; border-radius: 4px;
-  background:
-    repeating-linear-gradient(180deg, rgba(0, 0, 0, 0) 0 46px, rgba(0, 0, 0, 0.35) 46px 50px),
-    linear-gradient(90deg, #1c2a12 0%, #6d8444 42%, #47592b 70%, #18230f 100%);
-  box-shadow: 0 6px 12px rgba(0, 0, 0, 0.5);
-}
-.swing-monkey {
-  /* 390×430 artwork shown at 250px wide; the hand that holds the liana is at 46.2% / 7.2% */
-  position: absolute; width: 300px; height: auto; max-width: none; left: -139px; bottom: -308px;
-  transform-origin: 46.2% 7.2%;
+.swing-svg { position: absolute; inset: 0; overflow: visible; opacity: var(--swing-fade, 0); }
+.lv-shade { fill: none; stroke: #121b0b; stroke-width: 11; stroke-linecap: round; }
+.lv-body { fill: none; stroke: #55703a; stroke-width: 7; stroke-linecap: round; }
+.lv-knots { fill: none; stroke: #1c2a12; stroke-width: 9; stroke-dasharray: 3 44; opacity: 0.7; }
+.lv-shine { fill: none; stroke: #a5c06e; stroke-width: 1.6; stroke-linecap: round; opacity: 0.55; transform: translateX(1.5px); }
+.lv-leaf { fill: #3e7a2c; stroke: #1c3d14; stroke-width: 1; }
+.swing-king {
+  position: absolute; left: 0; top: 0; width: 300px; height: auto; max-width: none;
+  transform-origin: 46.2% 7.2%; opacity: var(--swing-fade, 0); will-change: transform;
   filter: brightness(1.35) contrast(1.05) drop-shadow(0 0 2px rgba(var(--a2-rgb), 0.9)) drop-shadow(0 0 14px rgba(var(--a2-rgb), 0.45)) drop-shadow(0 14px 20px rgba(0, 0, 0, 0.7));
-}
-.swing.back .swing-monkey { transform: scaleX(-1); }
-@keyframes swing-fwd {
-  0% { transform: rotate(60deg); opacity: 0; }
-  8% { opacity: 1; } 92% { opacity: 1; }
-  100% { transform: rotate(-60deg); opacity: 0; }
-}
-@keyframes swing-back {
-  0% { transform: rotate(-60deg); opacity: 0; }
-  8% { opacity: 1; } 92% { opacity: 1; }
-  100% { transform: rotate(60deg); opacity: 0; }
 }
 /* dim the page a little while the king flies past, so he stands out */
 .swing::before { content: ""; position: absolute; inset: 0; background: rgba(0, 0, 0, 0.35); animation: swing-dim 1.55s ease-in-out both; }

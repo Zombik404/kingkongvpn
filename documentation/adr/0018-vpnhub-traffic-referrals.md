@@ -50,7 +50,7 @@ Status: accepted (2026-11-13).
    (leaves around the hub); `miniapp/tools/render_gorilla.py` → `gorilla.png` (the app's own
    "jungle king": a silverback gorilla in a gold crown holding a banana — an original design,
    not the film character). Re-rendering needs Python with numpy and Pillow; the built files
-   are committed. **Page changes:** the gorilla swings across on a liana, left → right when a
+   are committed. **Page changes:** the gorilla swings across on a liana like a pendulum (slow at the ends, fastest at the bottom; the liana is a curve that bends and trails behind him, drawn per frame in `jungle.js`), left → right when a
    section opens and right → left on "back", and the new screen slides in the same way; a plain
    refresh of the home screen doesn't animate, and nothing moves when the system asks for
    reduced motion. All decoration is `pointer-events: none` and sits behind the content (the
