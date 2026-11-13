@@ -56,7 +56,7 @@ export function swing(dir, root) {
   document.body.append(layer);
   const done = () => layer.remove();
   arm.addEventListener("animationend", done, { once: true });
-  setTimeout(done, 1900); // safety net if the event never fires
+  setTimeout(done, 2600); // safety net if the event never fires
   enter(dir, root);
 }
 
