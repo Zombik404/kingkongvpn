@@ -134,6 +134,10 @@ def test_every_email_renders(lang: str, template: str) -> None:
         "rank": "Fox",
         "theme": "Lava",
         "count": "3",
+        "code": "AB12CD",
+        "result": "win",
+        "change": "+2",
+        "balance": "5",
     }
     out = render(
         EmailJob(template, "a@example.com", lang, params, "https://w.test/x?token=a&b=1"), s

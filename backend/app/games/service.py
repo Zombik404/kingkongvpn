@@ -37,6 +37,7 @@ from app.models import (
 )
 from app.models.base import utcnow
 from app.models.enums import ActorType
+from app.notifications.notify import miniapp_url, notify
 from app.services import audit
 from app.services import settings as settings_service
 
@@ -65,11 +66,61 @@ def channel(room_id: uuid.UUID) -> str:
 
 
 async def publish(ctx: AppContext, room: GameRoom) -> None:
-    """Tell every connected client of the table that there is a new version to fetch."""
+    """Tell every connected client of the table that there is a new version to fetch, then send
+    the Telegram/email notices that the change produced (only after it was committed)."""
     try:
         await ctx.redis.publish(channel(room.id), str(room.version))
     except Exception:  # realtime is best effort; clients also poll
         log.warning("games: publish failed for room %s", room.id)
+    notices = _NOTICES.pop(room.id, [])
+    if notices:
+        await send_notices(ctx, notices)
+
+
+# --------------------------------------------------------------------------- notices
+# Collected while a table changes (settlement, removal for inactivity) and sent by publish()
+# after the commit, so nobody is told about a change that was rolled back.
+AWAY_SECONDS = 20  # not looking at the table for this long = the round finished "without you"
+_NOTICES: dict[uuid.UUID, list[tuple[str, uuid.UUID, dict[str, str]]]] = {}
+
+
+def _notice(room_id: uuid.UUID, template: str, user_id: uuid.UUID, params: dict[str, str]) -> None:
+    pending = _NOTICES.setdefault(room_id, [])
+    if len(pending) < 32:
+        pending.append((template, user_id, params))
+
+
+def fmt_days(hours: int, locale: str, signed: bool = False) -> str:
+    """Hours of bonus → days for people: 36 → "1.5", signed on request (+1.5 / minus 1.5)."""
+    from babel.numbers import format_decimal
+
+    text = format_decimal(abs(hours) / H, format="#,##0.#", locale=locale)
+    if not signed:
+        return text
+    return f"+{text}" if hours > 0 else f"\u2212{text}" if hours < 0 else "0"
+
+
+async def send_notices(
+    ctx: AppContext, notices: list[tuple[str, uuid.UUID, dict[str, str]]]
+) -> None:
+    from app.i18n import t
+
+    try:
+        async with ctx.sessionmaker() as db:
+            for template, user_id, raw in notices:
+                user = await db.get(User, user_id)
+                if user is None:
+                    continue
+                bal = (await wallet.get_wallet(db, user_id)).balance_hours
+                params = {k: v for k, v in raw.items() if not k.startswith("_")}
+                params["balance"] = fmt_days(bal, user.locale)
+                if "_change" in raw:
+                    params["change"] = fmt_days(int(raw["_change"]), user.locale, signed=True)
+                if "_result" in raw:
+                    params["result"] = t(user.locale, f"games.result.{raw['_result']}")
+                await notify(ctx, user, template, params, miniapp_url(ctx))
+    except Exception:  # a notice must never break the game
+        log.exception("games: sending notices failed")
 
 
 # --------------------------------------------------------------------------- settings
@@ -378,8 +429,9 @@ async def _deal(
     for p in players:  # sitting out counts towards leaving the table
         if str(p.seat) not in bets:
             p.missed += 1
-            if p.missed >= MAX_MISSED:
+            if p.missed >= MAX_MISSED and p.left_at is None:
                 p.left_at = utcnow()
+                _notice(room.id, "game_kicked", p.user_id, {"code": room.code})
     if not bets:
         room.phase, room.deadline = "waiting", None
         _touch(room, state)
@@ -476,6 +528,24 @@ async def _settle(
                 profile.streak = 0
             else:
                 profile.pushes += 1
+    away_before = utcnow() - dt.timedelta(seconds=AWAY_SECONDS)
+    for r in eng["results"]["seats"]:
+        uid = uuid.UUID(r["user"])
+        seat = await db.scalar(
+            select(GameRoomPlayer)
+            .where(GameRoomPlayer.room_id == room.id, GameRoomPlayer.user_id == uid)
+            .order_by(GameRoomPlayer.created_at.desc())
+            .limit(1)
+        )
+        seen = seat.last_seen_at if seat is not None and seat.left_at is None else None
+        if seen is None or seen < away_before:
+            kind = "blackjack" if r["blackjack"] and r["result"] == "win" else r["result"]
+            _notice(
+                room.id,
+                "game_round_away",
+                uid,
+                {"code": room.code, "_result": kind, "_change": str(r["net"])},
+            )
     rnd.summary = bj.public_view(eng)
     rnd.finished_at = utcnow()
     state["last_fair"] = {
@@ -549,8 +619,9 @@ async def tick(db: AsyncSession, room_id: uuid.UUID) -> GameRoom | None:
         await _sync(db, room, state, cfg, players)
         if room.phase == "settled":
             for p in players:
-                if p.missed >= MAX_MISSED:
+                if p.missed >= MAX_MISSED and p.left_at is None:
                     p.left_at = utcnow()
+                    _notice(room.id, "game_kicked", p.user_id, {"code": room.code})
         return room
     room.deadline = None
     return room

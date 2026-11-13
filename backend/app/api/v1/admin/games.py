@@ -313,7 +313,7 @@ async def events(_: Reader, db: Db, limit: Limit = 50, offset: Offset = 0) -> li
 
 @router.post("/players/{user_id}/bonus")
 async def adjust_bonus(
-    user_id: uuid.UUID, body: BonusAdjustIn, actor: Writer, db: Db, client: Client
+    user_id: uuid.UUID, body: BonusAdjustIn, actor: Writer, ctx: Ctx, db: Db, client: Client
 ) -> dict[str, Any]:
     """Add or remove game bonus days by hand (never below zero); always audited."""
     after = await games.admin_adjust(
@@ -325,6 +325,10 @@ async def adjust_bonus(
         ip=client.ip,
     )
     await db.commit()
+    await games.send_notices(
+        ctx,
+        [("game_bonus_admin", user_id, {"_change": str(body.delta_days * wallet.HOURS_PER_DAY)})],
+    )
     return {
         "user_id": str(user_id),
         "balance_hours": after,

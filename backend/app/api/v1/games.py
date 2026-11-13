@@ -12,6 +12,7 @@ import contextlib
 import uuid
 from typing import Annotated, Any, Literal
 
+from babel.dates import format_date
 from fastapi import APIRouter, Query, WebSocket, WebSocketDisconnect
 from pydantic import BaseModel, Field
 from sqlalchemy import select
@@ -22,6 +23,7 @@ from app.core.errors import AppError, NotFound, PermissionDenied
 from app.games import service as games
 from app.games import wallet
 from app.models import BonusLedger, GameRoom
+from app.notifications.notify import miniapp_url, notify
 from app.security.rate_limit import Limit
 
 router = APIRouter(prefix="/games", tags=["games"])
@@ -146,6 +148,18 @@ async def redeem(body: RedeemIn, principal: CurrentPrincipal, ctx: Ctx, db: Db) 
     sub = await wallet.redeem(db, principal.user.id, body.days, f"redeem:{body.action_id}")
     bal = (await wallet.get_wallet(db, principal.user.id)).balance_hours
     await db.commit()
+    user = principal.user
+    await notify(
+        ctx,
+        user,
+        "game_redeem",
+        {
+            "days": str(body.days),
+            "date": format_date(sub.current_period_end, format="long", locale=user.locale),
+            "balance": games.fmt_days(bal, user.locale),
+        },
+        miniapp_url(ctx),
+    )
     return {
         "days": body.days,
         "balance_hours": bal,

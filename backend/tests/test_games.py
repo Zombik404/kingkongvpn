@@ -725,3 +725,68 @@ async def test_suspicious_players_report(client: AsyncClient, outbox: list[Any],
     await db.commit()
     rep = (await client.get(f"{AG}/suspicious", headers=boss.headers)).json()
     assert [r["user_id"] for r in rep] == [str(lucky)] and rep[0]["win_rate"] == 0.9
+
+
+# ----------------------------------------------------------------------------- notices
+async def test_notices_redeem_admin_away_round_and_kick(
+    client: AsyncClient,
+    outbox: list[Any],
+    db: Any,
+    ctx: AppContext,
+    monkeypatch: pytest.MonkeyPatch,
+) -> None:
+    from app.cli import bootstrap_catalog
+    from app.models import GameRoomPlayer
+
+    await bootstrap_catalog()
+    await setting(db, "games.bonus_redeem_enabled", True)
+    # exchange: the player gets a notice with the new access date and the bonus left
+    u = await new_user(client, outbox, "note@example.com")
+    await give(db, u, 3)
+    outbox.clear()
+    r = await post(client, u, "/wallet/redeem", {"days": 2, "action_id": "redeem-note-1"})
+    assert r.status_code == 200, r.text
+    mail = next(m for m in outbox if m.template == "game_redeem")
+    assert (
+        mail.to == "note@example.com"
+        and "+2 VPN days" in mail.subject
+        and "Bonus days left: 1" in mail.text
+    )
+
+    # a manual change by staff: the sign and the balance are in the notice
+    outbox.clear()
+    await games.send_notices(ctx, [("game_bonus_admin", uuid.UUID(u.user_id), {"_change": "36"})])
+    mail = next(m for m in outbox if m.template == "game_bonus_admin")
+    assert "+1.5" in mail.subject and "balance is now 1 days" in mail.text
+
+    # a round that finished while a player was away → notice; the player watching gets none
+    users, rid, _ = await table_for(client, outbox, 2)
+    a, b = users
+    rig(monkeypatch, "TS", "TH", "9D", "8S", "8H", "8C")
+    await bet(client, a, rid)
+    await bet(client, b, rid)
+    await db.execute(
+        update(GameRoomPlayer)
+        .where(GameRoomPlayer.room_id == uuid.UUID(rid), GameRoomPlayer.seat == 0)
+        .values(last_seen_at=utcnow() - dt.timedelta(minutes=5))
+    )
+    await db.commit()
+    await expire(db, rid)
+    outbox.clear()
+    await games.run_timers(ctx, db)  # a's turn runs out: the server stands for a
+    v = (await do(client, b, rid, "stand")).json()
+    assert v["phase"] == "settled"
+    away = [m for m in outbox if m.template == "game_round_away"]
+    assert len(away) == 1 and away[0].to == a.email and "win" in away[0].subject
+
+    # sitting out three rounds in a row: removed from the table, with a notice
+    outbox.clear()
+    for _ in range(3):
+        rig(monkeypatch, "TS", "TH", "9D", "8S", "8H", "8C")
+        await bet(client, b, rid)
+        await expire(db, rid)
+        await games.run_timers(ctx, db)
+        await do(client, b, rid, "stand")
+    kicked = [m for m in outbox if m.template == "game_kicked"]
+    assert len(kicked) == 1 and kicked[0].to == a.email
+    assert (await client.get(f"{G}/rooms/{rid}", headers=a.headers)).status_code == 403

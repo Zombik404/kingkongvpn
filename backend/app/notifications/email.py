@@ -30,6 +30,10 @@ TEMPLATES = frozenset(
         "payment_received",
         "referral_reward",
         "referral_milestone",
+        "game_round_away",
+        "game_kicked",
+        "game_redeem",
+        "game_bonus_admin",
     }
 )
 

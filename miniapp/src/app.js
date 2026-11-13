@@ -1,6 +1,7 @@
 // KingKong VPN — Telegram Mini App. User data is inserted with textContent only.
 import qrcode from "qrcode-generator";
 import { areaChart, formatBytes, progressRing, ringsChart, RING_COLORS } from "./charts.js";
+import { initGames } from "./games.js";
 import { enter, mountJungle, setOvergrowth, swing, wreath } from "./jungle.js";
 import { makeT, pickLang } from "./i18n.js";
 import { buildConfig, generateKeyPair, toFragment, tunnelName } from "./wg.js";
@@ -34,6 +35,7 @@ const ICONS = {
   copy: "M9 9h10v11H9z M5 15V4h10",
   share: "M4 12v7a1 1 0 0 0 1 1h14a1 1 0 0 0 1-1v-7 M12 3v12 M7.5 7.5 12 3l4.5 4.5",
   trash: "M4 7h16 M9 7V4h6v3 M6.5 7l1 13h9l1-13",
+  cards: "M5 7.5h9a1 1 0 0 1 1 1v11a1 1 0 0 1-1 1H5a1 1 0 0 1-1-1v-11a1 1 0 0 1 1-1Z M9 4.5h9.5a1 1 0 0 1 1 1V17 M7.5 14l2 2.6 2-2.6-2-2.6Z",
 };
 
 let token = null;
@@ -242,6 +244,7 @@ async function loadAll() {
 
 // ------------------------------------------------------------------ home
 async function goHome() {
+  games.closeTable();
   setBack(null);
   const back = screen === "page"; // coming back from a page: the monkey flies the other way
   if (back) swing("back", null);
@@ -288,6 +291,7 @@ function wheel() {
     ["friends", t("wReferral"), referralScreen],
     ["devices", t("wDevices"), devicesScreen],
     ["help", t("wHelp"), helpScreen],
+    ["cards", t("wGames"), () => games.gamesScreen()],
   ];
   const spokes = items.map(([ic, label, fn], i) => {
     const angle = -90 + i * (360 / items.length);
@@ -656,6 +660,15 @@ function helpScreen() {
         h("li", {}, h("a", { href: url, onclick: (e) => { e.preventDefault(); tg.openLink(url); } }, label))))));
 }
 
+// ------------------------------------------------------------------ mini games
+const games = initGames({
+  h, api, t, toast, store, root, setBack, page, tg, lang,
+  goHome: () => goHome(),
+  getToken: () => token,
+  appName: APP_NAME,
+  botLink: () => (state.ref?.link ? state.ref.link.split("?")[0] : null), // https://t.me/<bot>
+});
+
 // ------------------------------------------------------------------ boot
 (async () => {
   if (!tg || !tg.initData) {
@@ -676,6 +689,11 @@ function helpScreen() {
     }
     await goHome();
     watchVpn();
+    // a friend's invitation to a blackjack table: ?room=CODE (from the bot) or startapp=room_CODE
+    const room = new URLSearchParams(location.search).get("room")
+      || (/^room_([A-Z0-9]{4,8})$/i.exec(tg.initDataUnsafe?.start_param || "") || [])[1];
+    if (room && /^[A-Z0-9]{4,8}$/i.test(room)) await games.joinByCode(room);
+    else if (new URLSearchParams(location.search).get("screen") === "games") await games.gamesScreen();
   } catch (e) {
     root.replaceChildren(h("p", { class: "warn pad" }, e.message || t("loginFailed")));
   }

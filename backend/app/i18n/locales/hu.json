@@ -49,6 +49,26 @@
       "subject": "Új rang a(z) {app_name} szolgáltatásban: „{rank}”!",
       "body": "Már {count} barátodnak van előfizetése – mostantól „{rank}” vagy. Ajándékod: +{days} ingyenes VPN-nap (hozzáférés {date}-ig) és a titkos „{theme}” téma – kapcsold be a Barátok részben.",
       "action": "{app_name} megnyitása"
+    },
+    "game_round_away": {
+      "subject": "Véget ért a kör a(z) {code} asztalnál: {result}",
+      "body": "Amíg nem voltál a(z) {code} asztalnál, véget ért egy Jungle Kong Blackjack kör. Eredmény: {result}, a bónuszegyenleg változása: {change} nap. Jelenlegi egyenleg: {balance} nap.",
+      "action": "{app_name} megnyitása"
+    },
+    "game_kicked": {
+      "subject": "Elhagytad a(z) {code} asztalt",
+      "body": "Több lépést kihagytál egymás után, ezért felszabadult a helyed a(z) {code} asztalnál. A bónusznapjaid megmaradtak: {balance} nap. A Játékok részben újra leülhetsz.",
+      "action": "{app_name} megnyitása"
+    },
+    "game_redeem": {
+      "subject": "+{days} VPN-nap bónuszból",
+      "body": "{days} bónusznapot váltottál VPN-napokra – a hozzáférésed most {date}-ig érvényes. Megmaradt bónusznapok: {balance}.",
+      "action": "{app_name} megnyitása"
+    },
+    "game_bonus_admin": {
+      "subject": "Bónuszegyenleg módosítva: {change} nap",
+      "body": "A(z) {app_name} csapata {change} nappal módosította a játékbeli bónuszegyenlegedet. Jelenlegi egyenleg: {balance} nap.",
+      "action": "{app_name} megnyitása"
     }
   },
   "referral": {
@@ -64,6 +84,14 @@
       "matrix": "Éjszaka",
       "gold": "Banán",
       "cosmos": "Orchidea"
+    }
+  },
+  "games": {
+    "result": {
+      "win": "győzelem",
+      "lose": "vereség",
+      "push": "döntetlen",
+      "blackjack": "blackjack!"
     }
   }
 }

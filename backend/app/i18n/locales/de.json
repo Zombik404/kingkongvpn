@@ -49,6 +49,26 @@
       "subject": "Neuer Rang bei {app_name}: „{rank}“!",
       "body": "{count} deiner Freunde haben jetzt ein Abo – du bist jetzt „{rank}“. Dein Geschenk: +{days} Tage VPN gratis (Zugang bis {date}) und das geheime Design „{theme}“ – aktiviere es im Bereich „Freunde“.",
       "action": "{app_name} öffnen"
+    },
+    "game_round_away": {
+      "subject": "Runde an Tisch {code} beendet: {result}",
+      "body": "Während du nicht am Tisch {code} warst, ist eine Runde Jungle Kong Blackjack zu Ende gegangen. Ergebnis: {result}, Änderung des Bonusguthabens: {change} Tage. Dein Guthaben: {balance} Tage.",
+      "action": "{app_name} öffnen"
+    },
+    "game_kicked": {
+      "subject": "Du hast Tisch {code} verlassen",
+      "body": "Du hast mehrere Züge hintereinander verpasst, daher wurde dein Platz an Tisch {code} freigegeben. Deine Bonustage bleiben erhalten: {balance} Tage. Im Bereich „Spiele“ kannst du dich wieder setzen.",
+      "action": "{app_name} öffnen"
+    },
+    "game_redeem": {
+      "subject": "+{days} VPN-Tage aus Bonustagen",
+      "body": "Du hast {days} Bonustage in VPN-Tage getauscht – dein Zugang gilt jetzt bis {date}. Verbleibende Bonustage: {balance}.",
+      "action": "{app_name} öffnen"
+    },
+    "game_bonus_admin": {
+      "subject": "Bonusguthaben geändert: {change} Tage",
+      "body": "Das {app_name}-Team hat dein Spiel-Bonusguthaben um {change} Tage geändert. Dein Guthaben: {balance} Tage.",
+      "action": "{app_name} öffnen"
     }
   },
   "referral": {
@@ -64,6 +84,14 @@
       "matrix": "Nacht",
       "gold": "Banane",
       "cosmos": "Orchidee"
+    }
+  },
+  "games": {
+    "result": {
+      "win": "Gewinn",
+      "lose": "Verlust",
+      "push": "Unentschieden",
+      "blackjack": "Blackjack!"
     }
   }
 }

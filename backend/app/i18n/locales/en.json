@@ -49,6 +49,26 @@
       "subject": "New {app_name} rank: “{rank}”!",
       "body": "{count} of your friends now have a subscription — you're now “{rank}”. Your gift: +{days} free VPN days (access until {date}) and the secret “{theme}” theme — switch it on in the Friends section.",
       "action": "Open {app_name}"
+    },
+    "game_round_away": {
+      "subject": "Round at table {code} finished: {result}",
+      "body": "While you were away from table {code}, a Jungle Kong Blackjack round ended. Result: {result}; bonus balance change: {change} days. Your balance is now {balance} days.",
+      "action": "Open {app_name}"
+    },
+    "game_kicked": {
+      "subject": "You left table {code}",
+      "body": "You missed several turns in a row, so your seat at table {code} was freed. Your bonus days are safe: {balance} days. You can sit down again in the Games section.",
+      "action": "Open {app_name}"
+    },
+    "game_redeem": {
+      "subject": "+{days} VPN days from bonuses",
+      "body": "You exchanged {days} bonus days for VPN days — your access now lasts until {date}. Bonus days left: {balance}.",
+      "action": "Open {app_name}"
+    },
+    "game_bonus_admin": {
+      "subject": "Bonus balance changed: {change} days",
+      "body": "The {app_name} team changed your game bonus balance by {change} days. Your balance is now {balance} days.",
+      "action": "Open {app_name}"
     }
   },
   "referral": {
@@ -64,6 +84,14 @@
       "matrix": "Night",
       "gold": "Banana",
       "cosmos": "Orchid"
+    }
+  },
+  "games": {
+    "result": {
+      "win": "win",
+      "lose": "loss",
+      "push": "push",
+      "blackjack": "blackjack!"
     }
   }
 }

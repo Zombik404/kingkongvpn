@@ -28,6 +28,7 @@ from aiogram.types import (
 log = logging.getLogger("globalvpn.bot")
 INVITE_RE = re.compile(r"^INV-[A-Z0-9]{4}-[A-Z0-9]{4}$")
 REF_RE = re.compile(r"^REF_([A-Z0-9]{8})$")
+ROOM_RE = re.compile(r"^ROOM_([A-Z0-9]{4,8})$")
 
 TEXT = {
     "ru": {
@@ -45,6 +46,12 @@ TEXT = {
         "конфигурацию сразу. Потеряли — просто создайте новое подключение.",
         "other": "Всё управление — в приложении:",
         "menu": "KingKong VPN",
+        "hello_room": "Друг зовёт вас за стол Jungle Kong Blackjack — код стола {code}. "
+        "Нажмите кнопку, чтобы сесть рядом.",
+        "games": "Jungle Kong Blackjack: сыграйте с королём джунглей один или с друзьями. "
+        "Бонусный баланс, статистика и рейтинг — там же.",
+        "open_table": "Сесть за стол",
+        "open_games": "Открыть игры",
     },
     "en": {
         "hello": "Hi! This is {app} — a VPN right inside Telegram.\n\n"
@@ -61,6 +68,12 @@ TEXT = {
         "right away. Lost it? Just create a new connection.",
         "other": "Everything is managed in the app:",
         "menu": "KingKong VPN",
+        "hello_room": "A friend is inviting you to a Jungle Kong Blackjack table — table code {code}. "
+        "Tap the button to take a seat.",
+        "games": "Jungle Kong Blackjack: play the jungle king on your own or with friends. "
+        "Your bonus balance, statistics and the leaderboard are there too.",
+        "open_table": "Take a seat",
+        "open_games": "Open games",
     },
 }
 
@@ -77,7 +90,9 @@ class BotConfig:
         if not url.startswith("https://"):
             raise ValueError("MINIAPP_URL must be https:// (Telegram requires it)")
         return cls(
-            os.environ["TELEGRAM_BOT_TOKEN"].strip(), url, os.environ.get("APP_NAME", "KingKong VPN")
+            os.environ["TELEGRAM_BOT_TOKEN"].strip(),
+            url,
+            os.environ.get("APP_NAME", "KingKong VPN"),
         )
 
 
@@ -87,15 +102,22 @@ def lang_of(code: str | None) -> str:
 
 
 def open_button(
-    cfg: BotConfig, lang: str, invite: str | None = None, ref: str | None = None
+    cfg: BotConfig,
+    lang: str,
+    invite: str | None = None,
+    ref: str | None = None,
+    *,
+    room: str | None = None,
+    screen: str | None = None,
+    label: str = "open",
 ) -> InlineKeyboardMarkup:
     url = cfg.miniapp_url
-    for key, value in (("invite", invite), ("ref", ref)):
+    for key, value in (("invite", invite), ("ref", ref), ("room", room), ("screen", screen)):
         if value:
             url += ("&" if "?" in url else "?") + f"{key}=" + quote(value)
     return InlineKeyboardMarkup(
         inline_keyboard=[
-            [InlineKeyboardButton(text=TEXT[lang]["open"], web_app=WebAppInfo(url=url))]
+            [InlineKeyboardButton(text=TEXT[lang][label], web_app=WebAppInfo(url=url))]
         ]
     )
 
@@ -106,6 +128,10 @@ def start_reply(cfg: BotConfig, lang: str, payload: str | None) -> tuple[str, In
         return TEXT[lang]["hello_invite"].format(code=invite), open_button(cfg, lang, invite)
     if m := REF_RE.match(invite):
         return TEXT[lang]["hello_ref"].format(app=cfg.app_name), open_button(cfg, lang, ref=m[1])
+    if m := ROOM_RE.match(invite):  # an invitation to a blackjack table
+        return TEXT[lang]["hello_room"].format(code=m[1]), open_button(
+            cfg, lang, room=m[1], label="open_table"
+        )
     return TEXT[lang]["hello"].format(app=cfg.app_name), open_button(cfg, lang)
 
 
@@ -123,6 +149,14 @@ def build_dispatcher(cfg: BotConfig) -> Dispatcher:
         lang = lang_of(message.from_user.language_code if message.from_user else None)
         await message.answer(TEXT[lang]["help"], reply_markup=open_button(cfg, lang))
 
+    @dp.message(Command("games"))
+    async def on_games(message: Message) -> None:
+        lang = lang_of(message.from_user.language_code if message.from_user else None)
+        await message.answer(
+            TEXT[lang]["games"],
+            reply_markup=open_button(cfg, lang, screen="games", label="open_games"),
+        )
+
     @dp.message(F.text)
     async def on_other(message: Message) -> None:
         lang = lang_of(message.from_user.language_code if message.from_user else None)
@@ -137,6 +171,9 @@ async def configure(bot: Bot, cfg: BotConfig) -> None:
             [
                 BotCommand(command="start", description=TEXT[lang]["open"]),
                 BotCommand(command="help", description="Help" if lang == "en" else "Помощь"),
+                BotCommand(
+                    command="games", description="Blackjack" if lang == "en" else "Блэкджек"
+                ),
             ],
             language_code=lang,
         )

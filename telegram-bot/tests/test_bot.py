@@ -50,7 +50,7 @@ def test_config_requires_https(monkeypatch: pytest.MonkeyPatch) -> None:
 
 def test_dispatcher_builds() -> None:
     dp = build_dispatcher(CFG)
-    assert len(dp.message.handlers) == 3
+    assert len(dp.message.handlers) == 4
 
 
 def test_referral_deep_link() -> None:
@@ -58,4 +58,17 @@ def test_referral_deep_link() -> None:
     assert "пригласили" in text
     assert kb.inline_keyboard[0][0].web_app.url.endswith("/app/?ref=AB23CD45")
     _, kb = start_reply(CFG, "en", "ref_bad")
+    assert kb.inline_keyboard[0][0].web_app.url == "https://vpn.example.org/app/"
+
+
+def test_table_invite_and_games_links() -> None:
+    text, kb = start_reply(CFG, "ru", "room_ab12cd")
+    assert "AB12CD" in text and "Blackjack" in text
+    btn = kb.inline_keyboard[0][0]
+    assert btn.text == "Сесть за стол" and btn.web_app.url.endswith("/app/?room=AB12CD")
+    kb = open_button(CFG, "en", screen="games", label="open_games")
+    assert kb.inline_keyboard[0][0].web_app.url.endswith("/app/?screen=games")
+    assert kb.inline_keyboard[0][0].text == "Open games"
+    # a malformed code is just a normal start
+    text, kb = start_reply(CFG, "en", "room_!!")
     assert kb.inline_keyboard[0][0].web_app.url == "https://vpn.example.org/app/"
