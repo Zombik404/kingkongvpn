@@ -1,7 +1,7 @@
 # global-vpn
 
 Commercial WireGuard VPN platform: control-plane API, VPN node agent and infrastructure, Telegram bot,
-Android/iOS/Windows/macOS apps, website and admin panel. Working name — the brand is not chosen yet.
+Android/iOS/Windows/macOS apps, website and admin panel. Working brand: **VpnHub** (needs a trademark check before public launch — see ADR-018).
 
 - **Architecture and decisions:** [`documentation/PROJECT_ARCHITECTURE.md`](documentation/PROJECT_ARCHITECTURE.md)
 - **Roadmap:** [`documentation/ROADMAP.md`](documentation/ROADMAP.md)
