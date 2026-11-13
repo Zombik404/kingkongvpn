@@ -2,6 +2,7 @@
 // fun chips. The shuffle is the real provably-fair one (src/fair.js), so "Verify this round"
 // genuinely re-checks the demo's cards. Sample leaderboard rows are marked as samples.
 import { sha256hex, shuffledShoe } from "../src/fair.js";
+import { createProgress } from "./progress-mock.js";
 
 const DECKS = 6;
 const OPTIONS = [10, 20, 50, 100, 200, 500];
@@ -17,6 +18,7 @@ const total = (cards) => {
 const natural = (h) => h.cards.length === 2 && total(h.cards).t === 21 && !h.split;
 const hex = (n) => Array.from(crypto.getRandomValues(new Uint8Array(n)), (b) => b.toString(16).padStart(2, "0")).join("");
 
+
 export function createGames(lang) {
   const ru = lang === "ru";
   const g = {
@@ -27,7 +29,9 @@ export function createGames(lang) {
     nextSeed: hex(32),
     version: 1,
     seen: new Set(),
+    lastEvents: [],
   };
+  const prog = createProgress(g.profile, g.history); // XP, levels, achievements, challenges, boards
   const SAMPLES = [["Mango ⋅ demo", 1500, 1000], ["Liana ⋅ demo", 750, 500], ["Toucan ⋅ demo", 400, 200], ["Jaguar ⋅ demo", 300, 200]];
 
   const extra = (r) => {
@@ -52,6 +56,7 @@ export function createGames(lang) {
     const p = g.profile;
     if (stake && !OPTIONS.includes(stake)) throw { status: 422, code: "bad_stake" };
     if (stake > p.chips) throw { status: 409, code: "no_chips" };
+    g.lastEvents = [];
     p.chips -= stake;
     const number = (g.room.round_no || 0) + 1;
     const serverSeed = g.nextSeed;
@@ -129,6 +134,7 @@ export function createGames(lang) {
     const summary = publicRound(r);
     g.rounds[r.id] = { round_id: r.id, number: r.number, server_seed: r.serverSeed, client_seed: r.clientSeed, decks: DECKS, summary };
     g.history.unshift({ round_id: r.id, finished_at: new Date().toISOString(), result, blackjack: bj, staked_hours: staked, returned_hours: returned, net_hours: net, currency: r.stake ? "chips" : null, dealer: summary.dealer, hands: summary.seats[0].hands, players: 1 });
+    g.lastEvents = prog.onRound({ result, blackjack: bj, total: hands[0].total });
     g.room.last_fair = { round_id: r.id, number: r.number, server_seed: r.serverSeed, client_seed: r.clientSeed, decks: DECKS };
     g.nextSeed = hex(32);
   }
@@ -155,7 +161,8 @@ export function createGames(lang) {
       next_seed_hash: await sha256hex(g.nextSeed),
       players: [{ seat: 0, nickname: g.profile.nickname, me: true, owner: true, online: true, ready: false, stake_days: 0 }],
       round: r ? publicRound(r) : null,
-      me: { seat: 0, actions: live ? actions(r) : [], extra_hours: live ? extra(r) : {}, balance_hours: 0, chips: g.profile.chips, in_round: !!live },
+      me: { seat: 0, actions: live ? actions(r) : [], extra_hours: live ? extra(r) : {}, balance_hours: 0, chips: g.profile.chips, in_round: !!live,
+        progress: r && r.phase === "settled" ? g.lastEvents : [] },
       last_fair: room.last_fair || null,
     };
   }
@@ -171,11 +178,10 @@ export function createGames(lang) {
   }
 
   /** Returns [status, body] or null when the path isn't a game route. */
-  return async function route(method, p, body) {
+  return async function route(method, p, body, q = new URLSearchParams()) {
     if (!p.startsWith("/games")) return null;
     try {
-      if (p === "/games") return [200, { enabled: true, multiplayer: false, stakes: false, stake_options_days: [], redeem_enabled: false, balance_hours: 0, currency: "chips", chips: g.profile.chips, chips_daily: DAILY, chip_options: OPTIONS, profile: { ...g.profile }, room_id: g.room ? g.room.id : null, rules: { decks: DECKS, dealer_hits_soft_17: false, blackjack_pays: [3, 2], allow_double: true, allow_split: true, allow_surrender: true, allow_insurance: false, max_hands: 4 } }];
-      if (p === "/games/profile") { g.profile.nickname = String(body.nickname || "").slice(0, 24) || g.profile.nickname; return [200, { ...g.profile }]; }
+      if (p === "/games") return [200, { enabled: true, multiplayer: false, stakes: false, stake_options_days: [], redeem_enabled: false, balance_hours: 0, currency: "chips", chips: g.profile.chips, chips_daily: DAILY, chip_options: OPTIONS, profile: { ...g.profile }, progress: prog.card(), room_id: g.room ? g.room.id : null, rules: { decks: DECKS, dealer_hits_soft_17: false, blackjack_pays: [3, 2], allow_double: true, allow_split: true, allow_surrender: true, allow_insurance: false, max_hands: 4 } }];
       if (p === "/games/rooms/solo") { g.room ||= { id: "demo-table", code: "KONG42", round_no: 0, round: null }; return [200, await view()]; }
       const m = p.match(/^\/games\/rooms\/([^/]+)(\/\w+)?$/);
       if (m && g.room && m[1] === g.room.id) {
@@ -189,6 +195,8 @@ export function createGames(lang) {
       if (p === "/games/wallet") return [200, { balance_hours: 0, ledger: [] }];
       if (p === "/games/history") return [200, g.history.slice(0, 30)];
       if (p === "/games/leaderboard") return [200, board()];
+      const pr = prog.route(method, p, q, body || {});
+      if (pr) return pr;
       const f = p.match(/^\/games\/rounds\/([^/]+)\/fairness$/);
       if (f && g.rounds[f[1]]) { const x = g.rounds[f[1]]; return [200, { ...x, server_seed_hash: await sha256hex(x.server_seed) }]; }
       return [404, { error: { code: "not_found", message: "Not found" } }];

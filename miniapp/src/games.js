@@ -3,6 +3,7 @@
 // Built with the app's own helpers and styles (passed in by app.js) so it looks like the rest.
 
 import { verifyRound } from "./fair.js";
+import { initProgress } from "./progress.js";
 
 const SUIT = { S: "♠", H: "♥", D: "♦", C: "♣" };
 const RANK = { T: "10" };
@@ -101,16 +102,16 @@ export function initGames(d) {
           h("span", { class: "pill solid" }, `${days(hub.balance_hours)} ${t("gDaysShort")}`)),
         h("p", { class: "small muted" }, hub.stakes ? t("gBonusStakes") : t("gBonusFun")),
         h("button", { class: "secondary wide", onclick: walletScreen }, t("gWallet"))) : null,
-      h("section", { class: "card stats4g" },
+      hub.progress ? [P.hubCard(hub.progress), P.hubButtons()] : h("section", { class: "card stats4g" },
         stat(p.rounds, t("gRounds")), stat(p.wins, t("gWins")), stat(p.blackjacks, t("gBlackjacks")), stat(p.best_streak, t("gStreak"))),
-      h("div", { class: "row2" },
-        h("button", { class: "secondary", onclick: leaderboardScreen }, `🏆 ${t("gLeaders")}`),
-        h("button", { class: "secondary", onclick: historyScreen }, t("gHistory"))),
+      h("button", { class: "ghost wide", onclick: historyScreen }, t("gHistory")),
     ];
     if (viaPage) page(t("gTitle"), ...content.flat().filter(Boolean));
     else sub(t("gTitle"), goHome, content);
   }
   const backToHub = () => gamesScreen(false);
+  // profile, XP and levels, boards, achievements, daily challenges, seasons (progress.js)
+  const P = initProgress({ h, api, t, toast, lang, sub, sheet, back: backToHub, nf, errText, store });
 
   async function playSolo() {
     try { openTable(await api("/games/rooms/solo", { method: "POST" })); } catch (e) { toast(errText(e)); }
@@ -137,6 +138,7 @@ export function initGames(d) {
       dealerCards: h("div", { class: "bj-cards bj-dealer-cards" }),
       dealerTotal: h("span", { class: "bj-total" }),
       banner: h("div", { class: "bj-banner", role: "status" }),
+      xp: h("div", { class: "xp-float", "aria-live": "polite" }),
       status: h("div", { class: "bj-status" }),
       timer: h("div", { class: "bj-timer" }, h("i", {})),
       seats: h("div", { class: "bj-seats" }),
@@ -159,7 +161,7 @@ export function initGames(d) {
       el.offline,
       h("section", { class: "bj" },
         h("div", { class: "bj-dealer" }, el.dealerImg, h("div", { class: "bj-dealer-row" }, el.dealerCards, el.dealerTotal)),
-        h("div", { class: "bj-felt" }, el.banner, el.status, el.timer, el.seats),
+        h("div", { class: "bj-felt" }, el.banner, el.xp, el.status, el.timer, el.seats),
         el.controls),
       el.foot);
     setBack(leaveScreen);
@@ -343,6 +345,7 @@ export function initGames(d) {
               : `${mine.net > 0 ? "+" : "−"}${days(Math.abs(mine.net))} ${t("gDaysShort")}`) : null);
           play(kind);
           setMood(mine.result === "win" ? "sad" : mine.result === "lose" ? "happy" : "idle", 2600);
+          P.celebrate(view.me?.progress, tb.el.xp); // XP, achievements, challenges, level-up
         }, delay);
       }
     }
@@ -513,27 +516,6 @@ export function initGames(d) {
             h("div", { class: "small muted" }, `${new Date(x.finished_at).toLocaleString(lang === "ru" ? "ru-RU" : "en-GB", { day: "2-digit", month: "2-digit", hour: "2-digit", minute: "2-digit" })} · ${t("gDealer")} ${x.dealer?.total ?? "?"}`)),
           x.net_hours ? h("strong", { class: x.net_hours > 0 ? "ok" : "warn" }, `${x.net_hours > 0 ? "+" : "−"}${x.currency === "chips" ? `${nf.format(Math.abs(x.net_hours))} 🪙` : `${days(Math.abs(x.net_hours))} ${t("gDaysShort")}`}`) : null))))
         : h("p", { class: "card muted" }, t("gHistoryEmpty")));
-  }
-
-  async function leaderboardScreen() {
-    let b;
-    try { b = await api("/games/leaderboard"); } catch (e) { toast(errText(e)); return; }
-    const when = (iso) => (iso ? new Date(iso).toLocaleDateString(lang === "ru" ? "ru-RU" : "en-GB", { day: "2-digit", month: "2-digit" }) : "");
-    sub(t("gLeaders"), backToHub,
-      h("section", { class: "card glow lb-head" },
-        h("div", { class: "lbl" }, t("gLbKicker")),
-        h("p", { class: "small muted" }, t("gLbText")),
-        b.my_rank ? h("p", { class: "small" }, t("gMyRank", { n: b.my_rank })) : null,
-        b.my_best && b.my_best.win > 0 ? h("p", { class: "small" }, t("gMyBest", { w: nf.format(b.my_best.win), s: nf.format(b.my_best.stake) })) : null),
-      b.top.length ? h("section", { class: "card lb" },
-        h("div", { class: "lb-row lb-cols" }, h("span", {}, "#"), h("span", {}, t("gLbPlayer")), h("span", { class: "right" }, t("gLbWin")), h("span", { class: "right" }, t("gLbStake"))),
-        ...b.top.map((x) =>
-          h("div", { class: `lb-row ${x.me ? "me-row" : ""} ${x.rank <= 3 ? `top${x.rank}` : ""}` },
-            h("span", { class: "rank-no" }, x.rank <= 3 ? ["🥇", "🥈", "🥉"][x.rank - 1] : String(x.rank)),
-            h("span", { class: "lb-name" }, h("strong", {}, x.me ? `${x.nickname} (${t("gYou")})` : x.nickname), h("small", { class: "muted" }, when(x.at))),
-            h("strong", { class: "right lb-win" }, `+${nf.format(x.best_win)}`),
-            h("span", { class: "right muted" }, nf.format(x.stake)))))
-        : h("p", { class: "card muted" }, t("gLeadersEmpty")));
   }
 
   return { gamesScreen, closeTable };

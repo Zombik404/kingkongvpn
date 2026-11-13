@@ -1,0 +1,590 @@
+{
+ "achievements": [
+  {
+   "code": "first_victory",
+   "category": "game",
+   "icon": "🏆",
+   "metric": "wins",
+   "target": 1,
+   "xp": 20,
+   "names": {
+    "ru": "Первая победа",
+    "en": "First Victory"
+   },
+   "descriptions": {
+    "ru": "Обыграйте Кинг-Конга в первый раз.",
+    "en": "Beat King Kong for the first time."
+   },
+   "title": null
+  },
+  {
+   "code": "lucky_seven",
+   "category": "game",
+   "icon": "🍀",
+   "metric": "wins",
+   "target": 7,
+   "xp": 40,
+   "names": {
+    "ru": "Счастливая семёрка",
+    "en": "Lucky Seven"
+   },
+   "descriptions": {
+    "ru": "Выиграйте 7 партий.",
+    "en": "Win 7 rounds."
+   },
+   "title": null
+  },
+  {
+   "code": "blackjack_master",
+   "category": "game",
+   "icon": "🃏",
+   "metric": "blackjacks",
+   "target": 10,
+   "xp": 100,
+   "names": {
+    "ru": "Мастер блэкджека",
+    "en": "Blackjack Master"
+   },
+   "descriptions": {
+    "ru": "Соберите 10 блэкджеков.",
+    "en": "Get 10 blackjacks."
+   },
+   "title": null
+  },
+  {
+   "code": "unstoppable",
+   "category": "game",
+   "icon": "🔥",
+   "metric": "best_win_streak",
+   "target": 5,
+   "xp": 100,
+   "names": {
+    "ru": "Неудержимый",
+    "en": "Unstoppable"
+   },
+   "descriptions": {
+    "ru": "Выиграйте 5 партий подряд.",
+    "en": "Win 5 rounds in a row."
+   },
+   "title": null
+  },
+  {
+   "code": "perfect_player",
+   "category": "game",
+   "icon": "🎯",
+   "metric": "perfect_wins",
+   "target": 1,
+   "xp": 30,
+   "names": {
+    "ru": "Идеальная игра",
+    "en": "Perfect Player"
+   },
+   "descriptions": {
+    "ru": "Выиграйте с ровно 21 очком (не блэкджеком).",
+    "en": "Win with exactly 21 (not a blackjack)."
+   },
+   "title": null
+  },
+  {
+   "code": "jungle_legend",
+   "category": "game",
+   "icon": "🌴",
+   "metric": "wins",
+   "target": 100,
+   "xp": 300,
+   "names": {
+    "ru": "Легенда джунглей",
+    "en": "Jungle Legend"
+   },
+   "descriptions": {
+    "ru": "Выиграйте 100 партий.",
+    "en": "Win 100 rounds."
+   },
+   "title": null
+  },
+  {
+   "code": "king_slayer",
+   "category": "game",
+   "icon": "👑",
+   "metric": "wins",
+   "target": 500,
+   "xp": 1000,
+   "names": {
+    "ru": "Победитель короля",
+    "en": "King Slayer"
+   },
+   "descriptions": {
+    "ru": "Обыграйте дилера 500 раз.",
+    "en": "Beat the dealer 500 times."
+   },
+   "title": "King Slayer"
+  },
+  {
+   "code": "first_steps",
+   "category": "activity",
+   "icon": "👣",
+   "metric": "rounds",
+   "target": 1,
+   "xp": 10,
+   "names": {
+    "ru": "Первые шаги",
+    "en": "First Steps"
+   },
+   "descriptions": {
+    "ru": "Сыграйте первую партию.",
+    "en": "Finish your first round."
+   },
+   "title": null
+  },
+  {
+   "code": "daily_player",
+   "category": "activity",
+   "icon": "📅",
+   "metric": "best_day_streak",
+   "target": 3,
+   "xp": 50,
+   "names": {
+    "ru": "Каждый день",
+    "en": "Daily Player"
+   },
+   "descriptions": {
+    "ru": "Играйте 3 дня подряд.",
+    "en": "Play 3 days in a row."
+   },
+   "title": null
+  },
+  {
+   "code": "dedicated_player",
+   "category": "activity",
+   "icon": "💪",
+   "metric": "rounds",
+   "target": 100,
+   "xp": 150,
+   "names": {
+    "ru": "Преданный игрок",
+    "en": "Dedicated Player"
+   },
+   "descriptions": {
+    "ru": "Сыграйте 100 партий.",
+    "en": "Finish 100 rounds."
+   },
+   "title": null
+  },
+  {
+   "code": "veteran",
+   "category": "activity",
+   "icon": "🎖️",
+   "metric": "rounds",
+   "target": 500,
+   "xp": 500,
+   "names": {
+    "ru": "Ветеран",
+    "en": "Veteran"
+   },
+   "descriptions": {
+    "ru": "Сыграйте 500 партий.",
+    "en": "Finish 500 rounds."
+   },
+   "title": null
+  },
+  {
+   "code": "jungle_addict",
+   "category": "activity",
+   "icon": "🐒",
+   "metric": "days_played",
+   "target": 30,
+   "xp": 300,
+   "names": {
+    "ru": "Житель джунглей",
+    "en": "Jungle Addict"
+   },
+   "descriptions": {
+    "ru": "Играйте в 30 разных дней.",
+    "en": "Play on 30 different days."
+   },
+   "title": null
+  },
+  {
+   "code": "level_5",
+   "category": "progress",
+   "icon": "⭐",
+   "metric": "level",
+   "target": 5,
+   "xp": 50,
+   "names": {
+    "ru": "Уровень 5",
+    "en": "Level 5"
+   },
+   "descriptions": {
+    "ru": "Достигните 5 уровня.",
+    "en": "Reach level 5."
+   },
+   "title": null
+  },
+  {
+   "code": "level_10",
+   "category": "progress",
+   "icon": "🌟",
+   "metric": "level",
+   "target": 10,
+   "xp": 100,
+   "names": {
+    "ru": "Уровень 10",
+    "en": "Level 10"
+   },
+   "descriptions": {
+    "ru": "Достигните 10 уровня.",
+    "en": "Reach level 10."
+   },
+   "title": null
+  },
+  {
+   "code": "level_20",
+   "category": "progress",
+   "icon": "💫",
+   "metric": "level",
+   "target": 20,
+   "xp": 200,
+   "names": {
+    "ru": "Уровень 20",
+    "en": "Level 20"
+   },
+   "descriptions": {
+    "ru": "Достигните 20 уровня.",
+    "en": "Reach level 20."
+   },
+   "title": null
+  },
+  {
+   "code": "level_30",
+   "category": "progress",
+   "icon": "✨",
+   "metric": "level",
+   "target": 30,
+   "xp": 300,
+   "names": {
+    "ru": "Уровень 30",
+    "en": "Level 30"
+   },
+   "descriptions": {
+    "ru": "Достигните 30 уровня.",
+    "en": "Reach level 30."
+   },
+   "title": null
+  },
+  {
+   "code": "level_50",
+   "category": "progress",
+   "icon": "🌠",
+   "metric": "level",
+   "target": 50,
+   "xp": 500,
+   "names": {
+    "ru": "Уровень 50",
+    "en": "Level 50"
+   },
+   "descriptions": {
+    "ru": "Достигните 50 уровня.",
+    "en": "Reach level 50."
+   },
+   "title": null
+  },
+  {
+   "code": "xp_10000",
+   "category": "progress",
+   "icon": "💎",
+   "metric": "xp",
+   "target": 10000,
+   "xp": 200,
+   "names": {
+    "ru": "10 000 XP",
+    "en": "10,000 XP"
+   },
+   "descriptions": {
+    "ru": "Наберите 10 000 XP.",
+    "en": "Earn 10,000 XP."
+   },
+   "title": null
+  },
+  {
+   "code": "season_top100",
+   "category": "season",
+   "icon": "🥥",
+   "metric": "season_rank",
+   "target": 100,
+   "xp": 50,
+   "names": {
+    "ru": "Топ-100 сезона",
+    "en": "Season Top 100"
+   },
+   "descriptions": {
+    "ru": "Закончите сезон в первой сотне.",
+    "en": "Finish a season in the top 100."
+   },
+   "title": null
+  },
+  {
+   "code": "season_top10",
+   "category": "season",
+   "icon": "🍌",
+   "metric": "season_rank",
+   "target": 10,
+   "xp": 150,
+   "names": {
+    "ru": "Топ-10 сезона",
+    "en": "Season Top 10"
+   },
+   "descriptions": {
+    "ru": "Закончите сезон в первой десятке.",
+    "en": "Finish a season in the top 10."
+   },
+   "title": null
+  },
+  {
+   "code": "season_third",
+   "category": "season",
+   "icon": "🥉",
+   "metric": "season_rank",
+   "target": 3,
+   "xp": 250,
+   "names": {
+    "ru": "Третье место",
+    "en": "Third Place"
+   },
+   "descriptions": {
+    "ru": "Займите третье место в сезоне.",
+    "en": "Finish a season third."
+   },
+   "title": null
+  },
+  {
+   "code": "season_second",
+   "category": "season",
+   "icon": "🥈",
+   "metric": "season_rank",
+   "target": 2,
+   "xp": 400,
+   "names": {
+    "ru": "Второе место",
+    "en": "Second Place"
+   },
+   "descriptions": {
+    "ru": "Займите второе место в сезоне.",
+    "en": "Finish a season second."
+   },
+   "title": null
+  },
+  {
+   "code": "season_first",
+   "category": "season",
+   "icon": "🥇",
+   "metric": "season_rank",
+   "target": 1,
+   "xp": 600,
+   "names": {
+    "ru": "Чемпион сезона",
+    "en": "Season Champion"
+   },
+   "descriptions": {
+    "ru": "Займите первое место в сезоне.",
+    "en": "Win a season."
+   },
+   "title": null
+  }
+ ],
+ "challenges": [
+  {
+   "code": "rounds_3",
+   "difficulty": "easy",
+   "metric": "rounds",
+   "target": 3,
+   "xp": 20,
+   "names": {
+    "ru": "Сыграйте 3 партии",
+    "en": "Finish 3 rounds"
+   }
+  },
+  {
+   "code": "rounds_5",
+   "difficulty": "easy",
+   "metric": "rounds",
+   "target": 5,
+   "xp": 30,
+   "names": {
+    "ru": "Сыграйте 5 партий за день",
+    "en": "Finish 5 rounds today"
+   }
+  },
+  {
+   "code": "wins_2",
+   "difficulty": "medium",
+   "metric": "wins",
+   "target": 2,
+   "xp": 40,
+   "names": {
+    "ru": "Выиграйте 2 партии",
+    "en": "Win 2 rounds"
+   }
+  },
+  {
+   "code": "high_win",
+   "difficulty": "medium",
+   "metric": "high_wins",
+   "target": 1,
+   "xp": 40,
+   "names": {
+    "ru": "Победите дилера с 20 или 21 очком",
+    "en": "Beat the dealer with 20 or 21"
+   }
+  },
+  {
+   "code": "blackjack_1",
+   "difficulty": "hard",
+   "metric": "blackjacks",
+   "target": 1,
+   "xp": 60,
+   "names": {
+    "ru": "Соберите блэкджек",
+    "en": "Get a blackjack"
+   }
+  },
+  {
+   "code": "win_run_3",
+   "difficulty": "hard",
+   "metric": "win_run",
+   "target": 3,
+   "xp": 80,
+   "names": {
+    "ru": "Выиграйте 3 партии подряд",
+    "en": "Win 3 rounds in a row"
+   }
+  }
+ ],
+ "cfg": {
+  "games.levels.base_xp": 100,
+  "games.levels.step_xp": 50,
+  "games.levels.titles": {
+   "1": "Jungle Rookie",
+   "2": "Jungle Explorer",
+   "3": "Wild Player",
+   "4": "Jungle Hunter",
+   "5": "Gorilla Fighter",
+   "10": "Jungle Master",
+   "20": "King of Jungle"
+  },
+  "games.xp.round": 5,
+  "games.xp.win": 10,
+  "games.xp.blackjack": 10,
+  "games.streak.rewards": {
+   "3": {
+    "xp": 30
+   },
+   "7": {
+    "xp": 100
+   },
+   "14": {
+    "xp": 250,
+    "title": "Jungle Regular"
+   },
+   "30": {
+    "xp": 600,
+    "title": "Jungle Devotee",
+    "bonus_days": 1
+   }
+  },
+  "games.seasons.rewards_weekly": [
+   {
+    "places": [
+     1,
+     1
+    ],
+    "xp": 500,
+    "title": "King of Jungle",
+    "frame": "gold",
+    "bonus_days": 3
+   },
+   {
+    "places": [
+     2,
+     2
+    ],
+    "xp": 300,
+    "title": "Jungle Champion",
+    "frame": "silver",
+    "bonus_days": 2
+   },
+   {
+    "places": [
+     3,
+     3
+    ],
+    "xp": 200,
+    "title": "Jungle Warrior",
+    "frame": "bronze",
+    "bonus_days": 1
+   },
+   {
+    "places": [
+     4,
+     10
+    ],
+    "xp": 100
+   },
+   {
+    "places": [
+     11,
+     100
+    ],
+    "xp": 30
+   }
+  ],
+  "games.seasons.rewards_monthly": [
+   {
+    "places": [
+     1,
+     1
+    ],
+    "xp": 1500,
+    "title": "King of Jungle",
+    "frame": "gold",
+    "bonus_days": 7
+   },
+   {
+    "places": [
+     2,
+     2
+    ],
+    "xp": 900,
+    "title": "Jungle Champion",
+    "frame": "silver",
+    "bonus_days": 5
+   },
+   {
+    "places": [
+     3,
+     3
+    ],
+    "xp": 600,
+    "title": "Jungle Warrior",
+    "frame": "bronze",
+    "bonus_days": 3
+   },
+   {
+    "places": [
+     4,
+     10
+    ],
+    "xp": 300,
+    "frame": "jade"
+   },
+   {
+    "places": [
+     11,
+     100
+    ],
+    "xp": 100
+   }
+  ],
+  "games.seasons.min_rounds": 10
+ }
+}

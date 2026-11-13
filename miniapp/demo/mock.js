@@ -137,7 +137,7 @@ async function backend(method, path, body) {
   const q = new URLSearchParams(qs || "");
   await new Promise((r) => setTimeout(r, 120)); // feel of a network
   gamesRoute ||= createGames(LANG);
-  const game = await gamesRoute(method, p, body);
+  const game = await gamesRoute(method, p, body, q);
   if (game) return json(game[1], game[0]);
   if (p === "/auth/telegram/webapp") return json({ token_type: "bearer", access_token: "demo", expires_in: 900 });
   if (p === "/subscription") return json(subscriptionOut());

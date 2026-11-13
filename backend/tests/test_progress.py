@@ -9,7 +9,7 @@ from typing import Any
 
 import pytest
 from httpx import AsyncClient
-from sqlalchemy import func, select, update
+from sqlalchemy import func, select, text, update
 
 from app.core.config import Settings
 from app.core.context import AppContext
@@ -603,3 +603,25 @@ async def test_admin_progress_exclusion_catalogue_and_seasons(
     expected = {"game.achievement_created", "game.achievement_updated", "game.challenge_created",
                 "game.season_created", "game.season_finished", "game.player_included"}  # fmt: skip
     assert expected <= actions
+
+
+async def test_seasons_open_on_an_empty_table_and_only_once(db: Any) -> None:
+    """Regression: the "open if missing" insert must match the partial unique index. With the
+    predicate as bound parameters it worked five times per connection, then Postgres switched
+    to a generic plan and every boards/seasons request failed with a database error."""
+    from app.models import Season
+
+    cfg = await games.config(db)
+    now = dt.datetime(2026, 11, 13, 22, 0, tzinfo=dt.UTC)
+    assert await db.scalar(select(func.count()).select_from(Season)) == 0
+    # what Postgres does by itself after a few runs of a prepared statement on a connection
+    await db.execute(text("SET plan_cache_mode = force_generic_plan"))
+    first = await boards.ensure_current(db, cfg, now)
+    await db.commit()
+    for _ in range(8):  # past the point where the prepared statement gets a generic plan
+        again = await boards.ensure_current(db, cfg, now)
+        await db.commit()
+    assert sorted(s.kind for s in first) == ["monthly", "weekly"]
+    assert {s.id for s in first} == {s.id for s in again}
+    assert await db.scalar(select(func.count()).select_from(Season)) == 2
+    await db.execute(text("RESET plan_cache_mode"))

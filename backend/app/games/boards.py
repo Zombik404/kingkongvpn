@@ -16,7 +16,7 @@ import datetime as dt
 import uuid
 from typing import Any
 
-from sqlalchemy import Select, func, select
+from sqlalchemy import Select, func, select, text
 from sqlalchemy.dialects.postgresql import insert as pg_insert
 from sqlalchemy.ext.asyncio import AsyncSession
 
@@ -186,7 +186,9 @@ async def ensure_current(
             )
             .on_conflict_do_nothing(
                 index_elements=[Season.kind, Season.starts_at],
-                index_where=Season.kind.in_(["weekly", "monthly"]),
+                # a literal, like the partial index itself: with bound parameters Postgres can't
+                # prove the index applies and rejects the ON CONFLICT
+                index_where=text("kind IN ('weekly', 'monthly')"),
             )
         )
     return await progress.active_seasons(db, now)
