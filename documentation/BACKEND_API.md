@@ -120,10 +120,31 @@ otherwise). Roles are read from the database on every request. Every mutation is
 | `settings:write` | | ✓ | | ✓ |
 | `audit:read` | | ✓ | | ✓ |
 | `roles:write` | | | | ✓ |
+| `games:read` / `games:write` — tables, rounds, bonus ledger / pause, close, adjust | ✓ / | ✓ / ✓ | | ✓ |
+| `servers:read` — locations, nodes, health | ✓ | ✓ | | ✓ |
+| `servers:write` — add locations, register/drain/disable nodes, rotate node tokens | | ✓ | | ✓ |
 
 The first superadmin is created from the command line on the server:
 `python -m app.cli grant-role you@example.com superadmin` (the account must exist and be verified),
 then sign in again and enable 2FA.
+
+### Locations and VPN servers (`/admin/vpn/*`)
+
+| Method | Path | Does |
+|---|---|---|
+| GET | `/admin/vpn/locations` | Every location with its server count, healthy servers and whether users see it |
+| POST | `/admin/vpn/locations` | `{country_code, city?, names?, sort_order?, enabled?}`; 409 if it exists |
+| PATCH | `/admin/vpn/locations/{id}` | `names`, `sort_order`, `enabled` (off = hidden from users) |
+| GET | `/admin/vpn/servers` | Filter `location_id`, `status`. Per node: peers, load, heartbeat fresh, `accepting` (what users get), revision vs applied revision (`in_sync`), agent version and errors |
+| GET | `/admin/vpn/servers/{id}` | One node |
+| POST | `/admin/vpn/servers` | Register a node: `{hostname, location_id, ipv4?/ipv6?, endpoint_port, wg_public_key?, max_peers, tier, status}`. **Returns the node API token once** (stored only as an HMAC). The key can also come with the first heartbeat |
+| PATCH | `/admin/vpn/servers/{id}` | `status` / `max_peers` / `tier` / `location_id` with a required `reason` |
+| POST | `/admin/vpn/servers/{id}/rotate-token` | New node token (shown once); the old one stops working at once |
+
+Server status: `active` takes new connections while its heartbeat is fresh; `draining` and
+`maintenance` take none but keep the peers already there; `disabled` refuses the node and
+releases all its peers (their next Connect picks another node); `provisioning` waits to be
+switched on. `python -m app.cli node-register` still works for a first node from the shell.
 
 ## Global settings (`/admin/settings`)
 
@@ -135,7 +156,7 @@ then sign in again and enable 2FA.
 | `subscription.grace_days` | `3` | Access kept after an unpaid period ends (0–30) |
 | `devices.limit_without_subscription` | `1` | Devices before subscribing (0–10) |
 | `reminders.days_before` | `[3]` | Reminder emails before non-renewing access ends |
-| `peers.idle_ttl_hours` | `24` | Idle peer removal on nodes (used from Phase 4) |
+| `peers.idle_ttl_hours` | `0` (off) | Take a peer off its node after N hours without a handshake. Keep 0 while users import a fixed config into the WireGuard app (the Telegram version): that app connects without asking us, so a removed peer stops working until the user taps Connect again. Turn on with native apps that call `/vpn/connect` themselves |
 
 ## Background jobs (Celery beat)
 
@@ -144,6 +165,7 @@ then sign in again and enable 2FA.
 | `subscriptions.process_due` | every 5 min | period end → grace / canceled / expired; grace end → expired; marks node peers for removal; emails |
 | `subscriptions.send_reminders` | hourly | one email per configured threshold for non-renewing access |
 | `users.purge_deleted` | daily | hard-deletes accounts anonymised more than 30 days ago |
+| `vpn.release_idle_peers` | hourly | takes idle peers off nodes when `peers.idle_ttl_hours` > 0 (off by default) |
 | `auth.cleanup_tokens` | daily | removes sessions/tokens expired or revoked more than 7 days ago |
 | `payments.poll_pending` | every 60 s | re-checks unpaid @CryptoBot invoices (lost webhooks, no-webhook setups) |
 | `telegram.send` | on demand | Bot API `sendMessage` with back-off (payment received, access ending/ended) |

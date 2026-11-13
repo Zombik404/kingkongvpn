@@ -36,8 +36,8 @@ jobs:
       run:
         working-directory: backend
     steps:
-      - uses: actions/checkout@v4
-      - uses: actions/setup-python@v5
+      - uses: actions/checkout@v5
+      - uses: actions/setup-python@v6
         with:
           python-version: "3.12"
       - name: Install (hash-pinned)
@@ -59,16 +59,56 @@ jobs:
     runs-on: ubuntu-24.04
     timeout-minutes: 10
     steps:
-      - uses: actions/checkout@v4
-      - uses: actions/setup-python@v5
+      - uses: actions/checkout@v5
+      - uses: actions/setup-python@v6
         with:
           python-version: "3.12"
       - run: pip install "pytest>=8.3" "mypy>=1.11" "cryptography>=43"
       - run: python -m pytest -q scripts/tests node-agent/tests
       - run: cd node-agent && mypy --strict agent
 
+  telegram-bot:
+    runs-on: ubuntu-24.04
+    timeout-minutes: 10
+    defaults:
+      run:
+        working-directory: telegram-bot
+    steps:
+      - uses: actions/checkout@v5
+      - uses: actions/setup-python@v6
+        with:
+          python-version: "3.12"
+      - name: Install (hash-pinned runtime + dev tools)
+        run: |
+          pip install --require-hashes -r requirements.lock
+          pip install "pytest>=8.3" "pytest-asyncio>=0.24" "mypy>=1.11" "ruff>=0.6"
+      - run: ruff check bot tests && ruff format --check bot tests
+      - run: mypy bot
+      - run: python -m pytest -q
+
+  miniapp:
+    runs-on: ubuntu-24.04
+    timeout-minutes: 10
+    defaults:
+      run:
+        working-directory: miniapp
+    steps:
+      - uses: actions/checkout@v5
+      - uses: actions/setup-node@v5
+        with:
+          node-version: "22"
+          cache: npm
+          cache-dependency-path: miniapp/package-lock.json
+      - run: npm ci
+      - run: npm test
+      - name: Build and check the committed dist/ is up to date
+        run: |
+          npm run build
+          node demo/build.mjs
+          git diff --exit-code -- dist || (echo "miniapp/dist is stale: run npm run build and commit" && exit 1)
+
   secret-scan:
     runs-on: ubuntu-24.04
     steps:
-      - uses: actions/checkout@v4
+      - uses: actions/checkout@v5
       - run: make secret-scan

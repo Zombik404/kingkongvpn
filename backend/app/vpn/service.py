@@ -17,7 +17,7 @@ import uuid
 from dataclasses import dataclass
 from typing import Any
 
-from sqlalchemy import and_, delete, func, select, update
+from sqlalchemy import and_, delete, func, or_, select, update
 from sqlalchemy.dialects.postgresql import insert as pg_insert
 from sqlalchemy.ext.asyncio import AsyncSession
 
@@ -268,6 +268,35 @@ async def heartbeat(db: AsyncSession, server: Server, data: dict[str, Any]) -> N
             .values(last_handshake_at=stamp)
         )
     await db.commit()
+
+
+async def release_idle_assignments(db: AsyncSession, idle: dt.timedelta) -> int:
+    """Take long-unused peers off their nodes (ADR-006 "on-demand assignment").
+
+    Idle = no handshake within `idle` and assigned earlier than that (a fresh assignment
+    gets the full window to make its first handshake). The device keeps its addresses, so
+    the next `connect` puts it back. Returns the number of released assignments."""
+    cutoff = utcnow() - idle
+    idle_devices = select(Device.id).where(
+        or_(Device.last_handshake_at.is_(None), Device.last_handshake_at < cutoff)
+    )
+    released = await db.execute(
+        update(PeerAssignment)
+        .where(
+            PeerAssignment.state == AssignmentState.ACTIVE,
+            PeerAssignment.assigned_at < cutoff,
+            PeerAssignment.device_id.in_(idle_devices),
+        )
+        .values(state=AssignmentState.REMOVING.value)
+        .returning(PeerAssignment.server_id)
+    )
+    servers = [r[0] for r in released.all()]
+    if servers:
+        await db.execute(
+            update(Server).where(Server.id.in_(set(servers))).values(revision=Server.revision + 1)
+        )
+    await db.commit()
+    return len(servers)
 
 
 async def purge_removed_assignments(db: AsyncSession, older_than: dt.timedelta) -> int:

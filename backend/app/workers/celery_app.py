@@ -49,6 +49,10 @@ celery_app.conf.update(
             "task": "users.purge_deleted",
             "schedule": crontab(hour=3, minute=41),
         },
+        "vpn-release-idle-peers": {
+            "task": "vpn.release_idle_peers",
+            "schedule": crontab(minute=29),
+        },
         "auth-cleanup-tokens": {
             "task": "auth.cleanup_tokens",
             "schedule": crontab(hour=4, minute=13),

@@ -1,6 +1,6 @@
 # Project Status
 
-Last updated: 2026-11-13 · Current phase: **Telegram test version built and verified → next: deploy to a VPS (`documentation/TEST_LAUNCH_RU.md`)**
+Last updated: 2026-11-13 · Current phase: **Telegram test version built and verified, code on GitHub with green CI → next: deploy to a VPS (`documentation/TEST_LAUNCH_RU.md`)**
 
 ## Phases
 
@@ -9,7 +9,7 @@ Last updated: 2026-11-13 · Current phase: **Telegram test version built and ver
 | 1 — Initialization | ✅ Complete | Repo, architecture, ADR summary, roadmap, env template, dev Compose, scripts |
 | 2 — Database & backend | ✅ Complete | FastAPI + SQLAlchemy 2 + Alembic + Celery; auth, users, devices, plans, subscriptions, promo, RBAC, audit, email; 165 tests, 97 % coverage |
 | 3 — VPN infrastructure | 🟡 Test slice done | Agent network client + systemd unit, firewall, one-command install; real tunnels verified with wireguard-go in netns. Open: mTLS enrollment, unbound, Ansible/Terraform, real VPS run |
-| 4 — VPN management engine | 🟡 Test slice done | Locations, `POST /vpn/connect` (least-loaded healthy node, one active peer per device), long-poll desired state. Open: admin server API, idle GC, auto-scaling |
+| 4 — VPN management engine | 🟡 Test slice done | Locations, `POST /vpn/connect` (least-loaded healthy node, one active peer per device), long-poll desired state, **staff API for locations and servers** (register, drain, disable, rotate token, health), **idle-peer release** (off by default). Open: node-down alerts, auto-scaling |
 | 5 — Telegram bot | 🟡 Test slice done | aiogram bot + Mini App (keys on device, QR/file), invites, Telegram notifications. Open: admin commands, Stars |
 | 6 — Mobile apps | ⏳ Pending | Needs Flutter SDK, Android device/emulator, Mac + Xcode, Apple org account |
 | 7 — Desktop apps | ⏳ Pending | Needs Windows machine, Mac, code-signing |
@@ -47,7 +47,7 @@ Stage plan from the owner's brief; ✅ = done and tested, ⏳ = next.
 - ✅ 8-9 Mini App "Games" section: solo table against the crowned dealer (reactions: eats bananas between rounds, cheers/sulks at results), card dealing and flip animations, synthesised sounds with a mute button, stats, history, jackpot board, on-device provably-fair check; bot `/games`; notices (round finished while away, removed for inactivity, bonus exchange, staff adjustment).
 - ✅ Owner's decisions (evening): **solo only** (shared tables off, screens and invites removed; server path kept), **fun chips** (no value, 1000 a day) for stakes in fun mode, **leaderboard = biggest single win + its stake**. Migration 0009.
 - ✅ 11 Browser end-to-end on the real backend (two players: chip stakes, wins/losses/push, fairness check, board) and in the clickable demo; fixed: fairness check compared the wrong round, a stale result banner after a quick new round.
-- ⏳ Graphify: the code must be on GitHub (`Zombik404/kingkong-vpn`, private) and enabled at app.graphify.com before the connector can index it.
+- ✅ Code on GitHub (`Zombik404/kingkongvpn`, private); CI green there. Graphify connector: repository added, indexing in progress; meanwhile the local graph (`make graph`) is used.
 - Not in the repo (so not built): native mobile app screens, visual admin panel — the API is ready for both.
 - Verified: 279 backend tests (Python 3.13), bot 7, Mini App 7; migrations 0008-0009 applied to a database with data.
 
@@ -103,7 +103,7 @@ Stage plan from the owner's brief; ✅ = done and tested, ⏳ = next.
 ## Tests
 | Suite | Result | Command |
 |---|---|---|
-| Backend: 221 tests on real PostgreSQL 16 + Redis 7 | ✅ pass (Python 3.12 and 3.13) | `make up && make test-backend` |
+| Backend: 283 tests on real PostgreSQL 16 + Redis 7 | ✅ pass (Python 3.12 and 3.13) | `make up && make test-backend` |
 | Backend coverage | ✅ 97 % total — auth 96 %, subscriptions 96 %, devices 95 %, payments 94 % (target ≥ 85 %) | same |
 | Migration up → down → up on a fresh DB; models ↔ migration drift; OpenAPI drift | ✅ pass | part of backend suite |
 | Concurrency: 8 parallel device registrations vs limit 3; parallel address allocation; parallel promo redemption vs `max_redemptions` | ✅ pass | part of backend suite |
@@ -112,7 +112,7 @@ Stage plan from the owner's brief; ✅ = done and tested, ⏳ = next.
 | End-to-end smoke (staging-mode settings, real uvicorn + Celery worker + SMTP sink): register → localized email delivered by worker → verify → login → device registered with tunnel addresses; beat starts | ✅ pass (run manually 2026-11-12) | see `documentation/BACKEND_API.md` flows |
 | node-agent reconciler & parser (21) + secret generator (2) | ✅ pass | `make test` |
 | Docker image build | ⛔ not run | Docker daemon unavailable in the build environment — run `make up-app` locally |
-| CI workflow on GitHub | ⛔ not run | repository not on GitHub yet |
+| CI workflow on GitHub (backend, node agent, bot, Mini App + dist drift, secret scan) | ✅ green on `main` | GitHub Actions |
 | Real WireGuard handshake | ⛔ not run | needs staging VPS |
 
 Failed tests: none.
@@ -148,12 +148,20 @@ None blocking Phase 3/4 code. Full list: `documentation/EXTERNAL_REQUIREMENTS.md
 
 ## Open decisions for the owner
 1. Brand name and domain.
-2. Where the repository lives (private GitHub repo enables the CI workflow).
+2. ~~Where the repository lives~~ — private GitHub repo `Zombik404/kingkongvpn` (2026-11-13).
 3. Tax approach for EU sales (VAT OSS yourself vs merchant-of-record) — affects Phase 10.
 4. Trial: enable or not, and length (`trial.enabled`, `trial.days` in admin settings; off by default).
 5. Prices per plan and currency (set via admin API; dev seed values are placeholders).
 
+## Phase 4 additions (2026-11-13)
+- **Staff API `/admin/vpn/*`** (permissions `servers:read` for support/ops, `servers:write` for ops): locations (list with healthy-node counts and "visible to users", create, rename/reorder/hide) and servers (register with a one-time node token, list/detail with load, heartbeat, `accepting`, revision sync, agent version/errors; change status/capacity/tier/location with a reason; rotate the token). `disabled` refuses the node and releases its peers; `draining`/`maintenance` stop new connections only. Every change audited; tokens never logged.
+- **Idle-peer release** (`vpn.release_idle_peers`, hourly): takes peers without a handshake for `peers.idle_ttl_hours` off their node; Connect puts them back. **Off by default** (0): in the Telegram version people import a fixed config into the WireGuard app, which never asks us before connecting.
+- CI now also checks the bot (ruff, mypy, pytest) and the Mini App (tests, build, committed `dist/` up to date); actions moved off the deprecated Node 20.
+- 4 new tests (permissions, register → heartbeat → connect → health, drain/rotate/disable, idle release); checked by breaking the code on purpose.
+
 ## Next actions
-1. **Phase 3**: node enrollment (one-time token → CSR → cert signed by the node CA), `GET /internal/v1/nodes/{id}/desired-state` long-poll + heartbeat endpoints (mTLS), node-agent network client + systemd unit; Ansible `base`/`wireguard`/`nftables` roles.
-2. **Phase 4**: server registry admin API, `POST /vpn/connect` with server selection (ADR-006), idle-peer GC, Redis wake-ups for agents.
-3. Provision one staging VPS when authorized → first real handshake.
+1. **Deploy the test version to a VPS** (`documentation/TEST_LAUNCH_RU.md`): run `install.sh`, register the first node, real WireGuard handshake, @CryptoBot testnet check, Mini App inside real Telegram clients. Needs the owner's server.
+2. **Phase 9 — admin panel** on top of the staff API (users, subscriptions, plans/prices, promo, settings, audit, servers, games).
+3. Phase 4 rest: node-down alerts to staff, auto-scaling policy (needs a cloud provider decision).
+4. Phase 5 rest: Telegram Stars payments, staff commands in the bot.
+5. Legal: trademark check for "KingKong VPN"; gambling rules before switching on bonus-day stakes.

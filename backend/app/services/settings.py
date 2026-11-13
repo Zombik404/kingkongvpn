@@ -136,9 +136,12 @@ REGISTRY: dict[str, SettingDef] = {
         "Free days for the referrer per invited user's first payment (0 = off).",
     ),
     "peers.idle_ttl_hours": _def(
-        Annotated[int, Field(ge=1, le=24 * 30)],
-        24,
-        "Remove a peer from a node after this long without a handshake.",
+        Annotated[int, Field(ge=0, le=24 * 90)],
+        0,
+        "Take a peer off its node after this many hours without a handshake (0 = never). "
+        "Keep 0 while users import a fixed config into the WireGuard app (Telegram version): "
+        "that app doesn't ask us before connecting, so a removed peer would just stop working "
+        "until the user taps Connect in the Mini App again.",
     ),
 }
 

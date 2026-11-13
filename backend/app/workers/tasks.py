@@ -22,6 +22,7 @@ from app.models.enums import UserStatus
 from app.notifications.email import EmailJob, render, send_smtp
 from app.notifications.telegram import TelegramJob, TelegramSendError, send_sync
 from app.payments import service as payments
+from app.services import settings as settings_service
 from app.services.users import DELETED_ACCOUNT_RETENTION_DAYS
 from app.subscriptions import service as subs
 from app.vpn import service as vpn_service
@@ -83,6 +84,18 @@ async def cleanup_tokens(ctx: AppContext, db: AsyncSession) -> int:
     c = await vpn_service.purge_removed_assignments(db, dt.timedelta(days=1))
     c += await vpn_service.purge_old_usage(db, keep_days=90)
     return int(getattr(a, "rowcount", 0) or 0) + int(getattr(b, "rowcount", 0) or 0) + c
+
+
+async def release_idle_peers(ctx: AppContext, db: AsyncSession) -> int:
+    hours = int(await settings_service.get_value(db, "peers.idle_ttl_hours"))
+    if hours <= 0:
+        return 0
+    return await vpn_service.release_idle_assignments(db, dt.timedelta(hours=hours))
+
+
+@celery_app.task(name="vpn.release_idle_peers")
+def release_idle_peers_task() -> int:
+    return asyncio.run(_with_db(release_idle_peers))
 
 
 @celery_app.task(name="subscriptions.process_due")

@@ -20,6 +20,8 @@ class Perm(StrEnum):
     AUDIT_READ = "audit:read"
     GAMES_READ = "games:read"  # rooms, rounds, ledger, stats
     GAMES_WRITE = "games:write"  # pause/close rooms, adjust bonus balances
+    SERVERS_READ = "servers:read"  # locations, nodes, health
+    SERVERS_WRITE = "servers:write"  # register/drain/disable nodes, rotate node tokens
 
 
 ROLE_PERMISSIONS: dict[str, frozenset[Perm]] = {
@@ -31,6 +33,7 @@ ROLE_PERMISSIONS: dict[str, frozenset[Perm]] = {
             Perm.PLANS_READ,
             Perm.SETTINGS_READ,
             Perm.GAMES_READ,
+            Perm.SERVERS_READ,
         }
     ),
     Role.OPS: frozenset(
@@ -42,6 +45,8 @@ ROLE_PERMISSIONS: dict[str, frozenset[Perm]] = {
             Perm.AUDIT_READ,
             Perm.GAMES_READ,
             Perm.GAMES_WRITE,
+            Perm.SERVERS_READ,
+            Perm.SERVERS_WRITE,
         }
     ),
     Role.FINANCE: frozenset(
