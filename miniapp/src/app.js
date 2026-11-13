@@ -1,7 +1,7 @@
 // KingKong VPN — Telegram Mini App. User data is inserted with textContent only.
 import qrcode from "qrcode-generator";
 import { areaChart, formatBytes, progressRing, ringsChart, RING_COLORS } from "./charts.js";
-import { enter, mountJungle, swing, wreath } from "./jungle.js";
+import { enter, mountJungle, setOvergrowth, swing, wreath } from "./jungle.js";
 import { makeT, pickLang } from "./i18n.js";
 import { buildConfig, generateKeyPair, toFragment, tunnelName } from "./wg.js";
 
@@ -208,6 +208,26 @@ function page(title, ...content) {
       h("h1", {}, title)),
     ...content.filter(Boolean));
   setBack(goHome);
+}
+
+// ------------------------------------------------------------------ VPN on → overgrowth
+// The VPN is switched on in the WireGuard app; we notice it because this app's own requests
+// then arrive through our server (GET /vpn/status). Checked on open, every few seconds while
+// visible, and right away when the user comes back from the WireGuard app.
+async function checkVpn() {
+  try {
+    const s = await api("/vpn/status");
+    setOvergrowth(s.protected, { title: t("ogTitle"), sub: s.device_name ? t("ogVia", { name: s.device_name }) : t("ogOn") });
+  } catch { /* offline or logged out: leave the screen as it is */ }
+}
+let vpnTimer = null;
+function watchVpn() {
+  if (vpnTimer) return;
+  const tick = () => { if (document.visibilityState === "visible") checkVpn(); };
+  vpnTimer = setInterval(tick, 6000);
+  document.addEventListener("visibilitychange", tick);
+  window.addEventListener("app:vpn-check", checkVpn); // the demo's VPN switch
+  checkVpn();
 }
 
 // ------------------------------------------------------------------ data
@@ -655,6 +675,7 @@ function helpScreen() {
       await api("/referrals/claim", { method: "POST", body: { code: ref } }).catch(() => null);
     }
     await goHome();
+    watchVpn();
   } catch (e) {
     root.replaceChildren(h("p", { class: "warn pad" }, e.message || t("loginFailed")));
   }

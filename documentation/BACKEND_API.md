@@ -61,6 +61,11 @@ Discount codes: `POST /promo/validate` previews the price (applied at checkout, 
 
 ## Traffic and referrals
 
+- `GET /vpn/status` → `{protected, via, device_id, device_name}` — is this request coming
+  through our VPN? `via = "tunnel"` when it arrives from a tunnel address (API on the VPN node;
+  then the device is identified by its tunnel IP), `"exit"` when it arrives from an active node's
+  public IP (API on another host). Nothing is stored. The Mini App polls it (every 6 s while
+  visible and when the user returns from the WireGuard app) to show the overgrowth effect.
 - `GET /vpn/usage?days=7|30|90` (1–90) → `{series: [{date, download, upload}], total_download,
   total_upload, top_devices: [≤5]}` — aggregate bytes per device per day; no destinations.
 - `GET /referrals` → `{code, link, percent_off, bonus_days, invited, paid, my_discount}`.

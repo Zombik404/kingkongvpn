@@ -139,6 +139,10 @@ async function backend(method, path, body) {
   if (p === "/referrals") return json(referralsOut());
   if (p === "/referrals/claim") return json(null, 204);
   if (p === "/vpn/usage") return json(usage(Math.min(90, Math.max(1, Number(q.get("days")) || 7))));
+  if (p === "/vpn/status") {
+    const d = S.devices.find((x) => x.status === "active");
+    return json(S.vpnOn ? { protected: true, via: "tunnel", device_id: d?.id ?? null, device_name: d?.name ?? null } : { protected: false, via: null, device_id: null, device_name: null });
+  }
   if (p === "/vpn/locations") return S.sub && S.sub.end > Date.now() ? json(LOCATIONS) : fail(403, "no_access", T("Нет активной подписки.", "No active subscription."));
   if (p === "/devices" && method === "GET") {
     const active = S.devices.filter((d) => d.status === "active");
@@ -296,7 +300,7 @@ const refresh = () => window.dispatchEvent(new Event("app:refresh"));
 function panel() {
   const bar = el("div", "demo-bar");
   const label = el("span", "demo-label", T("Демо", "Demo"));
-  const choose = (kind) => () => { S = scenario(kind); resetLocal(); refresh(); highlight(); };
+  const choose = (kind) => () => { S = scenario(kind); resetLocal(); refresh(); highlight(); vpnLabel(); window.dispatchEvent(new Event("app:vpn-check")); };
   const btns = [
     [T("С подпиской", "Subscribed"), "active"],
     [T("Новичок", "Newcomer"), "new"],
@@ -304,12 +308,20 @@ function panel() {
   ].map(([text, kind]) => { const b = el("button", "demo-chip", text); b.dataset.kind = kind; b.addEventListener("click", choose(kind)); return b; });
   const friend = el("button", "demo-chip hot", T("+1 друг оплатил", "+1 friend paid"));
   friend.addEventListener("click", () => { friendPaid(); toast(T(`Друг оплатил подписку: вам +14 дней. Оплативших друзей: ${S.paidFriends}.`, `A friend paid: +14 days for you. Paying friends: ${S.paidFriends}.`)); refresh(); });
+  const vpn = el("button", "demo-chip vpn", "");
+  const vpnLabel = () => { vpn.textContent = S.vpnOn ? T("VPN: вкл", "VPN: on") : T("VPN: выкл", "VPN: off"); vpn.classList.toggle("on", !!S.vpnOn); };
+  vpn.addEventListener("click", () => {
+    if (!S.sub || S.sub.end < Date.now()) { toast(T("Сначала активируйте доступ — у новичка нет подписки.", "Activate access first — the newcomer has no subscription.")); return; }
+    S.vpnOn = !S.vpnOn; vpnLabel();
+    window.dispatchEvent(new Event("app:vpn-check"));
+  });
+  vpnLabel();
   const lang = el("a", "demo-chip", LANG === "ru" ? "EN" : "RU");
   lang.href = `?lang=${LANG === "ru" ? "en" : "ru"}`;
   function highlight() { for (const b of btns) b.classList.toggle("on", b.dataset.kind === S.kind); }
   const row1 = el("div", "demo-row"), row2 = el("div", "demo-row");
   row1.append(label, ...btns);
-  row2.append(friend, lang);
+  row2.append(vpn, friend, lang);
   bar.append(row1, row2);
   highlight();
   document.body.append(bar);

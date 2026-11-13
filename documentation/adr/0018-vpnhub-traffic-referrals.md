@@ -55,6 +55,13 @@ Status: accepted (2026-11-13).
    refresh of the home screen doesn't animate, and nothing moves when the system asks for
    reduced motion. All decoration is `pointer-events: none` and sits behind the content (the
    swing overlay is above it for about a second).
+   **"Hidden in the jungle":** while the VPN is on, leaf clusters grow in from the corners, a
+   leafy liana creeps down each side, single leaves pop out along the edges, leaves fall once,
+   a status chip says "You're hidden in the jungle", and the hub glows; turning the VPN off
+   shrinks it all back. The tunnel is switched in the WireGuard app, so the Mini App detects it
+   via `GET /vpn/status` (request origin = a tunnel address or a node's public IP); this works
+   because the firewall lets tunnel clients reach this host's HTTPS and Caddy forwards the real
+   client address. Artwork: `miniapp/tools/render_overgrowth.py`.
 6. **Clickable demo** (`miniapp/demo/`): the real Mini App bundled with a stand-in for Telegram
    and the API (sample data, scenarios, "+1 friend paid"), for showing the UI without a server.
    It never ships to production.

@@ -8,7 +8,7 @@ from typing import Annotated, Any
 from fastapi import APIRouter, Header, Query, Request
 from pydantic import BaseModel, ConfigDict, Field
 
-from app.api.deps import Ctx, CurrentPrincipal, Db
+from app.api.deps import Client, Ctx, CurrentPrincipal, Db
 from app.i18n import negotiate
 from app.models import Server
 from app.vpn import service as vpn
@@ -107,6 +107,21 @@ async def usage(
     principal: CurrentPrincipal, db: Db, days: Annotated[int, Query(ge=1, le=90)] = 7
 ) -> dict[str, Any]:
     return await vpn.usage(db, principal.user.id, days)
+
+
+class StatusOut(BaseModel):
+    protected: bool  # this request came through our VPN
+    via: str | None  # "tunnel" (a tunnel address) | "exit" (a node's public address) | None
+    device_id: uuid.UUID | None  # which of your devices, when it can be told
+    device_name: str | None
+
+
+@router.get("/status", response_model=StatusOut)
+async def status(principal: CurrentPrincipal, ctx: Ctx, db: Db, client: Client) -> dict[str, Any]:
+    """Whether this device is connected through the VPN right now (judged by where the request
+    comes from; nothing is stored). The Mini App polls it to show the "hidden in the jungle"
+    effect while the tunnel is on."""
+    return await vpn.protection_status(db, ctx, principal.user.id, client.ip)
 
 
 # --- internal: node agent ---------------------------------------------------------------------

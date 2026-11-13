@@ -10,6 +10,7 @@ from __future__ import annotations
 
 import asyncio
 import datetime as dt
+import ipaddress
 import random
 import secrets
 import uuid
@@ -398,3 +399,42 @@ async def purge_old_usage(db: AsyncSession, keep_days: int = 90) -> int:
     result = await db.execute(delete(DeviceUsageDaily).where(DeviceUsageDaily.day < cutoff))
     await db.commit()
     return int(getattr(result, "rowcount", 0) or 0)
+
+
+async def protection_status(
+    db: AsyncSession, ctx: AppContext, user_id: uuid.UUID, client_ip: str | None
+) -> dict[str, Any]:
+    """Is the caller's traffic going through our VPN right now?
+
+    The Mini App's own requests tell: through the tunnel they arrive from a tunnel address (the
+    API runs on the VPN node) or from one of our nodes' public addresses (API elsewhere, traffic
+    leaves through a node). Nothing is stored; the IP is only compared.
+    """
+    off: dict[str, Any] = {"protected": False, "via": None, "device_id": None, "device_name": None}
+    if not client_ip:
+        return off
+    try:
+        addr = ipaddress.ip_address(client_ip)
+    except ValueError:
+        return off
+    s = ctx.settings
+    if addr in s.vpn_tunnel_ipv4_pool or addr in s.vpn_tunnel_ipv6_pool:
+        col = Device.ipv4 if addr.version == 4 else Device.ipv6
+        dev = await db.scalar(
+            select(Device).where(
+                col == str(addr), Device.user_id == user_id, Device.status == DeviceStatus.ACTIVE
+            )
+        )
+        return {
+            "protected": True,
+            "via": "tunnel",
+            "device_id": dev.id if dev else None,
+            "device_name": dev.name if dev else None,
+        }
+    col = Server.public_ipv4 if addr.version == 4 else Server.public_ipv6
+    node = await db.scalar(
+        select(Server.id).where(col == str(addr), Server.status == ServerStatus.ACTIVE).limit(1)
+    )
+    if node is not None:
+        return {**off, "protected": True, "via": "exit"}
+    return off

@@ -138,3 +138,78 @@ export function enter(dir, root) {
   root.classList.add(dir === "back" ? "enter-back" : "enter-fwd");
   root.addEventListener("animationend", () => root.classList.remove("enter-fwd", "enter-back"), { once: true });
 }
+
+
+// ---------------------------------------------------------------- "hidden in the jungle"
+// While the VPN is on, leaves grow in from the screen edges and stay (gently swaying) until it
+// is turned off; then they shrink back. Purely decorative: pointer-events are off, so every
+// button underneath keeps working.
+let og = null;
+let ogOn = false;
+
+function buildOvergrowth() {
+  const box = document.createElement("div");
+  box.className = "overgrowth";
+  box.setAttribute("aria-hidden", "true");
+  const vignette = document.createElement("div");
+  vignette.className = "og-vignette";
+  box.append(vignette);
+  const part = (cls, src, delay) => {
+    const sway = document.createElement("div");
+    sway.className = `og-part ${cls}`;
+    sway.style.setProperty("--d", `${delay}ms`);
+    sway.append(img(src, "og-img"));
+    box.append(sway);
+  };
+  part("og-edge og-l", "assets/og-edge.png", 0);
+  part("og-edge og-r", "assets/og-edge.png", 140);
+  part("og-corner og-tl", "assets/og-corner-top.png", 260);
+  part("og-corner og-tr", "assets/og-corner-top.png", 380);
+  part("og-corner og-bl", "assets/og-corner-bottom.png", 480);
+  part("og-corner og-br", "assets/og-corner-bottom.png", 600);
+  // single leaves that pop out along the edges after the big clusters
+  const spots = [[2, 24], [96, 30], [1, 46], [97, 52], [3, 64], [95, 70], [2, 84], [96, 88], [30, 1], [70, 2], [50, 0], [24, 98], [76, 99]];
+  spots.forEach(([x, y], i) => {
+    const l = img("assets/og-leaf.png", "og-pop");
+    l.style.setProperty("--x", `${x}%`);
+    l.style.setProperty("--y", `${y}%`);
+    l.style.setProperty("--r", `${(x < 10 ? 0 : x > 90 ? 180 : y < 10 ? 90 : -90) + ((i * 37) % 50) - 25}deg`);
+    l.style.setProperty("--d", `${700 + i * 70}ms`);
+    box.append(l);
+  });
+  const chip = document.createElement("div");
+  chip.className = "og-chip";
+  const title = document.createElement("strong");
+  const sub = document.createElement("span");
+  chip.append(title, sub);
+  box.append(chip);
+  document.body.append(box);
+  return { box, title, sub };
+}
+
+function leafFall(n = 14) {
+  if (reduced()) return;
+  for (let i = 0; i < n; i++) {
+    const l = img("assets/og-leaf.png", "og-fall");
+    l.style.setProperty("--x", `${(i * 61) % 100}%`);
+    l.style.setProperty("--drift", `${((i * 29) % 120) - 60}px`);
+    l.style.setProperty("--spin", `${((i * 83) % 540) - 270}deg`);
+    l.style.setProperty("--dur", `${2.4 + (i % 5) * 0.35}s`);
+    l.style.setProperty("--d", `${(i % 7) * 0.12}s`);
+    l.addEventListener("animationend", () => l.remove(), { once: true });
+    document.body.append(l);
+  }
+}
+
+/** Show or hide the overgrowth. `text` = { title, sub } for the status chip. */
+export function setOvergrowth(on, text = {}) {
+  if (!og) og = buildOvergrowth();
+  og.title.textContent = text.title || "";
+  og.sub.textContent = text.sub || "";
+  if (on === ogOn) return;
+  ogOn = on;
+  og.box.classList.toggle("on", on);
+  og.box.classList.toggle("off", !on);
+  document.documentElement.classList.toggle("vpn-on", on);
+  if (on) leafFall();
+}

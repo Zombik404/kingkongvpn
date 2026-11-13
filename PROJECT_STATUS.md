@@ -37,6 +37,7 @@ Last updated: 2026-11-13 · Current phase: **Telegram test version built and ver
 ## KingKong VPN rebrand (2026-11-13) — ADR-018 §5–6
 - Renamed to **KingKong VPN**: jungle look (black & green, leaves and vines), the owner's gorilla patch as the logo; ranks renamed Monkey/Parrot/Jaguar/Gorilla/King Kong, themes Volcano/Night/Banana/Orchid.
 - Jungle dressing, rendered realistically (`miniapp/tools/render_*.py`, no stock photos): misty rainforest backdrop, swaying lianas, fireflies, leaf wreath; **page transitions with the crowned jungle-king gorilla swinging on a liana, banana in hand** (forward → right, back → left; off with reduced motion).
+- **"Hidden in the jungle"** effect while the VPN is on: leaves overgrow the screen edges (springy growth, creeping lianas, popping and falling leaves, status chip), shrinking back when it's off. Detected via new `GET /vpn/status` (request comes through our tunnel / a node's IP). 221 backend tests.
 - **Clickable demo** of the Mini App on sample data in `miniapp/demo/` (published as a private page for the owner).
 - Bot avatar: `branding/bot-avatar-640.png` → @BotFather `/setuserpic`.
 - ⚠️ "King Kong" is a famous trademarked name — clear it before a public launch.
@@ -48,7 +49,7 @@ Last updated: 2026-11-13 · Current phase: **Telegram test version built and ver
 - **Referral ranks:** 3/5/10/25 paying friends → 🦊/🕶/👑/🚀 with +7/+30/+90/+365 days and Mini App themes Lava/Matrix/Gold/Cosmos (migration 0007, `referrals.milestones`); confetti on a new rank; theme picker on the Friends screen.
 - **Country switch** for devices created on the same phone (key kept in the device's local storage only).
 - Not possible in the Telegram Mini App: per-app traffic (see ADR-018 §2) — shown as top devices; planned for the Android app.
-- Verified: 220 backend tests (Python 3.12/3.13), Mini App flows in Chromium (invite → device → config → move to another country → remove; QR = file), screenshots reviewed.
+- Verified: 221 backend tests (Python 3.12/3.13), Mini App flows in Chromium (invite → device → config → move to another country → remove; QR = file), screenshots reviewed.
 
 ## Telegram test version (2026-11-13) — ADR-017
 - **Mini App** (`miniapp/`, built bundle in `miniapp/dist/`): sign-in with Telegram `initData`, invite code (auto-filled from `t.me/<bot>?start=INV-…`), plans and @CryptoBot payment with auto-confirmation, devices (add/remove), WireGuard keypair generated on the device, config as QR / file / browser page / copy.
@@ -85,7 +86,7 @@ Last updated: 2026-11-13 · Current phase: **Telegram test version built and ver
 ## Tests
 | Suite | Result | Command |
 |---|---|---|
-| Backend: 220 tests on real PostgreSQL 16 + Redis 7 | ✅ pass (Python 3.12 and 3.13) | `make up && make test-backend` |
+| Backend: 221 tests on real PostgreSQL 16 + Redis 7 | ✅ pass (Python 3.12 and 3.13) | `make up && make test-backend` |
 | Backend coverage | ✅ 97 % total — auth 96 %, subscriptions 96 %, devices 95 %, payments 94 % (target ≥ 85 %) | same |
 | Migration up → down → up on a fresh DB; models ↔ migration drift; OpenAPI drift | ✅ pass | part of backend suite |
 | Concurrency: 8 parallel device registrations vs limit 3; parallel address allocation; parallel promo redemption vs `max_redemptions` | ✅ pass | part of backend suite |

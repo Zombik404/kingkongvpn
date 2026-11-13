@@ -431,3 +431,37 @@ async def test_referral_ranks_can_be_disabled(
     assert await db.scalar(select(ReferralMilestone)) is None
     info = (await client.get("/api/v1/referrals", headers=boss.headers)).json()
     assert info["rank"] == "chick" and info["next_level"] is None and info["paid"] == 3
+
+
+async def test_vpn_status_by_request_origin(
+    client: AsyncClient, outbox: list[Any], db: Any, ctx: AppContext
+) -> None:
+    from httpx import ASGITransport
+
+    from app.main import create_app
+
+    await register_node(ipv4="198.51.100.77")
+    user, dev = await entitled_user_with_device(client, outbox, db, "st@example.com")
+
+    async def status_from(ip: str) -> dict[str, Any]:
+        transport = ASGITransport(app=create_app(ctx.settings, ctx=ctx), client=(ip, 40000))
+        async with AsyncClient(transport=transport, base_url="http://api.test") as c:
+            r = await c.get("/api/v1/vpn/status", headers=user.headers)
+            assert r.status_code == 200, r.text
+            return r.json()
+
+    off = await status_from("203.0.113.200")
+    assert off == {"protected": False, "via": None, "device_id": None, "device_name": None}
+    # through the tunnel, from this user's device address
+    on = await status_from(dev["ipv4"])
+    assert on["protected"] and on["via"] == "tunnel" and on["device_id"] == dev["id"]
+    assert on["device_name"] == "phone"
+    v6 = await status_from(dev["ipv6"])
+    assert v6["via"] == "tunnel" and v6["device_id"] == dev["id"]
+    # another tunnel address: protected, but not one of this user's devices
+    other = await status_from("10.64.9.9")
+    assert other["protected"] and other["device_id"] is None
+    # API on another host: traffic leaves through a node's public address
+    exit_ = await status_from("198.51.100.77")
+    assert exit_["protected"] and exit_["via"] == "exit"
+    assert (await client.get("/api/v1/vpn/status")).status_code == 401

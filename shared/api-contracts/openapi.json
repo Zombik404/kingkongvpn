@@ -2058,6 +2058,56 @@
         "title": "SettingIn",
         "type": "object"
       },
+      "StatusOut": {
+        "properties": {
+          "device_id": {
+            "anyOf": [
+              {
+                "format": "uuid",
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Device Id"
+          },
+          "device_name": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Device Name"
+          },
+          "protected": {
+            "title": "Protected",
+            "type": "boolean"
+          },
+          "via": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Via"
+          }
+        },
+        "required": [
+          "protected",
+          "via",
+          "device_id",
+          "device_name"
+        ],
+        "title": "StatusOut",
+        "type": "object"
+      },
       "SubscriptionOut": {
         "properties": {
           "auto_renew": {
@@ -5084,6 +5134,33 @@
           }
         ],
         "summary": "List Locations",
+        "tags": [
+          "vpn"
+        ]
+      }
+    },
+    "/api/v1/vpn/status": {
+      "get": {
+        "description": "Whether this device is connected through the VPN right now (judged by where the request\ncomes from; nothing is stored). The Mini App polls it to show the \"hidden in the jungle\"\neffect while the tunnel is on.",
+        "operationId": "status_api_v1_vpn_status_get",
+        "responses": {
+          "200": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/StatusOut"
+                }
+              }
+            },
+            "description": "Successful Response"
+          }
+        },
+        "security": [
+          {
+            "HTTPBearer": []
+          }
+        ],
+        "summary": "Status",
         "tags": [
           "vpn"
         ]
