@@ -1,6 +1,6 @@
-// Jungle dressing for the Mini App: swaying lianas, fireflies, a leaf wreath, and the monkey that
-// swings across the screen on page changes. Decorative only; the artwork is rendered by
-// tools/render_jungle.py and tools/render_monkey.py (no photos, no user data).
+// Jungle dressing for the Mini App: swaying lianas, fireflies, a leaf wreath, and the crowned
+// gorilla that swings across the screen on page changes. Decorative only; the artwork is rendered by
+// tools/render_jungle.py and tools/render_gorilla.py (no photos, no user data).
 const reduced = () => window.matchMedia?.("(prefers-reduced-motion: reduce)").matches;
 
 function img(src, cls) {
@@ -38,7 +38,7 @@ export function wreath() {
 }
 
 /**
- * The monkey swings across on a vine: "fwd" = left → right (opening a page),
+ * The jungle king (a gorilla in a crown, banana in hand) swings across on a liana: "fwd" = left → right (opening a page),
  * "back" = right → left (going back). The new screen slides in the same direction.
  */
 export function swing(dir, root) {
@@ -51,7 +51,7 @@ export function swing(dir, root) {
   arm.className = "swing-arm";
   const rope = document.createElement("div");
   rope.className = "swing-vine";
-  arm.append(rope, img("assets/monkey.png", "swing-monkey"));
+  arm.append(rope, img("assets/gorilla.png", "swing-monkey"));
   layer.append(arm);
   document.body.append(layer);
   const done = () => layer.remove();

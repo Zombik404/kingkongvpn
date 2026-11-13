@@ -47,9 +47,10 @@ Status: accepted (2026-11-13).
    procedurally to raster files** (no stock photos, so no licences to track):
    `miniapp/tools/render_jungle.py` → `jungle.jpg` (misty rainforest with depth of field, light
    shafts, thousands of shaded leaves), `vine.png` (lianas swaying at the edges), `wreath.png`
-   (leaves around the hub); `miniapp/tools/render_monkey.py` → `monkey.png` (a furred monkey in
-   profile holding a banana). Re-rendering needs Python with numpy and Pillow; the built files
-   are committed. **Page changes:** the monkey swings across on a liana, left → right when a
+   (leaves around the hub); `miniapp/tools/render_gorilla.py` → `gorilla.png` (the app's own
+   "jungle king": a silverback gorilla in a gold crown holding a banana — an original design,
+   not the film character). Re-rendering needs Python with numpy and Pillow; the built files
+   are committed. **Page changes:** the gorilla swings across on a liana, left → right when a
    section opens and right → left on "back", and the new screen slides in the same way; a plain
    refresh of the home screen doesn't animate, and nothing moves when the system asks for
    reduced motion. All decoration is `pointer-events: none` and sits behind the content (the

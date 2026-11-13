@@ -333,9 +333,9 @@ h2 { font-size: 18px; }
   box-shadow: 0 6px 12px rgba(0, 0, 0, 0.5);
 }
 .swing-monkey {
-  /* 320×380 artwork shown at 190px wide; the hand that holds the vine is at 46.9% / 7.9% */
-  position: absolute; width: 190px; height: auto; max-width: none; left: -89px; bottom: -208px;
-  transform-origin: 46.9% 7.9%; filter: drop-shadow(0 10px 16px rgba(0, 0, 0, 0.6));
+  /* 390×430 artwork shown at 250px wide; the hand that holds the liana is at 46.2% / 7.2% */
+  position: absolute; width: 250px; height: auto; max-width: none; left: -115px; bottom: -256px;
+  transform-origin: 46.2% 7.2%; filter: drop-shadow(0 12px 18px rgba(0, 0, 0, 0.65)) drop-shadow(0 0 5px rgba(var(--a2-rgb), 0.28));
 }
 .swing.back .swing-monkey { transform: scaleX(-1); }
 @keyframes swing-fwd {
