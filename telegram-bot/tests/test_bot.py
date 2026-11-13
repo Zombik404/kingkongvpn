@@ -61,14 +61,10 @@ def test_referral_deep_link() -> None:
     assert kb.inline_keyboard[0][0].web_app.url == "https://vpn.example.org/app/"
 
 
-def test_table_invite_and_games_links() -> None:
-    text, kb = start_reply(CFG, "ru", "room_ab12cd")
-    assert "AB12CD" in text and "Blackjack" in text
-    btn = kb.inline_keyboard[0][0]
-    assert btn.text == "Сесть за стол" and btn.web_app.url.endswith("/app/?room=AB12CD")
+def test_games_link() -> None:
     kb = open_button(CFG, "en", screen="games", label="open_games")
     assert kb.inline_keyboard[0][0].web_app.url.endswith("/app/?screen=games")
     assert kb.inline_keyboard[0][0].text == "Open games"
-    # a malformed code is just a normal start
-    text, kb = start_reply(CFG, "en", "room_!!")
+    # table invitations are gone with multiplayer: a room payload is just a normal start
+    _text, kb = start_reply(CFG, "en", "room_AB12CD")
     assert kb.inline_keyboard[0][0].web_app.url == "https://vpn.example.org/app/"

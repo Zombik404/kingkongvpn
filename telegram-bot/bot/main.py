@@ -28,7 +28,6 @@ from aiogram.types import (
 log = logging.getLogger("globalvpn.bot")
 INVITE_RE = re.compile(r"^INV-[A-Z0-9]{4}-[A-Z0-9]{4}$")
 REF_RE = re.compile(r"^REF_([A-Z0-9]{8})$")
-ROOM_RE = re.compile(r"^ROOM_([A-Z0-9]{4,8})$")
 
 TEXT = {
     "ru": {
@@ -46,11 +45,8 @@ TEXT = {
         "конфигурацию сразу. Потеряли — просто создайте новое подключение.",
         "other": "Всё управление — в приложении:",
         "menu": "KingKong VPN",
-        "hello_room": "Друг зовёт вас за стол Jungle Kong Blackjack — код стола {code}. "
-        "Нажмите кнопку, чтобы сесть рядом.",
-        "games": "Jungle Kong Blackjack: сыграйте с королём джунглей один или с друзьями. "
-        "Бонусный баланс, статистика и рейтинг — там же.",
-        "open_table": "Сесть за стол",
+        "games": "Jungle Kong Blackjack: сыграйте с королём джунглей и сорвите самый большой куш. "
+        "Фишки, статистика и рейтинг лучших игроков — там же.",
         "open_games": "Открыть игры",
     },
     "en": {
@@ -68,11 +64,8 @@ TEXT = {
         "right away. Lost it? Just create a new connection.",
         "other": "Everything is managed in the app:",
         "menu": "KingKong VPN",
-        "hello_room": "A friend is inviting you to a Jungle Kong Blackjack table — table code {code}. "
-        "Tap the button to take a seat.",
-        "games": "Jungle Kong Blackjack: play the jungle king on your own or with friends. "
-        "Your bonus balance, statistics and the leaderboard are there too.",
-        "open_table": "Take a seat",
+        "games": "Jungle Kong Blackjack: play the jungle king and hit the biggest jackpot. "
+        "Chips, statistics and the top players are there too.",
         "open_games": "Open games",
     },
 }
@@ -107,12 +100,11 @@ def open_button(
     invite: str | None = None,
     ref: str | None = None,
     *,
-    room: str | None = None,
     screen: str | None = None,
     label: str = "open",
 ) -> InlineKeyboardMarkup:
     url = cfg.miniapp_url
-    for key, value in (("invite", invite), ("ref", ref), ("room", room), ("screen", screen)):
+    for key, value in (("invite", invite), ("ref", ref), ("screen", screen)):
         if value:
             url += ("&" if "?" in url else "?") + f"{key}=" + quote(value)
     return InlineKeyboardMarkup(
@@ -128,10 +120,6 @@ def start_reply(cfg: BotConfig, lang: str, payload: str | None) -> tuple[str, In
         return TEXT[lang]["hello_invite"].format(code=invite), open_button(cfg, lang, invite)
     if m := REF_RE.match(invite):
         return TEXT[lang]["hello_ref"].format(app=cfg.app_name), open_button(cfg, lang, ref=m[1])
-    if m := ROOM_RE.match(invite):  # an invitation to a blackjack table
-        return TEXT[lang]["hello_room"].format(code=m[1]), open_button(
-            cfg, lang, room=m[1], label="open_table"
-        )
     return TEXT[lang]["hello"].format(app=cfg.app_name), open_button(cfg, lang)
 
 

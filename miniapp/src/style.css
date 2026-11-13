@@ -587,3 +587,18 @@ h2 { font-size: 18px; }
   .bj-dealer-img, .bj-hand.active, .pc.deal, .pc.flip, .sheet { animation: none; }
   .bj-banner.show { animation: none; opacity: 1; transform: translate(-50%, -50%); }
 }
+
+/* blackjack: chip stakes and the biggest-jackpot board */
+.stake.chip-stake { border-radius: 50%; width: 52px; height: 52px; padding: 0; display: inline-grid; place-items: center; align-content: center;
+  border: 3px dashed rgba(var(--a2-rgb), 0.55); }
+.stake.chip-stake b { font-size: 13px; line-height: 1; }
+.stake.chip-stake small { font-size: 10px; line-height: 1; }
+.lb { padding: 8px 12px; }
+.lb-row { display: grid; grid-template-columns: 34px 1fr auto 56px; gap: 8px; align-items: center; padding: 10px 2px; border-bottom: 1px solid var(--line); }
+.lb-row:last-child { border-bottom: 0; }
+.lb-cols { font-size: 11px; letter-spacing: 0.08em; text-transform: uppercase; color: var(--muted); padding-top: 4px; }
+.lb-name { display: grid; min-width: 0; }
+.lb-name strong { overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+.lb-win { color: var(--hot); font-variant-numeric: tabular-nums; }
+.lb-row.top1 .lb-win { font-size: 17px; }
+.lb-row.me-row { background: var(--grad-soft); border-radius: 10px; }

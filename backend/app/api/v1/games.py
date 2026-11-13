@@ -54,6 +54,7 @@ class JoinIn(BaseModel):
 
 class BetIn(BaseModel):
     stake_days: int = Field(default=0, ge=0, le=30)
+    stake: int | None = Field(default=None, ge=0, le=100_000)  # in the table's currency
     client_seed: str | None = Field(default=None, max_length=64)
     action_id: ActionId
 
@@ -84,6 +85,8 @@ async def hub(principal: CurrentPrincipal, db: Db) -> dict[str, Any]:
     profile = await games.ensure_profile(db, uid, cfg) if cfg["games.enabled"] else None
     seat = await games.current_seat(db, uid)
     bal = (await wallet.get_wallet(db, uid)).balance_hours
+    cur = games.currency_of(cfg)
+    chips = await games.chips_of(db, uid, cfg) if profile is not None else 0
     await db.commit()
     stakes = bool(cfg["games.blackjack.stakes_enabled"])
     return {
@@ -93,6 +96,10 @@ async def hub(principal: CurrentPrincipal, db: Db) -> dict[str, Any]:
         "stake_options_days": cfg["games.blackjack.stake_options_days"] if stakes else [],
         "redeem_enabled": bool(cfg["games.bonus_redeem_enabled"]),
         "balance_hours": bal,
+        "currency": cur,
+        "chips": chips if cur == games.CHIPS else None,
+        "chips_daily": cfg["games.chips.daily"],
+        "chip_options": cfg["games.chips.stake_options"],
         "profile": games.profile_out(profile) if profile else None,
         "room_id": str(seat.room_id) if seat else None,
         "rules": games.rules_from(cfg).to_json(),
@@ -238,6 +245,7 @@ async def bet(
         principal.user.id,
         room_id,
         stake_days=body.stake_days,
+        stake=body.stake,
         client_seed=body.client_seed,
         action_id=body.action_id,
     )

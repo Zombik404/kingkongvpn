@@ -9,6 +9,7 @@ from typing import Any
 from sqlalchemy import (
     Boolean,
     CheckConstraint,
+    Date,
     DateTime,
     ForeignKey,
     Index,
@@ -61,6 +62,7 @@ class GameProfile(Timestamps, Base):
     """One game profile per account: display name and lifetime statistics."""
 
     __tablename__ = "game_profiles"
+    __table_args__ = (CheckConstraint("chips >= 0", name="chips_non_negative"),)
 
     user_id: Mapped[uuid.UUID] = mapped_column(
         UUID(as_uuid=True), ForeignKey("users.id", ondelete="CASCADE"), primary_key=True
@@ -74,6 +76,12 @@ class GameProfile(Timestamps, Base):
     net_hours: Mapped[int] = mapped_column(Integer, default=0, server_default="0")
     streak: Mapped[int] = mapped_column(Integer, default=0, server_default="0")
     best_streak: Mapped[int] = mapped_column(Integer, default=0, server_default="0")
+    # fun chips: no value, topped up daily (games.chips.daily); the biggest single win counts
+    chips: Mapped[int] = mapped_column(Integer, default=1000, server_default="1000")
+    chips_day: Mapped[dt.date | None] = mapped_column(Date)
+    best_win: Mapped[int] = mapped_column(Integer, default=0, server_default="0")
+    best_win_stake: Mapped[int] = mapped_column(Integer, default=0, server_default="0")
+    best_win_at: Mapped[dt.datetime | None] = mapped_column(DateTime(timezone=True))
 
 
 class GameRoom(UUIDPk, Timestamps, Base):
@@ -151,6 +159,8 @@ class GameRound(UUIDPk, Timestamps, Base):
     server_seed_hash: Mapped[str] = mapped_column(String(64))
     client_seed: Mapped[str] = mapped_column(String(400))
     stakes: Mapped[bool] = mapped_column(Boolean, default=False, server_default="false")
+    # what the stakes were in: "hours" (bonus wallet), "chips" (fun chips) or None (no stakes)
+    currency: Mapped[str | None] = mapped_column(String(8))
     rules: Mapped[dict[str, Any]] = mapped_column(JSONB)
     summary: Mapped[dict[str, Any] | None] = mapped_column(JSONB)
     finished_at: Mapped[dt.datetime | None] = mapped_column(DateTime(timezone=True))

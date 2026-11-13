@@ -42,6 +42,13 @@ def settings() -> Settings:
     return make_settings(rate_limit_enabled=False)
 
 
+@pytest.fixture(autouse=True)
+async def shared_tables_on(db: Any) -> None:
+    """Shared tables are off by default (the owner chose solo play); the engine and API still
+    support them, and these tests keep them covered."""
+    await setting(db, "games.multiplayer_enabled", True)
+
+
 def rig(monkeypatch: pytest.MonkeyPatch, *cards: str) -> None:
     """Fix the shoe. Order: each player's first card, dealer up, each second card, dealer hole,
     then draws."""
@@ -440,10 +447,9 @@ async def test_shared_table_round_for_every_player(
         assert (await client.get(G, headers=u.headers)).json()["profile"]["wins"] == 1
         assert len((await client.get(f"{G}/history", headers=u.headers)).json()) == 1
     assert v["last_fair"]["client_seed"].count("=") == n
+    # rounds without chips don't make the biggest-win board
     board = (await client.get(f"{G}/leaderboard", headers=users[0].headers)).json()
-    assert (
-        len(board["top"]) == n and board["my_rank"] == 1 and sum(t["me"] for t in board["top"]) == 1
-    )
+    assert board["top"] == [] and board["my_rank"] is None
 
 
 async def test_rooms_public_private_full_and_access(
@@ -790,3 +796,134 @@ async def test_notices_redeem_admin_away_round_and_kick(
     kicked = [m for m in outbox if m.template == "game_kicked"]
     assert len(kicked) == 1 and kicked[0].to == a.email
     assert (await client.get(f"{G}/rooms/{rid}", headers=a.headers)).status_code == 403
+
+
+# ----------------------------------------------------------------------------- fun chips
+def test_solo_only_by_default() -> None:
+    assert settings_service.REGISTRY["games.multiplayer_enabled"].default is False
+    assert settings_service.REGISTRY["games.chips.enabled"].default is True
+    assert settings_service.REGISTRY["games.blackjack.stakes_enabled"].default is False
+
+
+async def chips(client: AsyncClient, user: Any) -> int:
+    hub = (await client.get(G, headers=user.headers)).json()
+    assert hub["currency"] == "chips"
+    return int(hub["chips"])
+
+
+async def chip_round(
+    client: AsyncClient, user: Any, monkeypatch: pytest.MonkeyPatch, stake: int, *cards: str
+) -> dict[str, Any]:
+    room = await solo(client, user)
+    rig(monkeypatch, *cards)
+    v = (await bet(client, user, room["id"], stake=stake)).json()
+    if v["phase"] != "settled":
+        v = (await do(client, user, room["id"], "stand")).json()
+    assert v["phase"] == "settled", v
+    return v  # type: ignore[no-any-return]
+
+
+async def test_chips_stakes_payouts_and_biggest_win_board(
+    client: AsyncClient, outbox: list[Any], db: Any, monkeypatch: pytest.MonkeyPatch
+) -> None:
+    ann = await new_user(client, outbox, "chips-ann@example.com")
+    assert await chips(client, ann) == 1000
+    room = await solo(client, ann)
+    assert room["currency"] == "chips" and room["stake_options"] == [10, 20, 50, 100, 200, 500]
+    assert room["me"]["chips"] == 1000
+
+    # win 100 on a 100 stake (20 vs 17)
+    v = await chip_round(client, ann, monkeypatch, 100, "TS", "9H", "TD", "8C")
+    assert v["round"]["results"]["seats"][0]["net"] == 100 and v["round_currency"] == "chips"
+    assert await chips(client, ann) == 1100
+    # blackjack pays 3:2 in whole chips: +75 on 50; not a new best
+    await chip_round(client, ann, monkeypatch, 50, "AS", "9H", "KD", "8C")
+    assert await chips(client, ann) == 1175
+    # a loss (17 vs 19)
+    await chip_round(client, ann, monkeypatch, 200, "TS", "TH", "7D", "9C")
+    assert await chips(client, ann) == 975
+    # a double: the extra stake is chips too (11 + 9 = 20 vs 18)
+    room = await solo(client, ann)
+    rig(monkeypatch, "6S", "8H", "5D", "TC", "9S")
+    await bet(client, ann, room["id"], stake=100)
+    v = (await do(client, ann, room["id"], "double")).json()
+    assert v["phase"] == "settled" and v["round"]["results"]["seats"][0]["net"] == 200
+    assert await chips(client, ann) == 1175
+    hist = (await client.get(f"{G}/history", headers=ann.headers)).json()
+    assert hist[0]["currency"] == "chips" and hist[0]["net_hours"] == 200  # units: chips
+
+    # the bonus wallet is not touched by chips at all
+    w = (await client.get(f"{G}/wallet", headers=ann.headers)).json()
+    assert w["balance_hours"] == 0 and w["ledger"] == []
+
+    # a stake that isn't offered; a free (0 chips) round still works
+    room = await solo(client, ann)
+    r = await bet(client, ann, room["id"], stake=15)
+    assert r.json()["error"]["code"] == "bad_stake"
+    v = await chip_round(client, ann, monkeypatch, 0, "TS", "9H", "TD", "8C")
+    assert v["round_currency"] is None and await chips(client, ann) == 1175
+
+    # the board: biggest single win, with its stake; ties go to whoever was first
+    bob = await new_user(client, outbox, "chips-bob@example.com")
+    await chip_round(client, bob, monkeypatch, 500, "TS", "9H", "TD", "8C")
+    cat = await new_user(client, outbox, "chips-cat@example.com")
+    await chip_round(client, cat, monkeypatch, 100, "TS", "9H", "TD", "8C")
+    board = (await client.get(f"{G}/leaderboard", headers=cat.headers)).json()
+    rows = [(x["nickname"][:6], x["best_win"], x["stake"]) for x in board["top"]]
+    assert [r[1:] for r in rows] == [(500, 500), (200, 200), (100, 100)]  # Ann's double: 200 staked
+    assert board["top"][1]["me"] is False and board["my_rank"] == 3
+    assert board["my_best"] == {"win": 100, "stake": 100}
+    nobody = await new_user(client, outbox, "chips-new@example.com")
+    b = (await client.get(f"{G}/leaderboard", headers=nobody.headers)).json()
+    assert b["my_rank"] is None
+
+
+async def test_chips_run_out_and_are_topped_up_daily(
+    client: AsyncClient, outbox: list[Any], db: Any, monkeypatch: pytest.MonkeyPatch
+) -> None:
+    from app.models import GameProfile
+
+    u = await new_user(client, outbox, "chips-out@example.com")
+    await chips(client, u)
+    await chip_round(client, u, monkeypatch, 500, "TS", "TH", "7D", "9C")
+    await chip_round(client, u, monkeypatch, 500, "TS", "TH", "7D", "9C")
+    assert await chips(client, u) == 0
+    room = await solo(client, u)
+    r = await bet(client, u, room["id"], stake=10)
+    assert r.status_code == 409 and r.json()["error"]["code"] == "no_chips"
+    # the next day: topped up to the daily amount (never taken away when above it)
+    await db.execute(
+        update(GameProfile)
+        .where(GameProfile.user_id == uuid.UUID(u.user_id))
+        .values(chips_day=utcnow().date() - dt.timedelta(days=1))
+    )
+    await db.commit()
+    assert await chips(client, u) == 1000
+    await db.execute(
+        update(GameProfile)
+        .where(GameProfile.user_id == uuid.UUID(u.user_id))
+        .values(chips=1500, chips_day=utcnow().date() - dt.timedelta(days=1))
+    )
+    await db.commit()
+    assert await chips(client, u) == 1500
+
+
+async def test_bonus_day_stakes_take_over_from_chips(
+    client: AsyncClient, outbox: list[Any], db: Any, monkeypatch: pytest.MonkeyPatch
+) -> None:
+    await stakes_on(db)
+    u = await new_user(client, outbox, "chips-days@example.com")
+    await give(db, u, 3)
+    hub = (await client.get(G, headers=u.headers)).json()
+    assert hub["currency"] == "hours" and hub["chips"] is None
+    room = await solo(client, u)
+    rig(monkeypatch, "TS", "9H", "TD", "8C")
+    v = (await bet(client, u, room["id"], stake=1)).json()
+    if v["phase"] != "settled":
+        v = (await do(client, u, room["id"], "stand")).json()
+    assert v["round_currency"] == "hours"
+    assert await balance(client, u) == 4 * 24
+    prof = (await client.get(G, headers=u.headers)).json()["profile"]
+    assert (
+        prof["best_win"] == 0 and prof["chips"] == 1000
+    )  # day stakes don't touch chips or the board

@@ -1,5 +1,7 @@
 // Clickable demo: stands in for Telegram and the backend with in-memory sample data.
 // Bundled in front of src/app.js by demo/build.mjs. Nothing here ships in the real Mini App.
+import { createGames } from "./games-mock.js";
+
 document.documentElement.dataset.appName = "KingKong VPN";
 
 const params = new URLSearchParams(location.search);
@@ -129,10 +131,14 @@ const json = (data, status = 200) => new Response(status === 204 ? null : JSON.s
 const fail = (status, code, message) => json({ error: { code, message } }, status);
 const T = (ru, en) => (LANG === "ru" ? ru : en);
 
+let gamesRoute = null;
 async function backend(method, path, body) {
   const [p, qs] = path.split("?");
   const q = new URLSearchParams(qs || "");
   await new Promise((r) => setTimeout(r, 120)); // feel of a network
+  gamesRoute ||= createGames(LANG);
+  const game = await gamesRoute(method, p, body);
+  if (game) return json(game[1], game[0]);
   if (p === "/auth/telegram/webapp") return json({ token_type: "bearer", access_token: "demo", expires_in: 900 });
   if (p === "/subscription") return json(subscriptionOut());
   if (p === "/plans") return json([{ ...PLAN, features: {}, server_tiers: ["standard"], prices: PRICES }]);
@@ -190,6 +196,13 @@ async function backend(method, path, body) {
   }
   return fail(404, "not_found", `Demo: no route for ${method} ${p}`);
 }
+
+const RealWS = window.WebSocket;
+window.WebSocket = function DemoSocket(url, ...rest) {
+  if (!String(url).includes("/api/v1/games/ws")) return new RealWS(url, ...rest);
+  const ws = { readyState: 3, send() {}, close() {}, onopen: null, onmessage: null, onclose: null, onerror: null };
+  return ws; // never opens: the game falls back to polling the demo backend
+};
 
 const realFetch = window.fetch.bind(window);
 window.fetch = async (input, init = {}) => {
@@ -323,7 +336,10 @@ function panel() {
   row1.append(label, ...btns);
   row2.append(vpn, friend, lang);
   bar.append(row1, row2);
+  const measure = () => document.documentElement.style.setProperty("--demo-bar", `${bar.offsetHeight}px`);
+  try { new ResizeObserver(measure).observe(bar); } catch { window.addEventListener("resize", measure); }
   highlight();
   document.body.append(bar);
+  measure();
 }
 if (document.readyState === "loading") document.addEventListener("DOMContentLoaded", panel); else panel();

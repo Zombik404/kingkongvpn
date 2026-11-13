@@ -307,6 +307,19 @@
             ],
             "title": "Client Seed"
           },
+          "stake": {
+            "anyOf": [
+              {
+                "maximum": 100000.0,
+                "minimum": 0.0,
+                "type": "integer"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Stake"
+          },
           "stake_days": {
             "default": 0,
             "maximum": 30.0,

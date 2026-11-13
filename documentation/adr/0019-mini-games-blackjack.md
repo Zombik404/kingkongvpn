@@ -21,3 +21,17 @@ Status: accepted (2026-11-13). Reference: `documentation/GAMES_BLACKJACK.md`.
    — not the film character. The name "King Kong" has the trademark caveat from ADR-018 §5.
 8. **Not built because they don't exist yet:** native mobile screens and a visual admin panel.
    The API is ready for both.
+9. **Owner's decisions, 2026-11-13 (evening):**
+   - **Solo only.** Shared tables are switched off by default (`games.multiplayer_enabled =
+     false`) and their screens and the bot's table invitations are removed. The server keeps the
+     shared-table code path (a solo game is a one-seat table anyway) and its tests, so turning
+     it on later is a setting plus screens.
+   - **Fun chips** (`games.chips.*`): a play currency with no value — not bought, not exchanged,
+     not transferred, topped up to `games.chips.daily` (1000) once a day. Used for stakes while
+     bonus-day stakes are off; when bonus-day stakes are on they take over. Stakes are multiples
+     of 10 so 3:2, 6:5 and halves pay whole chips. `game_rounds.currency` records what a round
+     was played for.
+   - **Leaderboard = biggest single win in chips** ("the jackpot") with the stake of that round;
+     ties go to whoever got there first.
+   - **Code graph:** the repository is to be indexed by the Graphify connector (needs the code on
+     GitHub; see `PROJECT_STATUS.md`).

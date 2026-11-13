@@ -689,11 +689,7 @@ const games = initGames({
     }
     await goHome();
     watchVpn();
-    // a friend's invitation to a blackjack table: ?room=CODE (from the bot) or startapp=room_CODE
-    const room = new URLSearchParams(location.search).get("room")
-      || (/^room_([A-Z0-9]{4,8})$/i.exec(tg.initDataUnsafe?.start_param || "") || [])[1];
-    if (room && /^[A-Z0-9]{4,8}$/i.test(room)) await games.joinByCode(room);
-    else if (new URLSearchParams(location.search).get("screen") === "games") await games.gamesScreen();
+    if (new URLSearchParams(location.search).get("screen") === "games") await games.gamesScreen(); // from the bot's /games
   } catch (e) {
     root.replaceChildren(h("p", { class: "warn pad" }, e.message || t("loginFailed")));
   }

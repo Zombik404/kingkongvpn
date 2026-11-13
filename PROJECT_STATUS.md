@@ -44,10 +44,12 @@ Stage plan from the owner's brief; ✅ = done and tested, ⏳ = next.
 - ✅ 10 Staff API `/admin/games/*` (overview, rooms pause/resume/close, rounds, ledger, players, suspicious, events, bonus adjust) with permissions `games:read`/`games:write`.
 - ✅ Provably fair shuffle (commit-reveal), CSPRNG.
 - ⚠️ **Stakes are OFF by default** (`games.blackjack.stakes_enabled`): legal check for target countries is the owner's decision. Fun mode works fully.
-- ⏳ 8-9 Game screens in the Mini App, dealer animations, sounds, bot commands, clickable demo.
-- ⏳ 11-12 End-to-end tests in a browser, launch notes.
+- ✅ 8-9 Mini App "Games" section: solo table against the crowned dealer (reactions: eats bananas between rounds, cheers/sulks at results), card dealing and flip animations, synthesised sounds with a mute button, stats, history, jackpot board, on-device provably-fair check; bot `/games`; notices (round finished while away, removed for inactivity, bonus exchange, staff adjustment).
+- ✅ Owner's decisions (evening): **solo only** (shared tables off, screens and invites removed; server path kept), **fun chips** (no value, 1000 a day) for stakes in fun mode, **leaderboard = biggest single win + its stake**. Migration 0009.
+- ✅ 11 Browser end-to-end on the real backend (two players: chip stakes, wins/losses/push, fairness check, board) and in the clickable demo; fixed: fairness check compared the wrong round, a stale result banner after a quick new round.
+- ⏳ Graphify: the code must be on GitHub (`Zombik404/kingkong-vpn`, private) and enabled at app.graphify.com before the connector can index it.
 - Not in the repo (so not built): native mobile app screens, visual admin panel — the API is ready for both.
-- Verified: 254 backend tests (33 new), migration 0008 generated on a clean database.
+- Verified: 279 backend tests (Python 3.13), bot 7, Mini App 7; migrations 0008-0009 applied to a database with data.
 
 ## KingKong VPN rebrand (2026-11-13) — ADR-018 §5–6
 - Renamed to **KingKong VPN**: jungle look (black & green, leaves and vines), the owner's gorilla patch as the logo; ranks renamed Monkey/Parrot/Jaguar/Gorilla/King Kong, themes Volcano/Night/Banana/Orchid.

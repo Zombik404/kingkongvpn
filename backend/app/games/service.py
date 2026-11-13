@@ -152,6 +152,78 @@ def _require_enabled(cfg: dict[str, Any]) -> None:
 _CTRL = re.compile(r"[\x00-\x1f\x7f​-‏‪-‮⁦-⁩]")
 
 
+# --------------------------------------------------------------------------- the bank
+# Stakes are in one of two currencies, never mixed in a round:
+#   "hours" - the bonus wallet (bonus days, in hours), only when bonus-day stakes are enabled;
+#   "chips" - fun chips on the game profile: no value, no purchase, no exchange, topped up daily.
+# Paid subscription days are in neither, so no game path can touch them.
+HOURS, CHIPS = "hours", "chips"
+
+
+def currency_of(cfg: dict[str, Any]) -> str | None:
+    if cfg["games.blackjack.stakes_enabled"]:
+        return HOURS
+    if cfg["games.chips.enabled"]:
+        return CHIPS
+    return None
+
+
+def _refill(p: GameProfile, cfg: dict[str, Any]) -> None:
+    """Top the chips up to the daily amount once per (UTC) day; never takes chips away."""
+    today = utcnow().date()
+    if p.chips_day != today:
+        p.chips = max(p.chips, int(cfg["games.chips.daily"]))
+        p.chips_day = today
+
+
+async def chips_of(
+    db: AsyncSession, user_id: uuid.UUID, cfg: dict[str, Any], *, lock: bool = False
+) -> int:
+    p = await db.get(GameProfile, user_id, with_for_update=lock)
+    if p is None:
+        return 0
+    _refill(p, cfg)
+    return p.chips
+
+
+async def balance_in(
+    db: AsyncSession, user_id: uuid.UUID, cur: str | None, cfg: dict[str, Any]
+) -> int:
+    if cur == HOURS:
+        return (await wallet.get_wallet(db, user_id)).balance_hours
+    if cur == CHIPS:
+        return await chips_of(db, user_id, cfg)
+    return 0
+
+
+async def bank_move(
+    db: AsyncSession,
+    cfg: dict[str, Any],
+    cur: str | None,
+    user_id: uuid.UUID,
+    delta: int,
+    kind: str,
+    key: str,
+    *,
+    round_id: uuid.UUID | None = None,
+    note: str | None = None,
+) -> None:
+    """Take (delta < 0) or give back/pay out (delta > 0) in the round's currency. Callers make
+    each movement happen once (room lock + action ids + the settle-once guard)."""
+    if not delta or cur is None:
+        return
+    if cur == HOURS:
+        await wallet.move(db, user_id, delta, kind, key, round_id=round_id, note=note)
+        return
+    p = await db.get(GameProfile, user_id, with_for_update=True)
+    if p is None:
+        raise NotFound("No game profile.")
+    _refill(p, cfg)
+    if p.chips + delta < 0:
+        raise GameError("no_chips", "Not enough chips. They are topped up every day.")
+    p.chips += delta
+
+
 def clean_nickname(raw: str | None, user_id: uuid.UUID) -> str:
     name = re.sub(r"\s+", " ", _CTRL.sub("", raw or "")).strip()[:24]
     return name or f"Player {str(user_id)[-4:].upper()}"
@@ -325,8 +397,10 @@ async def leave_room(db: AsyncSession, user_id: uuid.UUID, room_id: uuid.UUID) -
         bj.force_stand(state["round"], me.seat)
     bet = state["bets"].pop(str(me.seat), None)
     if bet and bet["hours"]:
-        await wallet.move(
+        await bank_move(
             db,
+            cfg,
+            bet.get("cur", HOURS),
             user_id,
             bet["hours"],
             "refund",
@@ -373,11 +447,13 @@ async def place_bet(
     user_id: uuid.UUID,
     room_id: uuid.UUID,
     *,
-    stake_days: int,
+    stake_days: int = 0,
+    stake: int | None = None,
     client_seed: str | None,
     action_id: str | None,
 ) -> GameRoom:
-    """Join the next round. With stakes on, the stake is taken from the bonus wallet right now."""
+    """Join the next round. The stake (bonus days, or fun chips) is taken right now.
+    `stake` is in the table's currency (days or chips); `stake_days` is the older field."""
     room = await _lock(db, room_id)
     cfg = await config(db)
     _require_enabled(cfg)
@@ -394,19 +470,31 @@ async def place_bet(
         return room
     if room.phase in LIVE:
         raise GameError("round_in_progress", "Wait for the current round to finish.")
-    hours = 0
-    if cfg["games.blackjack.stakes_enabled"]:
-        if stake_days not in cfg["games.blackjack.stake_options_days"]:
+    cur = currency_of(cfg)
+    amount = 0  # in the currency's units: hours of bonus, or chips
+    if cur == HOURS:
+        days = stake if stake is not None else stake_days
+        if days not in cfg["games.blackjack.stake_options_days"]:
             raise GameError("bad_stake", "Choose one of the offered stakes.")
         if await _daily_net(db, user_id) >= cfg["games.blackjack.daily_win_cap_days"] * H:
             raise GameError("daily_cap", "You've reached today's bonus limit. Come back tomorrow!")
-        hours = stake_days * H
+        amount = days * H
+    elif cur == CHIPS:
+        chips = stake or 0
+        if chips and chips not in cfg["games.chips.stake_options"]:
+            raise GameError("bad_stake", "Choose one of the offered stakes.")
+        amount = chips  # 0 = just for fun, no chips
     # A fresh key per bet: leaving (refund) and betting again must be two separate movements.
     key = f"bet:{room.id}:{room.round_no + 1}:{secrets.token_hex(6)}"
-    if hours:
-        await wallet.move(db, user_id, -hours, "stake", key, note="stake")
+    await bank_move(db, cfg, cur, user_id, -amount, "stake", key, note="stake")
     seed = re.sub(r"[^A-Za-z0-9_.-]", "", client_seed or "")[:64] or "kingkong"
-    state["bets"][str(me.seat)] = {"user": str(user_id), "hours": hours, "seed": seed, "key": key}
+    state["bets"][str(me.seat)] = {
+        "user": str(user_id),
+        "hours": amount,  # the stake, in the units of "cur"
+        "cur": cur if amount else None,
+        "seed": seed,
+        "key": key,
+    }
     me.missed = 0
     if room.phase != "betting":
         room.phase = "betting"
@@ -445,18 +533,22 @@ async def _deal(
         {"seat": int(seat), "user": b["user"], "bet": b["hours"]}
         for seat, b in sorted(bets.items())
     ]
+    curs = {b.get("cur", HOURS) for b in bets.values() if b["hours"]}
+    round_cur = curs.pop() if len(curs) == 1 else (currency_of(cfg) if curs else None)
     rnd = GameRound(
         room_id=room.id,
         number=number,
         server_seed=server_seed,
         server_seed_hash=fair.seed_hash(server_seed),
         client_seed=client_seed,
-        stakes=any(b["hours"] for b in bets.values()),
+        stakes=round_cur == HOURS,
+        currency=round_cur,
         rules=rules.to_json(),
     )
     db.add(rnd)
     await db.flush()
     state["round"] = bj.start_round(rules, shoe, seats)
+    state["round_cur"] = round_cur
     state["bets"] = {}
     state["round_started"] = utcnow().isoformat()
     room.round_no, room.round_id = number, rnd.id
@@ -491,11 +583,15 @@ async def _settle(
     assert room.round_id is not None
     rnd = await db.get(GameRound, room.round_id)
     assert rnd is not None
+    cur = state.get("round_cur", HOURS if rnd.stakes else None)
+    cfg = await config(db)
     for r in eng["results"]["seats"]:
         uid = uuid.UUID(r["user"])
         if r["returned"]:
-            await wallet.move(
+            await bank_move(
                 db,
+                cfg,
+                cur,
                 uid,
                 r["returned"],
                 "payout",
@@ -517,7 +613,12 @@ async def _settle(
         profile = await db.get(GameProfile, uid, with_for_update=True)
         if profile is not None:
             profile.rounds += 1
-            profile.net_hours += r["net"]
+            if cur == HOURS:
+                profile.net_hours += r["net"]
+            elif cur == CHIPS and r["net"] > profile.best_win:  # the biggest single win
+                profile.best_win = r["net"]
+                profile.best_win_stake = r["staked"]
+                profile.best_win_at = utcnow()
             profile.blackjacks += int(r["blackjack"])
             if r["result"] == "win":
                 profile.wins += 1
@@ -585,7 +686,17 @@ async def act(
     extra = bj.extra_stake(eng, me.seat, action)
     if extra and room.round_id:
         key = f"act:{room.round_id}:{action_id or secrets.token_hex(8)}"
-        await wallet.move(db, user_id, -extra, "stake", key, round_id=room.round_id, note=action)
+        await bank_move(
+            db,
+            cfg,
+            state.get("round_cur", HOURS),
+            user_id,
+            -extra,
+            "stake",
+            key,
+            round_id=room.round_id,
+            note=action,
+        )
     bj.act(eng, me.seat, action)
     me.missed = 0
     _touch(room, state)
@@ -673,8 +784,10 @@ async def close_room(db: AsyncSession, room_id: uuid.UUID, *, reason: str) -> Ga
         await _sync(db, room, state, cfg, players)
     for seat, bet in list(state["bets"].items()):
         if bet["hours"]:
-            await wallet.move(
+            await bank_move(
                 db,
+                cfg,
+                bet.get("cur", HOURS),
                 uuid.UUID(bet["user"]),
                 bet["hours"],
                 "refund",
@@ -742,7 +855,9 @@ async def room_view(db: AsyncSession, room: GameRoom, user_id: uuid.UUID) -> dic
             for r in view_round["results"]["seats"]:
                 r.pop("user", None)
     stakes = bool(cfg["games.blackjack.stakes_enabled"])
+    cur = currency_of(cfg)
     bal = (await wallet.get_wallet(db, user_id)).balance_hours
+    round_cur = state.get("round_cur") if eng is not None else None
     actions: list[str] = []
     extra: dict[str, int] = {}
     if me is not None and eng is not None and room.phase in LIVE and room.status == "open":
@@ -750,7 +865,9 @@ async def room_view(db: AsyncSession, room: GameRoom, user_id: uuid.UUID) -> dic
         for a in ("double", "split", "insurance"):
             if a in actions:
                 extra[a] = bj.extra_stake(eng, me.seat, a)
-        actions = [a for a in actions if extra.get(a, 0) <= bal]  # can't afford → not offered
+        if round_cur is not None:  # can't afford → not offered
+            can = await balance_in(db, user_id, round_cur, cfg)
+            actions = [a for a in actions if extra.get(a, 0) <= can]
     return {
         "id": str(room.id),
         "code": room.code,
@@ -764,6 +881,16 @@ async def room_view(db: AsyncSession, room: GameRoom, user_id: uuid.UUID) -> dic
         "server_time": now.isoformat(),
         "stakes": stakes,
         "stake_options_days": cfg["games.blackjack.stake_options_days"] if stakes else [],
+        # the table's currency now: "hours" (bonus days), "chips" (fun chips) or None
+        "currency": cur,
+        "stake_options": (
+            cfg["games.blackjack.stake_options_days"]
+            if cur == HOURS
+            else cfg["games.chips.stake_options"]
+            if cur == CHIPS
+            else []
+        ),
+        "round_currency": round_cur,
         "next_seed_hash": fair.seed_hash(state["next_seed"]),
         "players": [
             {
@@ -783,8 +910,9 @@ async def room_view(db: AsyncSession, room: GameRoom, user_id: uuid.UUID) -> dic
         "me": {
             "seat": me.seat if me else None,
             "actions": actions,
-            "extra_hours": extra,
+            "extra_hours": extra,  # extra stake per action, in the round's currency units
             "balance_hours": bal,
+            "chips": await chips_of(db, user_id, cfg) if cur == CHIPS else None,
             "in_round": bool(eng and me and any(s["seat"] == me.seat for s in eng["seats"])),
         },
         "last_fair": state.get("last_fair"),
@@ -844,6 +972,9 @@ def profile_out(p: GameProfile) -> dict[str, Any]:
         "net_hours": p.net_hours,
         "streak": p.streak,
         "best_streak": p.best_streak,
+        "chips": p.chips,
+        "best_win": p.best_win,
+        "best_win_stake": p.best_win_stake,
     }
 
 
@@ -870,7 +1001,8 @@ async def history(
                 "blackjack": rp.blackjack,
                 "staked_hours": rp.staked_hours,
                 "returned_hours": rp.returned_hours,
-                "net_hours": rp.returned_hours - rp.staked_hours,
+                "net_hours": rp.returned_hours - rp.staked_hours,  # in units of "currency"
+                "currency": rnd.currency,
                 "dealer": summary.get("dealer"),
                 "hands": seat["hands"] if seat else [],
                 "players": len(summary.get("seats", [])),
@@ -880,43 +1012,48 @@ async def history(
 
 
 async def leaderboard(db: AsyncSession, user_id: uuid.UUID, limit: int = 20) -> dict[str, Any]:
-    order = (
-        GameProfile.wins.desc(),
-        GameProfile.blackjacks.desc(),
-        GameProfile.rounds.asc(),
-        GameProfile.user_id,
-    )
+    """Best players by their biggest single win in chips (the "jackpot"), with its stake. Ties:
+    whoever got there first."""
+    order = (GameProfile.best_win.desc(), GameProfile.best_win_at.asc(), GameProfile.user_id)
     rows = (
         await db.scalars(
-            select(GameProfile).where(GameProfile.rounds > 0).order_by(*order).limit(limit)
+            select(GameProfile).where(GameProfile.best_win > 0).order_by(*order).limit(limit)
         )
     ).all()
     top = [
         {
             "rank": i + 1,
             "nickname": p.nickname,
-            "wins": p.wins,
+            "best_win": p.best_win,
+            "stake": p.best_win_stake,
+            "at": p.best_win_at.isoformat() if p.best_win_at else None,
             "rounds": p.rounds,
+            "wins": p.wins,
             "blackjacks": p.blackjacks,
-            "best_streak": p.best_streak,
             "me": p.user_id == user_id,
         }
         for i, p in enumerate(rows)
     ]
     mine = await db.get(GameProfile, user_id)
     my_rank = None
-    if mine is not None and mine.rounds > 0:
+    if mine is not None and mine.best_win > 0 and mine.best_win_at is not None:
         better = await db.scalar(
             select(func.count())
             .select_from(GameProfile)
             .where(
-                GameProfile.rounds > 0,
-                (GameProfile.wins > mine.wins)
-                | ((GameProfile.wins == mine.wins) & (GameProfile.blackjacks > mine.blackjacks)),
+                (GameProfile.best_win > mine.best_win)
+                | (
+                    (GameProfile.best_win == mine.best_win)
+                    & (GameProfile.best_win_at < mine.best_win_at)
+                )
             )
         )
         my_rank = int(better or 0) + 1
-    return {"top": top, "my_rank": my_rank}
+    return {
+        "top": top,
+        "my_rank": my_rank,
+        "my_best": {"win": mine.best_win, "stake": mine.best_win_stake} if mine else None,
+    }
 
 
 async def fairness(db: AsyncSession, round_id: uuid.UUID, user_id: uuid.UUID) -> dict[str, Any]:

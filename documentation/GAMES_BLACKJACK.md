@@ -40,6 +40,9 @@ simultaneous requests are applied one after another.
 
 **Table phases:** `waiting → betting → [insurance] → playing → settled → betting → …`
 
+> **Solo only for now** (owner's decision): `games.multiplayer_enabled` is off by default and the
+> Mini App shows only the table against the dealer. The server still supports 1–4 seats.
+
 - *betting*: each player confirms taking part (and the stake, when stakes are on). When everyone
   has confirmed — or the bet timer runs out — cards are dealt to those who confirmed.
 - *playing*: turns go by seat. At a shared table a move has `turn_seconds`; when it runs out the
@@ -91,6 +94,27 @@ no transfer between users.
 > fun: nothing is won or lost, and statistics and the leaderboard still work. Related settings:
 > `stake_options_days` (default 1/2/3/5), `daily_win_cap_days` (10), `welcome_bonus_days` (0).
 
+## Fun chips and the jackpot board
+
+While bonus-day stakes are off, players stake **fun chips** (`games.chips.enabled`, on by
+default): a play currency kept on the game profile. Chips have no value — they can't be bought,
+exchanged for VPN days, cashed out or transferred — and the balance is topped up to
+`games.chips.daily` (1000) once per UTC day (never reduced). Stakes come from
+`games.chips.stake_options` (10/20/50/100/200/500; multiples of 10 so every payout is whole
+chips). "Play without a stake" (0 chips) is always possible.
+
+The **leaderboard** (`GET /games/leaderboard`) lists players by their **biggest single-round win
+in chips** with the total stake of that round (including doubles/splits); ties go to whoever got
+there first. When bonus-day stakes are switched on, rounds use bonus days instead and do not
+touch chips or the board.
+
+## Notices (Telegram / email)
+
+`game_round_away` (a round finished while you weren't looking at the table),
+`game_kicked` (left the table after missing several turns), `game_redeem` (bonus days exchanged
+for VPN days), `game_bonus_admin` (staff changed your bonus balance). Sent after the change is
+committed. The bot's `/games` opens the games section.
+
 ## Provably fair
 
 1. Before each round the table shows `next_seed_hash = SHA-256(server_seed)`.
@@ -101,7 +125,9 @@ no transfer between users.
    32-bit big-endian integers with rejection sampling. Deal order: one card to each seat, dealer
    up card, a second card to each seat, dealer hole card, then draws.
 4. After the round `server_seed` is revealed (`last_fair` in the table view,
-   `GET /games/rounds/{id}/fairness`). Check that its SHA-256 equals the hash shown before the
+   `GET /games/rounds/{id}/fairness`, which also returns that round's cards). The Mini App's
+   "Verify this round" re-runs the shuffle on the device (`miniapp/src/fair.js`, tested against
+   the server's) and checks that exactly that round's cards came off the top of the shoe. Check that its SHA-256 equals the hash shown before the
    bet and re-run the shuffle (`app/games/fair.py`, 30 lines) to see the same cards.
 
 Randomness comes from the OS CSPRNG (`secrets`).
@@ -116,8 +142,8 @@ Randomness comes from the OS CSPRNG (`secrets`).
 | `POST /games/rooms/solo` | The player's own table against the dealer |
 | `POST /games/rooms`, `GET /games/rooms`, `POST /games/rooms/join` | Create (1–4 seats, public/private), list public, join by id or code |
 | `GET /games/rooms/{id}` | The table as this player may see it (also the polling fallback) |
-| `POST /games/rooms/{id}/bet`, `/actions`, `/leave` | Confirm the round, play, leave |
-| `GET /games/history`, `/leaderboard`, `/rounds/{id}/fairness` | History, rating, seeds |
+| `POST /games/rooms/{id}/bet`, `/actions`, `/leave` | Confirm the round (`stake` in the table's currency: chips or bonus days), play, leave |
+| `GET /games/history`, `/leaderboard`, `/rounds/{id}/fairness` | History (with each round's currency), jackpot board, seeds and cards |
 | `WS /games/ws` | First message `{"token", "room"}`; then the server pushes `{"type":"room","room":…}` |
 
 Staff (`/api/v1/admin/games/*`, MFA session): `overview`, `rooms` (+ `pause` / `resume` /
@@ -126,5 +152,6 @@ change is written to the audit log.
 
 ## Status
 
-See `PROJECT_STATUS.md`. Server side: done and tested (engine, fairness, wallet, tables,
-multiplayer, timers, admin API). Screens, bot integration and the clickable demo: next stage.
+See `PROJECT_STATUS.md`. Done and tested: engine, fairness (server and on-device check), bonus
+wallet, fun chips, jackpot board, solo table screens, dealer reactions, sounds, notices, bot
+`/games`, admin API, clickable demo.

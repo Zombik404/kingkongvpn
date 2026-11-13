@@ -90,18 +90,22 @@ export function initGames(d) {
       !hub.enabled ? h("p", { class: "card warn" }, t("gDisabled")) : [
         hub.room_id ? h("button", { class: "primary wide", onclick: () => resume(hub.room_id) }, t("gResume")) : null,
         h("button", { class: hub.room_id ? "secondary wide" : "primary wide", onclick: playSolo }, t("gSolo")),
-        hub.multiplayer ? h("button", { class: "secondary wide", onclick: () => friendsScreen() }, t("gFriends")) : null,
       ],
-      h("section", { class: "card" },
+      hub.currency === "chips" ? h("section", { class: "card" },
+        h("div", { class: "card-title" }, t("gChips"),
+          h("span", { class: "pill solid" }, `🪙 ${nf.format(hub.chips)}`)),
+        h("p", { class: "small muted" }, t("gChipsText", { n: nf.format(hub.chips_daily) })),
+        p.best_win ? h("p", { class: "small" }, t("gMyBest", { w: nf.format(p.best_win), s: nf.format(p.best_win_stake) })) : null) : null,
+      hub.currency === "hours" || hub.balance_hours > 0 ? h("section", { class: "card" },
         h("div", { class: "card-title" }, t("gBonus"),
           h("span", { class: "pill solid" }, `${days(hub.balance_hours)} ${t("gDaysShort")}`)),
         h("p", { class: "small muted" }, hub.stakes ? t("gBonusStakes") : t("gBonusFun")),
-        h("button", { class: "secondary wide", onclick: walletScreen }, t("gWallet"))),
+        h("button", { class: "secondary wide", onclick: walletScreen }, t("gWallet"))) : null,
       h("section", { class: "card stats4g" },
         stat(p.rounds, t("gRounds")), stat(p.wins, t("gWins")), stat(p.blackjacks, t("gBlackjacks")), stat(p.best_streak, t("gStreak"))),
       h("div", { class: "row2" },
-        h("button", { class: "secondary", onclick: historyScreen }, t("gHistory")),
-        h("button", { class: "secondary", onclick: leaderboardScreen }, t("gLeaders"))),
+        h("button", { class: "secondary", onclick: leaderboardScreen }, `🏆 ${t("gLeaders")}`),
+        h("button", { class: "secondary", onclick: historyScreen }, t("gHistory"))),
     ];
     if (viaPage) page(t("gTitle"), ...content.flat().filter(Boolean));
     else sub(t("gTitle"), goHome, content);
@@ -114,49 +118,6 @@ export function initGames(d) {
   async function resume(roomId) {
     try { openTable(await api(`/games/rooms/${roomId}`)); } catch (e) { toast(errText(e)); backToHub(); }
   }
-  async function joinByCode(code) {
-    try { openTable(await api("/games/rooms/join", { method: "POST", body: { code: String(code).trim().toUpperCase() } })); }
-    catch (e) { toast(errText(e)); }
-  }
-
-  // ------------------------------------------------------------------ friends: create / join / open tables
-  async function friendsScreen() {
-    let seats = 2, vis = "private";
-    const seg = (items, get, set) => {
-      const box = h("div", { class: "seg" });
-      const draw = () => put(box, ...items.map(([v, label]) =>
-        h("button", { class: get() === v ? "on" : "", onclick: () => { set(v); draw(); } }, label)));
-      draw();
-      return box;
-    };
-    const code = h("input", { id: "bj-code", placeholder: "ABC123", maxlength: 8, autocapitalize: "characters", autocomplete: "off" });
-    const list = h("div", {}, h("p", { class: "muted small" }, t("loading")));
-    sub(t("gFriends"), backToHub,
-      h("section", { class: "card" },
-        h("div", { class: "card-title" }, t("gCreate")),
-        h("label", {}, t("gSeats")), seg([[2, "2"], [3, "3"], [4, "4"]], () => seats, (v) => { seats = v; }),
-        h("label", {}, t("gVisibility")), seg([["private", t("gPrivate")], ["public", t("gPublic")]], () => vis, (v) => { vis = v; }),
-        h("button", { class: "primary wide", onclick: async () => {
-          try { openTable(await api("/games/rooms", { method: "POST", body: { max_players: seats, visibility: vis } })); }
-          catch (e) { toast(errText(e)); }
-        } }, t("gCreateBtn"))),
-      h("section", { class: "card" },
-        h("div", { class: "card-title" }, t("gJoinCode")),
-        h("div", { class: "row" }, code, h("button", { class: "primary", onclick: () => code.value.trim() && joinByCode(code.value) }, t("gJoin")))),
-      h("section", { class: "card" }, h("div", { class: "card-title" }, t("gOpenTables")), list));
-    try {
-      const rooms = await api("/games/rooms");
-      put(list, ...(rooms.length ? rooms.map((r) =>
-        h("div", { class: "device" },
-          h("div", { class: "dev-main" }, h("strong", {}, `${t("gTable")} ${r.code}`),
-            h("div", { class: "small muted" }, t("gPlayersN", { n: r.players, m: r.max_players }))),
-          h("button", { class: "secondary", onclick: async () => {
-            try { openTable(await api("/games/rooms/join", { method: "POST", body: { room_id: r.id } })); }
-            catch (e) { toast(errText(e)); friendsScreen(); }
-          } }, t("gJoin")))) : [h("p", { class: "muted small" }, t("gNoTables"))]));
-    } catch (e) { put(list, h("p", { class: "warn small" }, errText(e))); }
-  }
-
   // ------------------------------------------------------------------ the table
   let table = null; // the open table: connection, timers, last view
 
@@ -292,7 +253,10 @@ export function initGames(d) {
     if (!tb || !tb.alive || (tb.view && view.version < tb.view.version)) return;
     const prev = tb.view;
     tb.view = view;
-    if (view.round_no !== tb.roundNo) { tb.roundNo = view.round_no; tb.seen = new Set(); tb.holeShown = false; }
+    if (view.round_no !== tb.roundNo) { // a new round: forget the last one's cards and result
+      tb.roundNo = view.round_no; tb.seen = new Set(); tb.holeShown = false;
+      tb.el.banner.className = "bj-banner";
+    }
     let fresh = 0;
     const draw = (c, key) => { // cards not seen before fly in, one after another
       const isNew = !tb.seen.has(key);
@@ -331,7 +295,7 @@ export function initGames(d) {
           h("div", { class: "bj-cards" }, ...hd.cards.map((c, ci) => draw(c, `s${p.seat}h${hi}c${ci}:${c}`))),
           h("div", { class: "bj-hand-meta" },
             h("span", { class: "bj-total" }, hd.blackjack ? "BJ" : String(hd.total)),
-            hd.bet ? h("span", { class: "chip" }, `${days(hd.bet)}`) : null,
+            hd.bet ? h("span", { class: "chip" }, r.currency === "chips" || view.round_currency === "chips" ? nf.format(hd.bet) : days(hd.bet)) : null,
             out ? h("span", { class: `tag tag-${out}` }, t("gOut")[out]) : hd.doubled ? h("span", { class: "tag" }, "×2") : null));
       });
       const waiting = !rs && (live || view.phase === "betting" || view.phase === "settled");
@@ -368,10 +332,15 @@ export function initGames(d) {
       if (mine) {
         const kind = mine.blackjack && mine.result === "win" ? "blackjack" : mine.result;
         const delay = 500 + fresh * 130;
+        const shownRound = view.round_no;
         later(() => {
+          // a quick player may already be in the next round: then this result is stale
+          if (tb.view?.round_no !== shownRound || tb.view.phase !== "settled") return;
           tb.el.banner.className = `bj-banner show ${kind}`;
           put(tb.el.banner, h("strong", {}, t("gResult")[kind]),
-            mine.net ? h("span", {}, `${mine.net > 0 ? "+" : "−"}${days(Math.abs(mine.net))} ${t("gDaysShort")}`) : null);
+            mine.net ? h("span", {}, view.round_currency === "chips"
+              ? `${mine.net > 0 ? "+" : "−"}${nf.format(Math.abs(mine.net))} 🪙`
+              : `${mine.net > 0 ? "+" : "−"}${days(Math.abs(mine.net))} ${t("gDaysShort")}`) : null);
           play(kind);
           setMood(mine.result === "win" ? "sad" : mine.result === "lose" ? "happy" : "idle", 2600);
         }, delay);
@@ -389,7 +358,7 @@ export function initGames(d) {
     if (view.status !== "open") { put(box, h("p", { class: "muted center" }, view.status === "paused" ? t("gPaused") : t("gClosed"))); return; }
     if (live) {
       const a = view.me.actions, x = view.me.extra_hours;
-      const cost = (k) => (x[k] ? `${days(x[k])} ${t("gDaysShort")}` : null);
+      const cost = (k) => (x[k] ? (view.round_currency === "chips" ? `🪙 ${nf.format(x[k])}` : `${days(x[k])} ${t("gDaysShort")}`) : null);
       if (!a.length) { put(box, h("p", { class: "muted center" }, view.me.in_round ? t("gWaitOthers") : t("gNextRound"))); return; }
       if (a.includes("insurance")) {
         put(box, h("div", { class: "bj-grid two" },
@@ -408,30 +377,36 @@ export function initGames(d) {
     }
     if (me?.ready) { put(box, h("p", { class: "muted center" }, t("gWaitOthers"))); return; }
     const again = view.round_no > 0;
-    if (!view.stakes) {
+    if (!view.currency) {
       put(box, 
         btn(again ? t("gAgain") : t("gDeal"), "primary wide", () => { play("chip"); send("/bet", { stake_days: 0, client_seed: uid() }); }),
         h("p", { class: "small muted center" }, t("gFunNote")));
       return;
     }
-    const opts = view.stake_options_days, bal = view.me.balance_hours;
-    if (tb.stake === null || tb.stake * 24 > bal) tb.stake = opts.find((o) => o * 24 <= bal) ?? null;
+    // stakes: bonus days (when enabled by the administration) or fun chips
+    const isChips = view.currency === "chips";
+    const opts = view.stake_options;
+    const bal = isChips ? view.me.chips : view.me.balance_hours;
+    const cost = (o) => (isChips ? o : o * 24);
+    if (tb.stake === null || cost(tb.stake) > bal) tb.stake = [...opts].reverse().find((o) => cost(o) <= bal && (!isChips || o <= Math.max(10, bal / 10))) ?? opts.find((o) => cost(o) <= bal) ?? null;
+    const unit = isChips ? "🪙" : t("gDaysShort");
     const chips = h("div", { class: "bj-stakes" }, ...opts.map((o) =>
-      h("button", { class: `stake ${tb.stake === o ? "on" : ""}`, disabled: o * 24 > bal, onclick: () => { tb.stake = o; play("chip"); drawControls(view, me, live); } },
-        h("b", {}, String(o)), h("small", {}, t("gDaysShort")))));
-    put(box, 
-      h("p", { class: "small muted center" }, t("gBalance", { n: days(bal) })),
+      h("button", { class: `stake ${isChips ? "chip-stake" : ""} ${tb.stake === o ? "on" : ""}`, disabled: cost(o) > bal, onclick: () => { tb.stake = o; play("chip"); drawControls(view, me, live); } },
+        h("b", {}, nf.format(o)), h("small", {}, unit))));
+    put(box,
+      h("p", { class: "small muted center" }, isChips ? t("gChipsBalance", { n: nf.format(bal) }) : t("gBalance", { n: days(bal) })),
       chips,
       tb.stake === null
-        ? h("p", { class: "warn center small" }, t("gNoBonus"))
-        : btn(t("gConfirmStake", { n: tb.stake }), "primary wide", () => { play("chip"); send("/bet", { stake_days: tb.stake, client_seed: uid() }); }));
+        ? h("p", { class: "warn center small" }, isChips ? t("gNoChips") : t("gNoBonus"))
+        : btn(isChips ? t("gConfirmChips", { n: nf.format(tb.stake) }) : t("gConfirmStake", { n: tb.stake }), "primary wide", () => { play("chip"); send("/bet", { stake: tb.stake, client_seed: uid() }); }),
+      isChips ? h("button", { class: "ghost wide small", onclick: () => { play("chip"); send("/bet", { stake: 0, client_seed: uid() }); } }, t("gFreeRound")) : null);
   }
 
   function drawFoot(view) {
     const tb = table, multi = view.max_players > 1;
     const link = d.botLink() ? `${d.botLink()}?start=room_${view.code}` : null;
     put(tb.el.foot, 
-      multi ? h("section", { class: "card small bj-invite" },
+      multi ? h("section", { class: "card small bj-invite" },  // shared tables (off by default)
         h("div", {}, h("span", { class: "muted" }, `${t("gTable")} `), h("strong", { class: "bj-code" }, view.code),
           h("span", { class: "muted" }, ` · ${view.visibility === "public" ? t("gPublic") : t("gPrivate")} · ${view.players.length}/${view.max_players}`)),
         h("div", { class: "row" },
@@ -536,23 +511,30 @@ export function initGames(d) {
           h("div", { class: "dev-main" },
             h("div", { class: "mini-cards" }, ...x.hands.flatMap((hd) => hd.cards ? hd.cards : []).slice(0, 6).map((c) => card(c, "mini"))),
             h("div", { class: "small muted" }, `${new Date(x.finished_at).toLocaleString(lang === "ru" ? "ru-RU" : "en-GB", { day: "2-digit", month: "2-digit", hour: "2-digit", minute: "2-digit" })} · ${t("gDealer")} ${x.dealer?.total ?? "?"}`)),
-          x.net_hours ? h("strong", { class: x.net_hours > 0 ? "ok" : "warn" }, `${x.net_hours > 0 ? "+" : "−"}${days(Math.abs(x.net_hours))}`) : null))))
+          x.net_hours ? h("strong", { class: x.net_hours > 0 ? "ok" : "warn" }, `${x.net_hours > 0 ? "+" : "−"}${x.currency === "chips" ? `${nf.format(Math.abs(x.net_hours))} 🪙` : `${days(Math.abs(x.net_hours))} ${t("gDaysShort")}`}`) : null))))
         : h("p", { class: "card muted" }, t("gHistoryEmpty")));
   }
 
   async function leaderboardScreen() {
     let b;
     try { b = await api("/games/leaderboard"); } catch (e) { toast(errText(e)); return; }
+    const when = (iso) => (iso ? new Date(iso).toLocaleDateString(lang === "ru" ? "ru-RU" : "en-GB", { day: "2-digit", month: "2-digit" }) : "");
     sub(t("gLeaders"), backToHub,
-      b.my_rank ? h("p", { class: "card small" }, t("gMyRank", { n: b.my_rank })) : null,
-      b.top.length ? h("section", { class: "card" }, h("ul", { class: "list" }, ...b.top.map((x) =>
-        h("li", { class: `device ${x.me ? "me-row" : ""}` },
-          h("span", { class: "rank-no" }, x.rank <= 3 ? ["🥇", "🥈", "🥉"][x.rank - 1] : String(x.rank)),
-          h("div", { class: "dev-main" }, h("strong", {}, x.nickname),
-            h("div", { class: "small muted" }, t("gLeaderRow", { r: x.rounds, b: x.blackjacks }))),
-          h("strong", {}, `${x.wins} ${t("gWinsShort")}`)))))
+      h("section", { class: "card glow lb-head" },
+        h("div", { class: "lbl" }, t("gLbKicker")),
+        h("p", { class: "small muted" }, t("gLbText")),
+        b.my_rank ? h("p", { class: "small" }, t("gMyRank", { n: b.my_rank })) : null,
+        b.my_best && b.my_best.win > 0 ? h("p", { class: "small" }, t("gMyBest", { w: nf.format(b.my_best.win), s: nf.format(b.my_best.stake) })) : null),
+      b.top.length ? h("section", { class: "card lb" },
+        h("div", { class: "lb-row lb-cols" }, h("span", {}, "#"), h("span", {}, t("gLbPlayer")), h("span", { class: "right" }, t("gLbWin")), h("span", { class: "right" }, t("gLbStake"))),
+        ...b.top.map((x) =>
+          h("div", { class: `lb-row ${x.me ? "me-row" : ""} ${x.rank <= 3 ? `top${x.rank}` : ""}` },
+            h("span", { class: "rank-no" }, x.rank <= 3 ? ["🥇", "🥈", "🥉"][x.rank - 1] : String(x.rank)),
+            h("span", { class: "lb-name" }, h("strong", {}, x.me ? `${x.nickname} (${t("gYou")})` : x.nickname), h("small", { class: "muted" }, when(x.at))),
+            h("strong", { class: "right lb-win" }, `+${nf.format(x.best_win)}`),
+            h("span", { class: "right muted" }, nf.format(x.stake)))))
         : h("p", { class: "card muted" }, t("gLeadersEmpty")));
   }
 
-  return { gamesScreen, joinByCode, closeTable };
+  return { gamesScreen, closeTable };
 }

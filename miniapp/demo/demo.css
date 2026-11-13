@@ -1,5 +1,5 @@
 /* demo-only chrome: scenario bar, Telegram-like sheet, toasts */
-main { padding-bottom: calc(118px + env(safe-area-inset-bottom, 0px)); }
+main { padding-bottom: calc(var(--demo-bar, 140px) + 24px); } /* room for the demo bar (its height is measured) */
 .demo-bar {
   position: fixed; left: 0; right: 0; bottom: 0; z-index: 40;
   display: grid; gap: 7px; justify-items: center;

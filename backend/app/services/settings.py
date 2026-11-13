@@ -58,7 +58,26 @@ REGISTRY: dict[str, SettingDef] = {
     ),
     # --- mini-games (ADR-019) ---
     "games.enabled": _def(bool, True, "Mini Games section and Jungle Kong Blackjack."),
-    "games.multiplayer_enabled": _def(bool, True, "Tables for 2-4 players."),
+    "games.multiplayer_enabled": _def(
+        bool, False, "Tables for 2-4 players (off: the owner chose solo play only)."
+    ),
+    "games.chips.enabled": _def(
+        bool,
+        True,
+        "Fun chips: stakes with no value (no purchase, no exchange) while bonus-day stakes are "
+        "off. They make the biggest-win leaderboard work in fun mode.",
+    ),
+    "games.chips.daily": _def(
+        Annotated[int, Field(ge=10, le=1_000_000)], 1000, "Chips are topped up to this every day."
+    ),
+    "games.chips.stake_options": _def(
+        Annotated[
+            list[Annotated[int, Field(ge=10, le=100_000, multiple_of=10)]],
+            Field(min_length=1, max_length=8),
+        ],
+        [10, 20, 50, 100, 200, 500],
+        "Chip stakes offered (multiples of 10, so 3:2, 6:5 and halves pay whole chips).",
+    ),
     "games.blackjack.stakes_enabled": _def(
         bool,
         False,
